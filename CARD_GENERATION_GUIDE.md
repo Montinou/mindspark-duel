@@ -15,7 +15,7 @@
    - Tags temáticos para categorización
 
 3. **Generación Dinámica de Problemas**
-   - Problemas generados en tiempo real con Gemini Flash (baja latencia)
+   - Problemas generados en tiempo real con Gemini 2.5 Flash (baja latencia)
    - Contextualizados con el tema de la carta
    - No se almacenan en BD, siempre frescos
 

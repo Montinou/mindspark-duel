@@ -4,7 +4,7 @@ import { db } from '@/db';
 import { cards, cardBatches } from '@/db/schema';
 
 const GEMINI_API_KEY = process.env.GEMINIAI_API_KEY;
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 interface BatchGenerationRequest {
   batchName: string;
@@ -78,10 +78,11 @@ CRITICAL STYLE REQUIREMENTS:
 
 GAME BALANCE:
 - Cost range: 1-10 mana
-- Power range: 1-10
-- Defense range: 1-10
+- Power range: 1-10 (REQUIRED - all cards MUST have power, even spells/enchantments)
+- Defense range: 1-10 (REQUIRED - all cards MUST have defense, even spells/enchantments)
 - Cost should correlate with total stats (cost ≈ power + defense / 2)
 - Difficulty for educational problems: ${difficulty}/10
+- CRITICAL: Every card must have valid integer power and defense values. No nulls or zeros allowed.
 
 OUTPUT FORMAT:
 Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):
@@ -164,6 +165,10 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no code 
         console.error(`⚠️  Failed to generate/upload image for card ${index + 1}:`, imgError);
       }
 
+      // Validate and ensure power/defense are set (fallback to 1 if missing)
+      const power = cardData.power || 1;
+      const defense = cardData.defense || 1;
+
       // Save card to database
       const [savedCard] = await db
         .insert(cards)
@@ -173,8 +178,8 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no code 
           flavorText: cardData.flavorText,
           effectDescription: cardData.effectDescription,
           cost: cardData.cost,
-          power: cardData.power,
-          defense: cardData.defense,
+          power,
+          defense,
           element: cardData.element,
           problemCategory: cardData.problemCategory,
           imageUrl,

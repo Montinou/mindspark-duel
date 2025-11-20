@@ -1,3 +1,5 @@
+'use server';
+
 import { Card } from '@/types/game';
 import { uploadImage } from '../storage';
 import { db } from '@/db';

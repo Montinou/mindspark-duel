@@ -1,15 +1,15 @@
 import { Problem, Card } from '@/types/game';
 
-const GEMINI_API_KEY = process.env.GEMINIAI_API_KEY;
-const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+const GATEWAY_URL = 'https://gateway.ai.vercel.dev/v1/chat/completions';
 
 /**
- * Dynamically generates a thematic problem for a card using Gemini Flash (low latency)
+ * Dynamically generates a thematic problem for a card using Vercel AI Gateway (Direct Fetch)
  * Problems are generated on-demand during gameplay, not stored in database
  */
 export async function generateProblemForCard(card: Card): Promise<Problem> {
-  if (!GEMINI_API_KEY) {
-    throw new Error("GEMINIAI_API_KEY is not set");
+  const AI_GATEWAY_API_KEY = process.env.AI_GATEWAY_API_KEY;
+  if (!AI_GATEWAY_API_KEY) {
+    throw new Error("AI_GATEWAY_API_KEY is not set");
   }
 
   // Build thematic context from card
@@ -35,6 +35,8 @@ CARD CONTEXT:
 - ${themeContext}
 
 PROBLEM REQUIREMENTS:
+0. **Language**: SPANISH. The question and options must be in Spanish.
+
 1. **Thematic Integration**:
    - The problem MUST relate to the card's theme and lore
    - Use the card's name, element, or theme in the question when possible
@@ -55,27 +57,10 @@ PROBLEM REQUIREMENTS:
    - Only ONE correct answer
    - Options should be plausible (avoid obvious wrong answers)
 
-EXAMPLES (for inspiration):
-
-**Thematic Math (Dragon card):**
-"The dragon ${card.name} guards 48 gold coins across 6 treasure chests equally. How many coins in each chest?"
-Options: ["6", "8", "12", "18"]
-Correct: "8"
-
-**Thematic Logic (Samurai card):**
-"${card.name} must cross 3 bridges in order: red, blue, then green. If the blue bridge is before the green but after the red, which bridge is second?"
-Options: ["Red", "Blue", "Green", "Cannot determine"]
-Correct: "Blue"
-
-**Thematic Science (Water element card):**
-"${card.name} controls water. What is the chemical formula for water?"
-Options: ["H2O", "CO2", "O2", "H2O2"]
-Correct: "H2O"
-
 OUTPUT FORMAT:
-Return ONLY a valid JSON object (no markdown, no code blocks):
+Return ONLY a valid JSON object (no markdown, no code blocks) with this structure:
 {
-  "question": "Your thematic question here",
+  "question": "The thematic question in Spanish",
   "options": ["option1", "option2", "option3", "option4"],
   "correctAnswer": "the exact text of the correct option",
   "difficulty": ${difficulty}
@@ -83,21 +68,38 @@ Return ONLY a valid JSON object (no markdown, no code blocks):
 `;
 
   try {
-    const response = await fetch(API_URL, {
+    const response = await fetch(GATEWAY_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AI_GATEWAY_API_KEY}`,
+      },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
+        model: 'gemini-2.5-flash', // Using Gemini 2.5 Flash via Vercel Gateway
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a creative educational content generator for a card game. You output only valid JSON.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
       })
     });
 
     if (!response.ok) {
-      throw new Error(`Gemini API Error: ${response.statusText}`);
+      const errorText = await response.text();
+      throw new Error(`AI Gateway Error: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     const data = await response.json();
-    const text = data.candidates[0].content.parts[0].text;
-    const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    const content = data.choices[0].message.content;
+    
+    // Clean up markdown code blocks if present
+    const jsonString = content.replace(/```json/g, '').replace(/```/g, '').trim();
     const problemData = JSON.parse(jsonString);
 
     return {
@@ -117,7 +119,7 @@ Return ONLY a valid JSON object (no markdown, no code blocks):
     const answer = num1 + num2;
 
     return {
-      question: `${card.name} has ${num1} ${card.element} crystals and finds ${num2} more. How many in total?`,
+      question: `${card.name} tiene ${num1} cristales de ${card.element} y encuentra ${num2} más. ¿Cuántos tiene en total?`,
       options: [
         String(answer - 1),
         String(answer),
@@ -140,3 +142,5 @@ export async function generateProblemPool(card: Card, count: number = 3): Promis
   const promises = Array.from({ length: count }, () => generateProblemForCard(card));
   return Promise.all(promises);
 }
+
+

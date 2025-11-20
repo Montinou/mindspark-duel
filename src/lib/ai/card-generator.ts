@@ -6,7 +6,7 @@ import { db } from '@/db';
 import { cards } from '@/db/schema';
 
 const GEMINI_API_KEY = process.env.GEMINIAI_API_KEY;
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 export async function generateCard(topic: string, difficulty: number, userId?: string): Promise<Card> {
   if (!GEMINI_API_KEY) {
@@ -32,6 +32,7 @@ export async function generateCard(topic: string, difficulty: number, userId?: s
     
     Make the stats balanced for the cost.
     The name should be fantasy-themed but related to the topic.
+    IMPORTANT: Generate the Name and Description in SPANISH.
   `;
 
   try {

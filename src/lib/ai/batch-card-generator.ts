@@ -4,7 +4,7 @@ import { db } from '@/db';
 import { cards, cardBatches } from '@/db/schema';
 
 const GEMINI_API_KEY = process.env.GEMINIAI_API_KEY;
-const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 interface BatchGenerationRequest {
   batchName: string;
@@ -43,6 +43,9 @@ You are an expert trading card game designer specializing in anime-style artwork
 Generate a cohesive set of ${count} unique trading cards for "MindSpark Duel" with the following theme:
 **Theme**: ${request.theme}
 **Description**: ${request.themeDescription}
+
+LANGUAGE REQUIREMENT:
+- All text (Name, Flavor Text, Effect Description) MUST be in SPANISH.
 
 CRITICAL STYLE REQUIREMENTS:
 1. **Art Style**: High-quality anime art style

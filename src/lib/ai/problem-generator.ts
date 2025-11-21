@@ -3,14 +3,15 @@ import { Problem, Card } from '@/types/game';
 const GATEWAY_URL = 'https://gateway.ai.vercel.dev/v1/chat/completions';
 
 /**
- * Dynamically generates a thematic problem for a card using Vercel AI Gateway (Direct Fetch)
- * Problems are generated on-demand during gameplay, not stored in database
+ * Dynamically generates a thematic problem for a card.
+ * Strategy:
+ * 1. Try Vercel AI Gateway (Primary)
+ * 2. Fallback to Direct Gemini API (Secondary, if Gateway fails/is blocked)
+ * 3. Fallback to Simple Math (Tertiary, if all AI fails)
  */
 export async function generateProblemForCard(card: Card): Promise<Problem> {
   const AI_GATEWAY_API_KEY = process.env.AI_GATEWAY_API_KEY;
-  if (!AI_GATEWAY_API_KEY) {
-    throw new Error("AI_GATEWAY_API_KEY is not set");
-  }
+  const GEMINI_API_KEY = process.env.GEMINIAI_API_KEY;
 
   // Build thematic context from card
   const themeContext = [
@@ -67,71 +68,94 @@ Return ONLY a valid JSON object (no markdown, no code blocks) with this structur
 }
 `;
 
-  try {
-    const response = await fetch(GATEWAY_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AI_GATEWAY_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'gemini-2.5-flash', // Using Gemini 2.5 Flash via Vercel Gateway
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a creative educational content generator for a card game. You output only valid JSON.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-      })
-    });
+  // 1. Try Vercel AI Gateway
+  if (AI_GATEWAY_API_KEY) {
+    try {
+      const response = await fetch(GATEWAY_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${AI_GATEWAY_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'gemini-2.5-flash',
+          messages: [
+            { role: 'system', content: 'You are a creative educational content generator. Output valid JSON only.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.7,
+        })
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`AI Gateway Error: ${response.status} ${response.statusText} - ${errorText}`);
+      if (!response.ok) {
+        throw new Error(`Gateway status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices[0].message.content;
+      return parseProblemResponse(content, difficulty, themeContext, card.id);
+    } catch (error) {
+      console.warn('⚠️ Vercel AI Gateway failed, failing over to Direct Gemini API:', error);
     }
-
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-    
-    // Clean up markdown code blocks if present
-    const jsonString = content.replace(/```json/g, '').replace(/```/g, '').trim();
-    const problemData = JSON.parse(jsonString);
-
-    return {
-      question: problemData.question,
-      options: problemData.options,
-      correctAnswer: problemData.correctAnswer,
-      difficulty: problemData.difficulty || difficulty,
-      themeContext,
-      cardId: card.id,
-    };
-  } catch (error) {
-    console.error('Failed to generate problem:', error);
-
-    // Fallback to simple math problem
-    const num1 = Math.floor(Math.random() * 10) + 1;
-    const num2 = Math.floor(Math.random() * 10) + 1;
-    const answer = num1 + num2;
-
-    return {
-      question: `${card.name} tiene ${num1} cristales de ${card.element} y encuentra ${num2} más. ¿Cuántos tiene en total?`,
-      options: [
-        String(answer - 1),
-        String(answer),
-        String(answer + 1),
-        String(answer + 2),
-      ].sort(() => Math.random() - 0.5),
-      correctAnswer: String(answer),
-      difficulty,
-      themeContext,
-      cardId: card.id,
-    };
   }
+
+  // 2. Fallback to Direct Gemini API
+  if (GEMINI_API_KEY) {
+    try {
+      const DIRECT_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+      const response = await fetch(DIRECT_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Gemini API status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const content = data.candidates[0].content.parts[0].text;
+      return parseProblemResponse(content, difficulty, themeContext, card.id);
+    } catch (error) {
+      console.error('❌ Direct Gemini API failed:', error);
+    }
+  }
+
+  // 3. Fallback to Simple Math
+  console.warn('⚠️ All AI generation failed, using static fallback.');
+  const num1 = Math.floor(Math.random() * 10) + 1;
+  const num2 = Math.floor(Math.random() * 10) + 1;
+  const answer = num1 + num2;
+
+  return {
+    question: `${card.name} tiene ${num1} cristales de ${card.element} y encuentra ${num2} más. ¿Cuántos tiene en total?`,
+    options: [
+      String(answer - 1),
+      String(answer),
+      String(answer + 1),
+      String(answer + 2),
+    ].sort(() => Math.random() - 0.5),
+    correctAnswer: String(answer),
+    difficulty,
+    themeContext,
+    cardId: card.id,
+  };
+}
+
+function parseProblemResponse(text: string, difficulty: number, themeContext: string, cardId: string): Problem {
+  const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
+  const problemData = JSON.parse(jsonString);
+
+  return {
+    question: problemData.question,
+    options: problemData.options,
+    correctAnswer: problemData.correctAnswer,
+    difficulty: problemData.difficulty || difficulty,
+    themeContext,
+    cardId,
+  };
 }
 
 /**

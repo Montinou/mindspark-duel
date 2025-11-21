@@ -11,7 +11,7 @@ async function testCardGeneration() {
   console.log('🚀 Testing Card Generation...');
   
   try {
-    const card = await generateCard('Space Exploration', 5);
+    const card = await generateCard({ topic: 'Space Exploration', difficulty: 5 });
     console.log('✅ Card Generated:', card);
   } catch (error) {
     console.error('❌ Test Failed:', error);

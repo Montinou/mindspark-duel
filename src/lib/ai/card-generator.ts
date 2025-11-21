@@ -8,14 +8,27 @@ import { cards } from '@/db/schema';
 const GEMINI_API_KEY = process.env.GEMINIAI_API_KEY;
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
-export async function generateCard(topic: string, difficulty: number, userId?: string): Promise<Card> {
+export interface GenerateCardOptions {
+  topic?: string;
+  theme?: string;
+  difficulty?: number;
+  element?: "Fire" | "Water" | "Earth" | "Air";
+  userId?: string;
+}
+
+export async function generateCard(options: GenerateCardOptions): Promise<Card> {
   if (!GEMINI_API_KEY) {
     throw new Error("GOOGLE_GENERATIVE_AI_API_KEY is not set");
   }
 
+  const { topic, theme, difficulty = 5, element, userId } = options;
+  const themeText = theme || topic || "Fantasy";
+  const elementInstruction = element ? `The card MUST belong to the element: "${element}".` : "Choose a suitable element (Fire, Water, Earth, Air).";
+
   const prompt = `
     Create a unique, creative trading card for a game called "MindSpark Duel".
-    The card should be based on the topic: "${topic}".
+    The card should be based on the theme/topic: "${themeText}".
+    ${elementInstruction}
     The difficulty level for the educational problem is: ${difficulty} (1-10).
     
     Return ONLY a valid JSON object with this structure:

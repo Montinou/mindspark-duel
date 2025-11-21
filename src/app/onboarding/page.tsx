@@ -3,9 +3,8 @@ import { db } from "@/db";
 import { decks } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import { ThemeSelector } from "@/components/onboarding/ThemeSelector";
+import { ThemeSelectorWrapper } from "@/components/onboarding/ThemeSelectorWrapper";
 import { DeckGenerationStatus } from "@/components/onboarding/DeckGenerationStatus";
-import { startDeckGeneration } from "@/app/actions/deck";
 
 export default async function OnboardingPage() {
   const user = await stackServerApp.getUser();
@@ -46,24 +45,4 @@ export default async function OnboardingPage() {
       </div>
     </main>
   );
-}
-
-// Client wrapper to handle the server action
-'use client';
-import { useState } from "react";
-
-function ThemeSelectorWrapper() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleSelect = async (themeId: string) => {
-    setIsSubmitting(true);
-    try {
-      await startDeckGeneration(themeId);
-    } catch (error) {
-      console.error("Failed to start generation:", error);
-      setIsSubmitting(false);
-    }
-  };
-
-  return <ThemeSelector onSelect={handleSelect} isSubmitting={isSubmitting} />;
 }

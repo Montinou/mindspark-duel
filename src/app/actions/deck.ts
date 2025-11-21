@@ -44,14 +44,13 @@ export async function startDeckGeneration(themeId: string) {
         cost: cost,
         power: stats.power,
         defense: stats.defense,
-        element: themeId === 'technomancer' ? 'fire' : themeId === 'nature' ? 'earth' : 'water', // Simplified mapping
-        image: "/placeholder-card.png", // Placeholder
-        type: "creature",
+        element: themeId === 'technomancer' ? 'Fire' : themeId === 'nature' ? 'Earth' : 'Water',
+        imageUrl: "/placeholder-card.png",
         rarity: "common",
-        problemType: problemType,
+        problemCategory: problemType as any, // Cast to match enum if needed, or ensure getProblemTypeForTheme returns valid enum
         createdById: user.id,
-        isPublic: false,
-        prompt: `A fantasy card art for a ${themeId} creature with ${stats.power} power and ${stats.defense} defense.`, // Simple prompt for now
+        imagePrompt: `A fantasy card art for a ${themeId} creature with ${stats.power} power and ${stats.defense} defense.`,
+        description: "A placeholder card.",
       });
     }
   }

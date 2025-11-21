@@ -1,4 +1,5 @@
 import { stackServerApp } from "@/lib/stack";
+import { t } from "@/lib/i18n";
 import { Battlefield } from "@/components/game/Battlefield";
 import { LoginButton, SignupButton, UserButton } from "@/components/auth/AuthComponents";
 import { Hero } from "@/components/landing/Hero";
@@ -24,7 +25,7 @@ export default async function Home() {
         
         {/* Footer */}
         <footer className="py-8 text-center text-zinc-600 text-sm border-t border-zinc-900 bg-zinc-950">
-          <p>© 2025 Mindspark Duel. All rights reserved.</p>
+          <p>{t('landing.footer.rights')}</p>
         </footer>
       </main>
     );
@@ -35,7 +36,7 @@ export default async function Home() {
   if (existingUser.length === 0) {
     await db.insert(users).values({
       id: user.id,
-      name: user.displayName || "Unknown Wizard",
+      name: user.displayName || t('common.unknown_wizard'),
       email: user.primaryEmail || "",
     });
   }
@@ -44,7 +45,7 @@ export default async function Home() {
     <main className="relative">
       <div className="absolute top-4 right-4 z-50 flex gap-4">
         <a href="/dashboard" className="px-4 py-2 bg-zinc-800 rounded-lg text-white hover:bg-zinc-700 transition-colors">
-          Dashboard
+          {t('common.dashboard')}
         </a>
         <UserButton />
       </div>

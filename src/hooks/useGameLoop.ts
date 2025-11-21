@@ -92,10 +92,10 @@ export const useGameLoop = () => {
     });
     
     if (playerId === 'player') {
-        // Player draw is manual or auto? Rules say "Start Phase: Draw 1 card".
-        // Let's make it auto for now to smooth flow
-        setTimeout(() => drawCard('player', 1), 500);
-        setTimeout(() => setPhase('main'), 1000);
+        // Auto-draw for player
+        drawCard('player', 1);
+        // Transition to main phase immediately (animations handled by UI)
+        setPhase('main');
     }
   };
 
@@ -228,32 +228,31 @@ export const useGameLoop = () => {
       });
   }, []);
 
-  const endTurn = useCallback(() => {
+  const endTurn = useCallback(async () => {
     setGameState(prev => ({ ...prev, currentPhase: 'end' }));
     
-    // Trigger Enemy Turn
-    setTimeout(() => {
-        // Enemy Logic
-        setGameState(prev => {
-            // Enemy draws
-            // Enemy plays (mock)
-            // Enemy attacks (mock)
-            const enemy = prev.enemy;
-            // Simple AI: Deal 2 damage if mana > 2
-            const damage = enemy.mana >= 2 ? 2 : 0;
-            const newMana = enemy.mana >= 2 ? enemy.mana - 2 : enemy.mana;
-            
-            return {
-                ...prev,
-                turn: prev.turn + 1,
-                enemy: { ...enemy, mana: newMana },
-                player: { ...prev.player, health: prev.player.health - damage }
-            };
-        });
+    // Enemy Turn Logic (Simulated)
+    // In a real implementation, this would be an async call to an AI agent or game server
+    
+    // Simulate thinking time with a cancellable promise or proper async flow if needed
+    // For now, we execute logic directly. UI should handle animations.
+    
+    setGameState(prev => {
+        // Enemy draws & plays (Simplified AI)
+        const enemy = prev.enemy;
+        const damage = enemy.mana >= 2 ? 2 : 0;
+        const newMana = enemy.mana >= 2 ? enemy.mana - 2 : enemy.mana;
+        
+        return {
+            ...prev,
+            turn: prev.turn + 1,
+            enemy: { ...enemy, mana: newMana },
+            player: { ...prev.player, health: prev.player.health - damage }
+        };
+    });
 
-        // Back to Player
-        setTimeout(() => startTurn('player'), 1000);
-    }, 1500);
+    // Pass turn back to player
+    startTurn('player');
 
   }, []);
 

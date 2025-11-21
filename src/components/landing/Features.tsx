@@ -3,28 +3,7 @@
 import { motion } from 'framer-motion';
 import { Brain, Sparkles, Zap } from 'lucide-react';
 
-const features = [
-  {
-    icon: Brain,
-    title: "Knowledge is Power",
-    description: "Your intellect is your weapon. Solve math, science, and logic problems to charge your spells."
-  },
-  {
-    icon: Sword,
-    title: "Strategic Battles",
-    description: "Build your deck, manage your mana, and outsmart opponents in turn-based card combat."
-  },
-  {
-    icon: Scroll,
-    title: "Collect & Master",
-    description: "Research ancient tomes to discover rare cards. Build the ultimate deck tailored to your playstyle."
-  },
-  {
-    icon: Sparkles,
-    title: "Magical Progression",
-    description: "Earn Sparks, level up your mastery, and unlock exclusive cosmetic rewards."
-  }
-];
+
 
 export function Features() {
   return (
@@ -93,26 +72,7 @@ export function Features() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {features.map((feature, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              viewport={{ once: true }}
-              className="bg-zinc-950/50 border border-zinc-800 p-6 rounded-2xl hover:border-purple-500/50 transition-colors group"
-            >
-              <div className="w-12 h-12 bg-zinc-900 rounded-lg flex items-center justify-center mb-4 group-hover:bg-purple-900/20 transition-colors">
-                <feature.icon className="w-6 h-6 text-purple-400 group-hover:text-purple-300" />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
-              <p className="text-zinc-400 text-sm leading-relaxed">
-                {feature.description}
-              </p>
-            </motion.div>
-          ))}
-        </div>
+
       </div>
     </section>
   );

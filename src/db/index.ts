@@ -1,5 +1,5 @@
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import { Pool } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+import { neon } from '@neondatabase/serverless';
 
 // For scripts running outside Next.js, load .env.local
 if (typeof window === 'undefined' && !process.env.DATABASE_URL) {
@@ -16,10 +16,11 @@ if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL environment variable is not set');
 }
 
-// Create connection pool
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// Use HTTP adapter for serverless environments (Next.js)
+// This is recommended for Edge Functions and serverless deployments
+const sql = neon(process.env.DATABASE_URL);
 
 import * as schema from './schema';
 
-// Create drizzle instance
-export const db = drizzle(pool, { schema });
+// Create drizzle instance with HTTP adapter
+export const db = drizzle(sql, { schema });

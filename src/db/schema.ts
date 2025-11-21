@@ -4,6 +4,7 @@ import { relations } from 'drizzle-orm';
 // Enums
 export const elementEnum = pgEnum('element_type', ['Fire', 'Water', 'Earth', 'Air']);
 export const problemCategoryEnum = pgEnum('problem_category', ['Math', 'Logic', 'Science']);
+export const rarityEnum = pgEnum('rarity', ['common', 'uncommon', 'rare', 'epic', 'legendary']);
 
 // Users table
 export const users = pgTable('users', {
@@ -11,6 +12,7 @@ export const users = pgTable('users', {
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
   sparks: integer('sparks').default(0).notNull(),
+  pityCounter: integer('pity_counter').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -38,6 +40,7 @@ export const cards = pgTable('cards', {
   defense: integer('defense').notNull(), // 1-10
   element: elementEnum('element').notNull(),
   problemCategory: problemCategoryEnum('problem_category').notNull(),
+  rarity: rarityEnum('rarity').default('common').notNull(),
   imageUrl: text('image_url'), // R2 URL
   imagePrompt: text('image_prompt'), // For regeneration/debugging
   theme: text('theme'), // Thematic category (e.g., "Dragons", "Samurai")

@@ -66,6 +66,16 @@ export const userCards = pgTable('user_cards', {
   acquiredAt: timestamp('acquired_at').defaultNow().notNull(),
 });
 
+// Decks table - tracks user decks and generation status
+export const decks = pgTable('decks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').references(() => users.id).notNull(),
+  name: text('name').notNull(),
+  theme: text('theme').notNull(), // 'technomancer', 'nature', 'arcane'
+  status: text('status').notNull().default('generating'), // 'generating', 'completed', 'failed'
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 // Game Sessions table
 export const gameSessions = pgTable('game_sessions', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -163,3 +173,6 @@ export type NewUserCard = typeof userCards.$inferInsert;
 
 export type GameSession = typeof gameSessions.$inferSelect;
 export type NewGameSession = typeof gameSessions.$inferInsert;
+
+export type Deck = typeof decks.$inferSelect;
+export type NewDeck = typeof decks.$inferInsert;

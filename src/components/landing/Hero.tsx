@@ -36,6 +36,23 @@ export function Hero() {
         </div>
       </motion.div>
 
+      {/* Mockup Container */}
+      <motion.div
+        initial={{ opacity: 0, y: 100, rotateX: 20 }}
+        animate={{ opacity: 1, y: 0, rotateX: 0 }}
+        transition={{ duration: 1, delay: 0.2 }}
+        className="relative z-10 mt-16 max-w-5xl mx-auto perspective-1000"
+      >
+        <div className="relative rounded-xl overflow-hidden shadow-2xl border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm transform transition-transform hover:scale-[1.02] duration-500">
+          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent z-10" />
+          <img 
+            src="/hero-mockup.png" 
+            alt="Mindspark Duel Gameplay Interface" 
+            className="w-full h-auto object-cover"
+          />
+        </div>
+      </motion.div>
+
       {/* Floating Cards Animation (Decorative) */}
       <motion.div 
         animate={{ y: [0, -20, 0] }}

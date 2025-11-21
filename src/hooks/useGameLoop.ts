@@ -113,21 +113,51 @@ export const useGameLoop = () => {
     setPhase('main');
   }, []);
 
-  const playCard = useCallback((card: Card) => {
+  const playCard = useCallback(async (card: Card) => {
     if (gameState.currentPhase !== 'main') return;
     if (gameState.player.mana < card.cost) return;
 
-    // Trigger Problem
+    // Set pending card immediately to show UI feedback
     setGameState(prev => ({
       ...prev,
       pendingCard: card,
-      activeProblem: {
-        question: `Solve: ${Math.floor(Math.random() * 10)} + ${Math.floor(Math.random() * 10)}`, // Mock
-        options: ["10", "12", "14", "8"], // Mock
-        correctAnswer: "10", // Mock - logic needs to be real
-        difficulty: 1
-      }
+      activeProblem: null // Clear any old problem
     }));
+
+    try {
+      // Fetch real problem from AI
+      const response = await fetch('/api/problems', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId: card.id })
+      });
+
+      if (!response.ok) throw new Error("Failed to generate problem");
+
+      const data = await response.json();
+      
+      setGameState(prev => ({
+        ...prev,
+        activeProblem: data.problem
+      }));
+    } catch (error) {
+      console.error("Problem generation failed:", error);
+      // Fallback to a simple local problem if API fails
+      const num1 = Math.floor(Math.random() * 10) + 1;
+      const num2 = Math.floor(Math.random() * 10) + 1;
+      const ans = num1 + num2;
+      
+      setGameState(prev => ({
+        ...prev,
+        activeProblem: {
+          question: `(Offline Fallback) ${num1} + ${num2}`,
+          options: [String(ans), String(ans+1), String(ans-1), String(ans+2)].sort(() => Math.random() - 0.5),
+          correctAnswer: String(ans),
+          difficulty: 1,
+          cardId: card.id
+        }
+      }));
+    }
   }, [gameState.currentPhase, gameState.player.mana]);
 
   const resolveProblem = useCallback((answer: string, timeTakenMs: number) => {

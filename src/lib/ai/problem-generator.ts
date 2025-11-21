@@ -58,6 +58,10 @@ PROBLEM REQUIREMENTS:
    - Only ONE correct answer
    - Options should be plausible (avoid obvious wrong answers)
 
+5. **Validation**:
+   - The "correctAnswer" MUST be exactly equal to one of the strings in the "options" array.
+   - Options must be distinct (no duplicates).
+
 OUTPUT FORMAT:
 Return ONLY a valid JSON object (no markdown, no code blocks) with this structure:
 {

@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 
 import { StackProvider } from "@stackframe/stack";
 import { stackServerApp } from "@/lib/stack";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 export default function RootLayout({
   children,
@@ -31,7 +32,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <StackProvider app={stackServerApp}>
-          {children}
+          <TooltipProvider>
+            {children}
+          </TooltipProvider>
         </StackProvider>
       </body>
     </html>

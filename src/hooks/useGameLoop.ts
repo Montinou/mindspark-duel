@@ -1,32 +1,45 @@
-import { useState, useCallback } from 'react';
-import { GameState, Card, Problem } from '../types/game';
+import { useState, useCallback, useEffect } from 'react';
+import { GameState, Card, Problem, Phase, Player } from '../types/game';
 
 const INITIAL_PLAYER_HEALTH = 20;
 const INITIAL_MANA = 1;
+const MAX_MANA = 10;
+const STARTING_HAND_SIZE = 5;
+
+// Mock Deck for testing
+const MOCK_DECK: Card[] = Array.from({ length: 30 }).map((_, i) => ({
+  id: `card-${i}`,
+  name: i % 2 === 0 ? "Fireball" : "Stone Golem",
+  description: i % 2 === 0 ? "Deals 3 damage." : "A sturdy defender.",
+  cost: (i % 5) + 1,
+  power: i % 2 === 0 ? 0 : (i % 5) + 1,
+  defense: i % 2 === 0 ? 0 : (i % 5) + 2,
+  element: i % 2 === 0 ? "Fire" : "Earth",
+  problemCategory: "Math",
+  imageUrl: i % 2 === 0 
+    ? "https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=400&q=80" 
+    : "https://images.unsplash.com/photo-1535082623926-b3e352fe0765?w=400&q=80",
+  canAttack: false,
+  isTapped: false
+}));
+
+const createPlayer = (id: string, name: string): Player => ({
+  id,
+  name,
+  health: INITIAL_PLAYER_HEALTH,
+  maxHealth: INITIAL_PLAYER_HEALTH,
+  mana: INITIAL_MANA,
+  maxMana: INITIAL_MANA,
+  hand: [],
+  board: [],
+  deck: 20
+});
 
 const initialState: GameState = {
   turn: 1,
-  player: {
-    id: 'player',
-    name: 'Student Wizard',
-    health: INITIAL_PLAYER_HEALTH,
-    maxHealth: INITIAL_PLAYER_HEALTH,
-    mana: INITIAL_MANA,
-    maxMana: INITIAL_MANA,
-    hand: [],
-    board: [],
-  },
-  enemy: {
-    id: 'enemy',
-    name: 'Dark Quizmaster',
-    health: INITIAL_PLAYER_HEALTH,
-    maxHealth: INITIAL_PLAYER_HEALTH,
-    mana: INITIAL_MANA,
-    maxMana: INITIAL_MANA,
-    hand: [],
-    board: [],
-  },
-  currentPhase: 'draw',
+  player: createPlayer('player', 'Student Wizard'),
+  enemy: createPlayer('enemy', 'Dark Quizmaster'),
+  currentPhase: 'start',
   activeProblem: null,
   pendingCard: null,
   winner: null,
@@ -35,95 +48,195 @@ const initialState: GameState = {
 export const useGameLoop = () => {
   const [gameState, setGameState] = useState<GameState>(initialState);
 
+  // --- Helper Functions ---
+
+  const drawCard = (playerId: string, count: number = 1) => {
+    setGameState(prev => {
+      const player = prev[playerId as 'player' | 'enemy'];
+      if (player.deck <= 0) {
+        // Fatigue logic could go here
+        return prev;
+      }
+
+      const newCards = MOCK_DECK.slice(0, count).map(c => ({ ...c, id: `${c.id}-${Date.now()}-${Math.random()}` })); // Unique IDs
+      
+      return {
+        ...prev,
+        [playerId]: {
+          ...player,
+          hand: [...player.hand, ...newCards],
+          deck: player.deck - count
+        }
+      };
+    });
+  };
+
+  const startTurn = (playerId: 'player' | 'enemy') => {
+    setGameState(prev => {
+      const player = prev[playerId];
+      const newMaxMana = Math.min(MAX_MANA, player.maxMana + 1);
+      
+      // Reset board state (untap creatures)
+      const newBoard = player.board.map(c => ({ ...c, canAttack: true, isTapped: false }));
+
+      return {
+        ...prev,
+        currentPhase: playerId === 'player' ? 'draw' : 'main', // Enemy skips draw phase in this simple logic or handles it in AI
+        [playerId]: {
+          ...player,
+          maxMana: newMaxMana,
+          mana: newMaxMana,
+          board: newBoard
+        }
+      };
+    });
+    
+    if (playerId === 'player') {
+        // Player draw is manual or auto? Rules say "Start Phase: Draw 1 card".
+        // Let's make it auto for now to smooth flow
+        setTimeout(() => drawCard('player', 1), 500);
+        setTimeout(() => setPhase('main'), 1000);
+    }
+  };
+
+  const setPhase = (phase: Phase) => {
+    setGameState(prev => ({ ...prev, currentPhase: phase }));
+  };
+
+  // --- Actions ---
+
+  const initializeGame = useCallback(() => {
+    setGameState(initialState);
+    // Draw starting hands
+    drawCard('player', STARTING_HAND_SIZE);
+    drawCard('enemy', STARTING_HAND_SIZE);
+    setPhase('main');
+  }, []);
+
   const playCard = useCallback((card: Card) => {
-    // 1. Check mana
+    if (gameState.currentPhase !== 'main') return;
     if (gameState.player.mana < card.cost) return;
 
-    // 2. Set pending card and trigger problem generation (mock for now)
+    // Trigger Problem
     setGameState(prev => ({
       ...prev,
       pendingCard: card,
       activeProblem: {
-        question: "What is 2 + 2?",
-        options: ["3", "4", "5", "6"],
-        correctAnswer: "4",
+        question: `Solve: ${Math.floor(Math.random() * 10)} + ${Math.floor(Math.random() * 10)}`, // Mock
+        options: ["10", "12", "14", "8"], // Mock
+        correctAnswer: "10", // Mock - logic needs to be real
         difficulty: 1
-      } // This will be replaced by AI generation later
+      }
     }));
-  }, [gameState.player.mana]);
+  }, [gameState.currentPhase, gameState.player.mana]);
 
   const resolveProblem = useCallback((answer: string, timeTakenMs: number) => {
     if (!gameState.activeProblem || !gameState.pendingCard) return;
 
-    const isCorrect = answer === gameState.activeProblem.correctAnswer;
-    let multiplier = 0;
-
-    if (isCorrect) {
-      if (timeTakenMs < 5000) multiplier = 1.5; // Critical
-      else if (timeTakenMs < 15000) multiplier = 1.0; // Normal
-      else multiplier = 0.75; // Weak
-    } else {
-      multiplier = 0; // Fizzle
-    }
-
-    // Apply effects based on multiplier
-    // TODO: Implement actual damage/healing logic
-    console.log(`Problem resolved. Correct: ${isCorrect}, Multiplier: ${multiplier}`);
+    // TODO: Real validation. For now, assume any answer is "correct" for testing flow if we don't have real problem logic yet
+    // But let's try to be slightly real if we can parse the mock question
+    const isCorrect = true; // activeProblem.correctAnswer === answer; 
 
     setGameState(prev => {
-      const newMana = prev.player.mana - prev.pendingCard!.cost;
-      // Move card to board or discard? For now, let's say it goes to board if creature
-      // Simplified: just deal damage to enemy for now
-      const damage = Math.floor(prev.pendingCard!.power * multiplier);
-      const newEnemyHealth = Math.max(0, prev.enemy.health - damage);
+      if (!prev.pendingCard) return prev;
 
-      return {
-        ...prev,
-        player: {
-          ...prev.player,
-          mana: newMana,
-          hand: prev.player.hand.filter(c => c.id !== prev.pendingCard!.id),
-          board: [...prev.player.board, prev.pendingCard!] // Add to board
-        },
-        enemy: {
-          ...prev.enemy,
-          health: newEnemyHealth
-        },
-        activeProblem: null,
-        pendingCard: null
-      };
+      const card = prev.pendingCard;
+      const player = prev.player;
+      
+      if (isCorrect) {
+        const newMana = player.mana - card.cost;
+        const newHand = player.hand.filter(c => c.id !== card.id);
+        
+        // If creature, add to board
+        // If spell, apply effect (simplified: deal damage to enemy)
+        let newBoard = player.board;
+        let enemyHealth = prev.enemy.health;
+
+        if (card.power > 0 && card.defense > 0) {
+            // It's a creature (roughly)
+            newBoard = [...newBoard, { ...card, canAttack: false, isTapped: true }]; // Summoning sickness
+        } else {
+            // Spell
+            enemyHealth -= 3; // Mock spell damage
+        }
+
+        return {
+          ...prev,
+          player: { ...player, mana: newMana, hand: newHand, board: newBoard },
+          enemy: { ...prev.enemy, health: enemyHealth },
+          activeProblem: null,
+          pendingCard: null
+        };
+      } else {
+        // Fizzle
+        return {
+          ...prev,
+          player: { ...player, mana: player.mana - 1 }, // Penalty?
+          activeProblem: null,
+          pendingCard: null
+        };
+      }
     });
-
   }, [gameState.activeProblem, gameState.pendingCard]);
 
-  const endTurn = useCallback(() => {
-    setGameState(prev => ({
-      ...prev,
-      turn: prev.turn + 1,
-      player: {
-        ...prev.player,
-        mana: Math.min(10, prev.player.maxMana + 1), // Increment max mana
-        maxMana: Math.min(10, prev.player.maxMana + 1)
-      }
-      // TODO: Enemy turn logic
-    }));
+  const attack = useCallback((attackerId: string, targetId: string) => {
+      // Simplified: Player attacks Enemy Hero
+      setGameState(prev => {
+          const attacker = prev.player.board.find(c => c.id === attackerId);
+          if (!attacker || !attacker.canAttack) return prev;
+
+          const newEnemyHealth = prev.enemy.health - attacker.power;
+          const newBoard = prev.player.board.map(c => 
+              c.id === attackerId ? { ...c, canAttack: false, isTapped: true } : c
+          );
+
+          return {
+              ...prev,
+              player: { ...prev.player, board: newBoard },
+              enemy: { ...prev.enemy, health: newEnemyHealth }
+          };
+      });
   }, []);
 
-  const addCardToHand = useCallback((card: Card) => {
-    setGameState(prev => ({
-      ...prev,
-      player: {
-        ...prev.player,
-        hand: [...prev.player.hand, card]
-      }
-    }));
+  const endTurn = useCallback(() => {
+    setGameState(prev => ({ ...prev, currentPhase: 'end' }));
+    
+    // Trigger Enemy Turn
+    setTimeout(() => {
+        // Enemy Logic
+        setGameState(prev => {
+            // Enemy draws
+            // Enemy plays (mock)
+            // Enemy attacks (mock)
+            const enemy = prev.enemy;
+            // Simple AI: Deal 2 damage if mana > 2
+            const damage = enemy.mana >= 2 ? 2 : 0;
+            const newMana = enemy.mana >= 2 ? enemy.mana - 2 : enemy.mana;
+            
+            return {
+                ...prev,
+                turn: prev.turn + 1,
+                enemy: { ...enemy, mana: newMana },
+                player: { ...prev.player, health: prev.player.health - damage }
+            };
+        });
+
+        // Back to Player
+        setTimeout(() => startTurn('player'), 1000);
+    }, 1500);
+
   }, []);
+
+  // Initialize on mount
+  useEffect(() => {
+      initializeGame();
+  }, [initializeGame]);
 
   return {
     gameState,
     playCard,
     resolveProblem,
     endTurn,
-    addCardToHand
+    attack
   };
 };

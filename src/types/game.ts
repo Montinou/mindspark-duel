@@ -1,5 +1,6 @@
 export type ElementType = 'Fire' | 'Water' | 'Earth' | 'Air';
 export type ProblemCategory = 'Math' | 'Logic' | 'Science';
+export type Phase = 'start' | 'draw' | 'main' | 'combat' | 'end';
 
 export interface CardBatch {
   id: string;
@@ -30,6 +31,10 @@ export interface Card {
   batchOrder?: number; // Position in batch (1-10)
   createdById?: string;
   createdAt?: Date;
+  
+  // Game State Properties
+  canAttack?: boolean;
+  isTapped?: boolean; // Exhausted
 }
 
 export interface Problem {
@@ -50,13 +55,14 @@ export interface Player {
   maxMana: number;
   hand: Card[];
   board: Card[]; // Cards in play
+  deck: number; // Count of cards remaining in deck
 }
 
 export interface GameState {
   turn: number;
   player: Player;
   enemy: Player;
-  currentPhase: 'draw' | 'main' | 'combat' | 'end';
+  currentPhase: Phase;
   activeProblem: Problem | null;
   pendingCard: Card | null; // Card waiting for problem resolution
   winner: 'player' | 'enemy' | null;

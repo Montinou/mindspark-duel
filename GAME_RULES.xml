@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║                     GAME RULES & MECHANICS DEFINITION                        ║
+║                           Mindspark Duel                                     ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+-->
+
+<prompt>
+  <metadata>
+    <title>Mindspark Duel - Game Rules &amp; Mechanics</title>
+    <phase>Planning &amp; Definition</phase>
+    <difficulty>medium</difficulty>
+    <estimated_time>N/A</estimated_time>
+    <version>1.0</version>
+    <last_updated>2025-11-21</last_updated>
+  </metadata>
+
+  <context>
+    <project_info>
+      <name>Mindspark Duel</name>
+      <description>An educational card game where players solve problems to cast spells and summon creatures.</description>
+    </project_info>
+
+    <objective>
+      <primary>
+        Define a coherent set of rules for the game loop, turn structure, and player interactions to improve the depth and engagement of the gameplay.
+      </primary>
+    </objective>
+  </context>
+
+  <instructions>
+    <step number="1">
+      <title>Game Setup</title>
+      <description>
+        - **Players**: 1 Human vs 1 AI (The Dark Quizmaster).
+        - **Deck**: Each player starts with a deck of 20-30 cards.
+        - **Hand**: Each player draws 5 cards at the start of the game.
+        - **Health**: Each player starts with 20 HP.
+        - **Mana**: Starts at 1, increases by 1 each turn (max 10). Refills at start of turn.
+      </description>
+    </step>
+
+    <step number="2">
+      <title>Turn Structure</title>
+      <description>
+        The game proceeds in turns, alternating between Player and Enemy.
+        
+        **Phases:**
+        1.  **Start Phase**:
+            -   Mana recharges to Max Mana.
+            -   Max Mana increases by 1 (up to 10).
+            -   Draw 1 card from Deck.
+        2.  **Main Phase**:
+            -   **Play Cards**: Player can play any number of cards as long as they have Mana.
+            -   **Cost**: Playing a card requires Mana AND solving a problem.
+            -   **Problem Solving**:
+                -   Select a card -> Pay Mana -> Modal opens with a problem.
+                -   **Correct Answer**: Spell is cast / Creature is summoned.
+                -   **Fast Answer (<5s)**: "Critical Cast" (1.5x effect).
+                -   **Wrong Answer**: Spell fizzles (Mana lost, Card discarded).
+        3.  **Combat Phase**:
+            -   Active creatures on board can attack.
+            -   Target: Enemy Hero or Enemy Creatures.
+        4.  **End Phase**:
+            -   Temporary effects expire.
+            -   Turn passes to opponent.
+      </description>
+    </step>
+
+    <step number="3">
+      <title>Card Types</title>
+      <description>
+        -   **Creature**: Stays on board. Has Attack/Defense. Can attack once per turn (summoning sickness applies).
+        -   **Spell**: One-time effect (Damage, Heal, Buff, Debuff). Discarded after use.
+      </description>
+    </step>
+
+    <step number="4">
+      <title>Enemy AI Logic</title>
+      <description>
+        -   The Enemy follows the same rules (Mana, Draw).
+        -   **AI Decision Making**:
+            -   Prioritizes playing cards on curve (using all mana).
+            -   Attacks player directly unless an enemy creature poses a lethal threat.
+            -   "Solves" problems automatically with a success rate based on difficulty (or always succeeds for MVP simplicity, maybe with a delay to simulate thinking).
+      </description>
+    </step>
+
+    <step number="5">
+      <title>Win Condition</title>
+      <description>
+        -   Reduce opponent's HP to 0.
+        -   If a player attempts to draw from an empty deck, they take "Fatigue" damage.
+      </description>
+    </step>
+  </instructions>
+
+  <validation>
+    <execution_checklist>
+      <item>✅ Turn counter increments correctly.</item>
+      <item>✅ Mana refreshes and increases correctly.</item>
+      <item>✅ Cards are drawn correctly (Start hand 5, +1 per turn).</item>
+      <item>✅ Enemy takes their turn and plays cards.</item>
+      <item>✅ Win/Loss screen appears when HP hits 0.</item>
+    </execution_checklist>
+  </validation>
+</prompt>

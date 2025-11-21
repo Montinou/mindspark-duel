@@ -31,15 +31,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Deck completed", deckId: deck.id });
   }
 
-  // 3. "Generate" images (Mocking the AI generation for speed/reliability in this step)
-  // In production, this would call the AI service
+  // 3. Generate images and upload to R2
+  const { generateCardImage } = await import("@/lib/ai/image-generator");
+  const { uploadImage } = await import("@/lib/storage");
+
   for (const { cards: card } of pendingCards) {
-    const newName = `Generated ${card.element} Unit`; // Mock name
-    // Update card
-    await db.update(cards).set({
-      name: newName,
-      // image: generatedImageUrl // We would set this here
-    }).where(eq(cards.id, card.id));
+    try {
+      // Generate Image
+      const imageBuffer = await generateCardImage(card.prompt || `Fantasy card art for ${card.name}`);
+      
+      // Upload to R2
+      const fileName = `cards/${card.id}-${Date.now()}.png`;
+      const imageUrl = await uploadImage(imageBuffer, fileName);
+
+      // Update card
+      await db.update(cards).set({
+        name: card.name === "Pending Card..." ? `Generated ${card.element} Unit` : card.name, // Keep name if already set, or generate new one? For now, mock name update
+        image: imageUrl,
+        // We could also update the name here using AI if we wanted, but let's stick to image for now
+      }).where(eq(cards.id, card.id));
+
+    } catch (error) {
+      console.error(`Failed to process card ${card.id}:`, error);
+      // Optional: Mark as failed or retry count
+    }
   }
 
   return NextResponse.json({ 

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prompt>
+  <metadata>
+    <title>Implement Real Image Generation &amp; R2 Storage</title>
+    <phase>Onboarding &amp; Deck Creation</phase>
+    <difficulty>high</difficulty>
+    <estimated_time>90-120 minutes</estimated_time>
+    <version>1.0</version>
+    <last_updated>2025-11-21</last_updated>
+    <prerequisites>
+      <prerequisite>Queue system implemented</prerequisite>
+      <prerequisite>R2 &amp; Gemini credentials available</prerequisite>
+    </prerequisites>
+  </metadata>
+
+  <thinking_configuration>
+    <claude_extended_thinking>
+      <enabled>true</enabled>
+      <reasoning>
+        Requires integrating two external services (Gemini for images, Cloudflare R2 for storage).
+        Need to handle binary data streams efficiently and ensure error handling is robust so the queue doesn't get stuck.
+      </reasoning>
+      <budget_tokens>15000</budget_tokens>
+      <expected_thinking_depth>
+        Analyze best way to stream image from Gemini/Pollinations to R2 without buffering everything in memory if possible (though for single images, buffer is fine).
+        Design the R2 upload utility to be reusable.
+      </expected_thinking_depth>
+    </claude_extended_thinking>
+  </thinking_configuration>
+
+  <context>
+    <project_info>
+      <name>Mindspark Duel</name>
+      <framework>Next.js 16 (App Router) + NeonDB</framework>
+    </project_info>
+
+    <objective>
+      <primary>
+        Replace the mock image generation in the deck queue with real AI generation.
+        1. Use Gemini (or Pollinations.ai as fallback/proxy if Gemini Image isn't directly available via current key) to generate card art.
+        2. Upload the generated image to Cloudflare R2.
+        3. Update the card record with the public R2 URL.
+      </primary>
+      <success_criteria>
+        <criterion>✅ Images are generated based on the card's prompt</criterion>
+        <criterion>✅ Images are successfully uploaded to R2 bucket `mindspark-duel-cards`</criterion>
+        <criterion>✅ Database stores the correct public R2 URL</criterion>
+      </success_criteria>
+    </objective>
+  </context>
+
+  <instructions>
+    <step number="1">
+      <title>Setup R2 Client</title>
+      <thinking_guidance>
+        Install `@aws-sdk/client-s3` (R2 is S3 compatible).
+        Create `src/lib/storage.ts` to handle S3 client initialization and `uploadImage` function.
+        Use environment variables: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL`.
+      </thinking_guidance>
+      <action>
+        Install dependency and create `src/lib/storage.ts`.
+      </action>
+    </step>
+
+    <step number="2">
+      <title>Implement Image Generation Service</title>
+      <thinking_guidance>
+        Update `src/lib/ai/card-generator.ts` or create `src/lib/ai/image-generator.ts`.
+        Function `generateCardImage(prompt: string): Promise<Buffer>`.
+        For this MVP, if Gemini Image API is complex to set up with current key, use `pollinations.ai` (free, fast, good for anime style) as a reliable alternative, or try Gemini if configured.
+        *Decision*: Use Pollinations.ai for MVP stability as it requires no auth and is fast, but structure code to swap easily.
+      </thinking_guidance>
+      <action>
+        Implement `generateCardImage` function.
+      </action>
+    </step>
+
+    <step number="3">
+      <title>Integrate into Queue Processor</title>
+      <thinking_guidance>
+        Modify `src/app/api/cron/process-deck-queue/route.ts`.
+        Instead of mocking, call `generateCardImage` -> `uploadImage`.
+        Update the card with the returned R2 URL.
+        Handle errors: If generation fails, maybe retry or set a fallback image, but don't crash the whole batch.
+      </thinking_guidance>
+      <action>
+        Update the API route.
+      </action>
+    </step>
+  </instructions>
+
+  <validation>
+    <execution_checklist>
+      <item>✅ R2 client connects successfully</item>
+      <item>✅ Image is generated and returned as buffer</item>
+      <item>✅ Image appears in R2 bucket</item>
+      <item>✅ Card record in DB has the new URL</item>
+    </execution_checklist>
+  </validation>
+
+  <output_format>
+    <structure>
+      <section name="execution_log">Steps taken</section>
+      <section name="verification">Verification results</section>
+    </structure>
+    <format>Markdown</format>
+  </output_format>
+</prompt>

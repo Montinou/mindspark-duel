@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.71",
-    "@aws-sdk/client-s3": "^3.936.0",
+    "@aws-sdk/client-s3": "^3.937.0",
     "@neondatabase/serverless": "^1.0.2",
     "@stackframe/stack": "^2.8.52",
     "ai": "^5.0.98",

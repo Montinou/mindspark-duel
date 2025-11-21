@@ -7,7 +7,7 @@ export const problemCategoryEnum = pgEnum('problem_category', ['Math', 'Logic', 
 
 // Users table
 export const users = pgTable('users', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: text('id').primaryKey(), // Stack Auth uses string IDs (e.g., "user_xyz")
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -21,7 +21,7 @@ export const cardBatches = pgTable('card_batches', {
   theme: text('theme').notNull(), // e.g., "Ancient Japanese Warriors"
   description: text('description'),
   styleGuidelines: text('style_guidelines'), // For consistent AI generation
-  createdById: uuid('created_by_id').references(() => users.id),
+  createdById: text('created_by_id').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -43,7 +43,7 @@ export const cards = pgTable('cards', {
   tags: json('tags').$type<string[]>(), // Array of thematic tags
   batchId: uuid('batch_id').references(() => cardBatches.id), // Link to batch
   batchOrder: integer('batch_order'), // Position in batch (1-10)
-  createdById: uuid('created_by_id').references(() => users.id),
+  createdById: text('created_by_id').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -61,7 +61,7 @@ export const problems = pgTable('problems', {
 // User Cards (many-to-many relationship)
 export const userCards = pgTable('user_cards', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => users.id).notNull(),
+  userId: text('user_id').references(() => users.id).notNull(),
   cardId: uuid('card_id').references(() => cards.id).notNull(),
   acquiredAt: timestamp('acquired_at').defaultNow().notNull(),
 });
@@ -69,10 +69,10 @@ export const userCards = pgTable('user_cards', {
 // Game Sessions table
 export const gameSessions = pgTable('game_sessions', {
   id: uuid('id').primaryKey().defaultRandom(),
-  playerId: uuid('player_id').references(() => users.id).notNull(),
-  enemyId: uuid('enemy_id').references(() => users.id), // null for AI opponent
+  playerId: text('player_id').references(() => users.id).notNull(),
+  enemyId: text('enemy_id').references(() => users.id), // null for AI opponent
   isAiOpponent: boolean('is_ai_opponent').default(true).notNull(),
-  winnerId: uuid('winner_id').references(() => users.id),
+  winnerId: text('winner_id').references(() => users.id),
   turnsCount: integer('turns_count').default(0).notNull(),
   startedAt: timestamp('started_at').defaultNow().notNull(),
   endedAt: timestamp('ended_at'),

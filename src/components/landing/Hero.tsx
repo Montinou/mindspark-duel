@@ -27,12 +27,11 @@ export function Hero() {
           Master the arcane arts through knowledge. Solve problems, cast spells, and challenge the Dark Quizmaster in this educational trading card game.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-8">
-          <div className="scale-125">
-            <SignupButton />
-          </div>
-          <div className="text-zinc-400 text-sm">
-            Already a wizard? <LoginButton />
+        <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mt-12">
+          <SignupButton className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold rounded-full shadow-lg hover:shadow-purple-500/25 transition-all transform hover:scale-105 text-lg" />
+          <div className="flex items-center gap-3 text-zinc-400">
+            <span>Already a wizard?</span>
+            <LoginButton className="px-6 py-2 bg-zinc-800/50 hover:bg-zinc-800 text-white font-medium rounded-full border border-zinc-700 hover:border-zinc-600 transition-all" />
           </div>
         </div>
       </motion.div>

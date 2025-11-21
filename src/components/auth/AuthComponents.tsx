@@ -2,27 +2,29 @@
 
 import { useStackApp } from "@stackframe/stack";
 
-export function LoginButton() {
+import Link from "next/link";
+
+export function LoginButton({ className }: { className?: string }) {
   const app = useStackApp();
   return (
-    <button
-      onClick={() => app.urls.signIn}
-      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+    <Link
+      href={app.urls.signIn}
+      className={className || "px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"}
     >
       Login
-    </button>
+    </Link>
   );
 }
 
-export function SignupButton() {
+export function SignupButton({ className }: { className?: string }) {
   const app = useStackApp();
   return (
-    <button
-      onClick={() => app.urls.signUp}
-      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+    <Link
+      href={app.urls.signUp}
+      className={className || "px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"}
     >
       Sign Up
-    </button>
+    </Link>
   );
 }
 

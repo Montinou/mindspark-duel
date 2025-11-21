@@ -8,25 +8,25 @@ const MILESTONES = [
     title: "Phase 1: The Awakening",
     status: "completed",
     items: ["Core Game Engine", "AI Card Generation", "Basic Deck Building"],
-    date: "Q4 2024"
+    date: "Q4 2025"
   },
   {
     title: "Phase 2: The Academy",
     status: "current",
     items: ["Progression System", "Arcane Library", "Daily Missions"],
-    date: "Q1 2025"
+    date: "Q1 2026"
   },
   {
     title: "Phase 3: The Arena",
     status: "upcoming",
     items: ["PvP Multiplayer", "Global Leaderboards", "Tournaments"],
-    date: "Q2 2025"
+    date: "Q2 2026"
   },
   {
     title: "Phase 4: The Expansion",
     status: "upcoming",
     items: ["Mobile App", "Guild System", "Custom Card Market"],
-    date: "Q3 2025"
+    date: "Q3 2026"
   }
 ];
 

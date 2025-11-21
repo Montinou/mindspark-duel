@@ -10,6 +10,7 @@ export const users = pgTable('users', {
   id: text('id').primaryKey(), // Stack Auth uses string IDs (e.g., "user_xyz")
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
+  sparks: integer('sparks').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -88,6 +89,36 @@ export const gameSessions = pgTable('game_sessions', {
   endedAt: timestamp('ended_at'),
 });
 
+export const mastery = pgTable("mastery", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").references(() => users.id).notNull(),
+  category: text("category").notNull(), // 'Fire', 'Water', 'Math', 'Logic', etc.
+  xp: integer("xp").default(0).notNull(),
+  level: integer("level").default(1).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const missions = pgTable("missions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  type: text("type").notNull(), // 'daily', 'weekly', 'achievement'
+  requirementType: text("requirement_type").notNull(), // 'win_game', 'play_cards', 'solve_problems'
+  requirementCount: integer("requirement_count").notNull(),
+  rewardAmount: integer("reward_amount").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userMissions = pgTable("user_missions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").references(() => users.id).notNull(),
+  missionId: uuid("mission_id").references(() => missions.id).notNull(),
+  progress: integer("progress").default(0).notNull(),
+  completed: boolean("completed").default(false).notNull(),
+  claimed: boolean("claimed").default(false).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   userCards: many(userCards),
@@ -155,6 +186,31 @@ export const gameSessionsRelations = relations(gameSessions, ({ one }) => ({
   }),
 }));
 
+export const decksRelations = relations(decks, ({ one }) => ({
+  user: one(users, {
+    fields: [decks.userId],
+    references: [users.id],
+  }),
+}));
+
+export const masteryRelations = relations(mastery, ({ one }) => ({
+  user: one(users, {
+    fields: [mastery.userId],
+    references: [users.id],
+  }),
+}));
+
+export const userMissionsRelations = relations(userMissions, ({ one }) => ({
+  user: one(users, {
+    fields: [userMissions.userId],
+    references: [users.id],
+  }),
+  mission: one(missions, {
+    fields: [userMissions.missionId],
+    references: [missions.id],
+  }),
+}));
+
 // Export types for TypeScript
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -176,3 +232,7 @@ export type NewGameSession = typeof gameSessions.$inferInsert;
 
 export type Deck = typeof decks.$inferSelect;
 export type NewDeck = typeof decks.$inferInsert;
+
+export type Mastery = typeof mastery.$inferSelect;
+export type Mission = typeof missions.$inferSelect;
+export type UserMission = typeof userMissions.$inferSelect;

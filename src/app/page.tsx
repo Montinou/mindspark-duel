@@ -32,13 +32,20 @@ export default async function Home() {
   }
 
   // Sync user to DB
-  const existingUser = await db.select().from(users).where(eq(users.id, user.id));
-  if (existingUser.length === 0) {
-    await db.insert(users).values({
-      id: user.id,
-      name: user.displayName || t('common.unknown_wizard'),
-      email: user.primaryEmail || "",
-    });
+  try {
+    const existingUser = await db.select().from(users).where(eq(users.id, user.id));
+    if (existingUser.length === 0) {
+      await db.insert(users).values({
+        id: user.id,
+        name: user.displayName || t('common.unknown_wizard'),
+        email: user.primaryEmail || "",
+      });
+    }
+  } catch (error) {
+    console.error("Failed to sync user to database:", error);
+    // Optional: You might want to show a toast or error message here, 
+    // but for now we'll just proceed so the app doesn't crash.
+    // The user will see the authenticated view but might be missing DB data.
   }
 
   return (

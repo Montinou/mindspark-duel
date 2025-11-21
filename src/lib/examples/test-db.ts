@@ -25,6 +25,7 @@ async function testDatabase() {
     const [newUser] = await db
       .insert(users)
       .values({
+        id: `test-user-${Date.now()}`,
         name: 'Test Player',
         email: `test-${Date.now()}@example.com`,
       })

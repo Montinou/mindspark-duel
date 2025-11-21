@@ -43,11 +43,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, email } = body;
+    const { id, name, email } = body;
 
-    if (!name || !email) {
+    if (!id || !name || !email) {
       return NextResponse.json(
-        { error: 'Name and email are required' },
+        { error: 'ID, name, and email are required' },
         { status: 400 }
       );
     }
@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
     const [newUser] = await db
       .insert(users)
       .values({
+        id,
         name,
         email,
       })

@@ -19,7 +19,7 @@ const S3 = new S3Client({
   },
 });
 
-export async function uploadImage(imageBuffer: Buffer, fileName: string): Promise<string> {
+export async function uploadImage(imageBuffer: Buffer, fileName: string, contentType: string = "image/png"): Promise<string> {
   if (!R2_BUCKET_NAME || !R2_PUBLIC_URL) {
     throw new Error("R2 configuration missing");
   }
@@ -30,7 +30,7 @@ export async function uploadImage(imageBuffer: Buffer, fileName: string): Promis
         Bucket: R2_BUCKET_NAME,
         Key: fileName,
         Body: imageBuffer,
-        ContentType: "image/png",
+        ContentType: contentType,
       })
     );
 

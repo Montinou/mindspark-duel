@@ -19,5 +19,7 @@ if (!process.env.DATABASE_URL) {
 // Create connection pool
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
+import * as schema from './schema';
+
 // Create drizzle instance
-export const db = drizzle(pool);
+export const db = drizzle(pool, { schema });

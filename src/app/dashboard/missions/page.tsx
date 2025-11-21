@@ -5,6 +5,8 @@ import { eq, and } from "drizzle-orm";
 import { MissionCard } from "@/components/gamification/MissionCard";
 import { MasteryProgress } from "@/components/gamification/MasteryProgress";
 
+export const dynamic = 'force-dynamic';
+
 export default async function MissionsPage() {
   const user = await stackServerApp.getUser();
   if (!user) return null;

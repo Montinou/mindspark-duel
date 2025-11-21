@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   for (const { cards: card } of pendingCards) {
     try {
       // Generate Image
-      const imageBuffer = await generateCardImage(card.prompt || `Fantasy card art for ${card.name}`);
+      const imageBuffer = await generateCardImage(card.imagePrompt || `Fantasy card art for ${card.name}`);
       
       // Upload to R2
       const fileName = `cards/${card.id}-${Date.now()}.png`;
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       // Update card
       await db.update(cards).set({
         name: card.name === "Pending Card..." ? `Generated ${card.element} Unit` : card.name, // Keep name if already set, or generate new one? For now, mock name update
-        image: imageUrl,
+        imageUrl: imageUrl,
         // We could also update the name here using AI if we wanted, but let's stick to image for now
       }).where(eq(cards.id, card.id));
 

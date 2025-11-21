@@ -3,6 +3,8 @@ import { cards, userCards } from "@/db/schema";
 import { stackServerApp } from "@/lib/stack";
 import { eq, count } from "drizzle-orm";
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardPage() {
   const user = await stackServerApp.getUser();
   if (!user) return null;

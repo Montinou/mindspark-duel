@@ -1,6 +1,8 @@
 import { stackServerApp } from "@/lib/stack";
 import { Battlefield } from "@/components/game/Battlefield";
 import { LoginButton, SignupButton, UserButton } from "@/components/auth/AuthComponents";
+import { Hero } from "@/components/landing/Hero";
+import { Features } from "@/components/landing/Features";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -10,20 +12,14 @@ export default async function Home() {
 
   if (!user) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center bg-zinc-950 text-white gap-8 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center opacity-20 pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-900/20 via-zinc-950/80 to-purple-900/20 pointer-events-none" />
+      <main className="min-h-screen bg-zinc-950 text-white selection:bg-purple-500/30">
+        <Hero />
+        <Features />
         
-        <h1 className="text-6xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent relative z-10 drop-shadow-lg">
-          Mindspark Duel
-        </h1>
-        <p className="text-xl text-zinc-400 max-w-md text-center relative z-10 leading-relaxed">
-          Master the elements through knowledge. Challenge the Dark Quizmaster and save the realm!
-        </p>
-        <div className="flex gap-4 relative z-10 mt-4">
-          <LoginButton />
-          <SignupButton />
-        </div>
+        {/* Footer */}
+        <footer className="py-8 text-center text-zinc-600 text-sm border-t border-zinc-900">
+          <p>© 2025 Mindspark Duel. All rights reserved.</p>
+        </footer>
       </main>
     );
   }
@@ -38,9 +34,32 @@ export default async function Home() {
     });
   }
 
+  // Redirect to Dashboard (Game will be moved there or accessible from there)
+  // For now, let's keep the game on the home page for logged in users BUT wrap it in a dashboard-like structure later
+  // Actually, the prompt says "Create a user dashboard at /dashboard".
+  // So we should redirect to /dashboard if they have a deck, or /onboarding if not.
+  // Let's redirect to /dashboard for now, and we'll build that page next.
+  
+  // WAIT: Next.js redirects in server components use `redirect`.
+  // import { redirect } from 'next/navigation';
+  // redirect('/dashboard');
+  
+  // However, for this specific step, I will just render the game here as before but prepare the ground.
+  // Actually, let's follow the prompt: "Dashboard needs to be the central hub".
+  // So I should redirect to /dashboard.
+  
+  // But first I need to create /dashboard page, otherwise it's a 404.
+  // So for this specific commit, I will leave the game here but add a link to dashboard?
+  // No, let's stick to the plan. I will create the dashboard page in the next step.
+  // So for now, I will keep the game here but maybe add a "Go to Dashboard" button?
+  // Or better, I'll just implement the landing page part now and leave the auth part as is (showing Battlefield) until I build the dashboard.
+  
   return (
     <main className="relative">
-      <div className="absolute top-4 right-4 z-50">
+      <div className="absolute top-4 right-4 z-50 flex gap-4">
+        <a href="/dashboard" className="px-4 py-2 bg-zinc-800 rounded-lg text-white hover:bg-zinc-700 transition-colors">
+          Dashboard
+        </a>
         <UserButton />
       </div>
       <Battlefield />

@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prompt>
+  <metadata>
+    <title>Implement Landing Page &amp; Collection Dashboard</title>
+    <phase>Engagement &amp; Progression</phase>
+    <difficulty>medium</difficulty>
+    <estimated_time>120-150 minutes</estimated_time>
+    <version>1.0</version>
+    <last_updated>2025-11-21</last_updated>
+    <prerequisites>
+      <prerequisite>Auth system working</prerequisite>
+      <prerequisite>Card generation working</prerequisite>
+    </prerequisites>
+  </metadata>
+
+  <thinking_configuration>
+    <claude_extended_thinking>
+      <enabled>true</enabled>
+      <reasoning>
+        Need to design a high-converting landing page that explains the product value (Education + TCG Fun).
+        Dashboard needs to be the central hub for the user, showing their progress and collection.
+        Aesthetics are critical here as per user request ("Atractiva y tenga sentido").
+      </reasoning>
+      <budget_tokens>15000</budget_tokens>
+      <expected_thinking_depth>
+        Analyze current design tokens to ensure consistency.
+        Plan the layout for the collection view (grid of cards, filtering by element/rarity).
+        Design the landing page sections: Hero (Call to Action), Features (Learn while playing), Showcase (Card examples).
+      </expected_thinking_depth>
+    </claude_extended_thinking>
+  </thinking_configuration>
+
+  <context>
+    <project_info>
+      <name>Mindspark Duel</name>
+      <description>An educational trading card game where players battle using math/science/logic skills.</description>
+      <stack>Next.js 16, TailwindCSS, Framer Motion, NeonDB</stack>
+    </project_info>
+
+    <objective>
+      <primary>
+        1. **Landing Page**: Create a visually stunning landing page at `/` (for unauthenticated users).
+           - **Hero Section**: Dynamic background, clear value proposition ("Master Knowledge, Summon Power"), "Start Journey" CTA.
+           - **Features**: Explain the core loop (Solve problems -> Cast spells).
+           - **Visuals**: Use high-quality assets/gradients.
+        2. **Dashboard**: Create a user dashboard at `/dashboard` (or `/home` for auth users).
+           - **Collection View**: A grid displaying all cards owned by the user.
+           - **Deck Stats**: Simple stats (Total cards, Favorite element).
+           - **Navigation**: Links to "Play", "Shop" (future), "Missions" (future).
+      </primary>
+      <success_criteria>
+        <criterion>✅ Landing page is responsive and visually appealing</criterion>
+        <criterion>✅ Dashboard correctly fetches and displays user's cards from DB</criterion>
+        <criterion>✅ Card components are reused for the collection view</criterion>
+      </success_criteria>
+    </objective>
+  </context>
+
+  <instructions>
+    <step number="1">
+      <title>Design Landing Page</title>
+      <thinking_guidance>
+        Use `framer-motion` for entrance animations.
+        Create a `Hero` component with a "Call to Action" that redirects to `/onboarding` (or login).
+        Use a dark, magical theme consistent with the game.
+      </thinking_guidance>
+      <action>
+        Create `src/components/landing/Hero.tsx`, `Features.tsx`.
+        Update `src/app/page.tsx` to render these if not logged in.
+      </action>
+    </step>
+
+    <step number="2">
+      <title>Implement Dashboard Layout</title>
+      <thinking_guidance>
+        Create a layout wrapper `src/app/dashboard/layout.tsx` with a sidebar or top nav.
+        Ensure it checks authentication.
+      </thinking_guidance>
+      <action>
+        Create the dashboard route and layout.
+      </action>
+    </step>
+
+    <step number="3">
+      <title>Build Collection View</title>
+      <thinking_guidance>
+        Fetch user cards from `user_cards` join `cards`.
+        Display them using the existing `Card` component (maybe a smaller variant or scaled down).
+        Add filters: Element (Fire, Water, etc.), Rarity (if implemented), Cost.
+      </thinking_guidance>
+      <action>
+        Create `src/app/dashboard/collection/page.tsx`.
+        Implement `CollectionGrid` component.
+      </action>
+    </step>
+  </instructions>
+
+  <validation>
+    <execution_checklist>
+      <item>✅ Landing page loads for guests</item>
+      <item>✅ "Start" button goes to auth/onboarding</item>
+      <item>✅ Dashboard shows logged-in user's cards</item>
+      <item>✅ Collection grid is responsive</item>
+    </execution_checklist>
+  </validation>
+
+  <output_format>
+    <structure>
+      <section name="execution_log">Steps taken</section>
+      <section name="verification">Verification results</section>
+    </structure>
+    <format>Markdown</format>
+  </output_format>
+</prompt>

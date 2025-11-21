@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prompt>
+  <metadata>
+    <title>Implement Gamification &amp; Missions System</title>
+    <phase>Engagement &amp; Progression</phase>
+    <difficulty>high</difficulty>
+    <estimated_time>150-180 minutes</estimated_time>
+    <version>1.0</version>
+    <last_updated>2025-11-21</last_updated>
+    <prerequisites>
+      <prerequisite>Dashboard implemented</prerequisite>
+      <prerequisite>Game loop working</prerequisite>
+    </prerequisites>
+  </metadata>
+
+  <thinking_configuration>
+    <claude_extended_thinking>
+      <enabled>true</enabled>
+      <reasoning>
+        Gamification is key for retention. Need a flexible system to track progress (Missions) and reward users (Points/Gold).
+        Need to modify the DB schema to track user currency and mission progress.
+      </reasoning>
+      <budget_tokens>15000</budget_tokens>
+      <expected_thinking_depth>
+        Design a `missions` table and a `user_missions` tracking table.
+        Define mission types: "Daily", "Weekly", "Achievement".
+        Plan how to hook into game events (e.g., "Enemy Defeated", "Turn Ended") to update mission progress.
+      </expected_thinking_depth>
+    </claude_extended_thinking>
+  </thinking_configuration>
+
+  <context>
+    <project_info>
+      <name>Mindspark Duel</name>
+      <description>Gamification layer for the educational card game.</description>
+    </project_info>
+
+    <objective>
+      <primary>
+        Implement a **Mastery &amp; Missions System**.
+        **1. Mastery System (Long-term)**:
+        - Track "XP" for specific categories (e.g., "Pyromancer XP", "Mathematician XP").
+        - **Rewards**: Unlock cosmetic borders or titles at higher levels.
+        
+        **2. Missions (Short-term)**:
+        - Daily/Weekly tasks to earn "Sparks" (currency).
+        - Examples: "Solve 5 Math Problems", "Win with a Fire Deck".
+      </primary>
+      <success_criteria>
+        <criterion>✅ Database tracks Mastery XP per category</criterion>
+        <criterion>✅ Database tracks user currency ("Sparks")</criterion>
+        <criterion>✅ Dashboard displays Mastery Levels and Missions</criterion>
+        <criterion>✅ Game events update both Mastery and Mission progress</criterion>
+      </success_criteria>
+    </objective>
+  </context>
+
+  <instructions>
+    <step number="1">
+      <title>Database Schema Updates</title>
+      <thinking_guidance>
+        Update `users` table: Add `sparks` (int).
+        Create `mastery` table: `user_id`, `category` (Fire, Water, Math, Logic), `xp`, `level`.
+        Create `missions` table: `id`, `title`, `description`, `type`, `requirement_type`, `requirement_count`, `reward_amount`.
+        Create `user_missions` table: `user_id`, `mission_id`, `progress`, `completed`, `claimed`.
+      </thinking_guidance>
+      <action>
+        Update `src/db/schema.ts` and push changes.
+      </action>
+    </step>
+
+    <step number="2">
+      <title>Tracking Logic</title>
+      <thinking_guidance>
+        Create `src/lib/gamification/tracker.ts`.
+        Function `trackEvent(userId, event)`.
+        - If event is "Card Played (Fire)", add Fire Mastery XP.
+        - If event is "Problem Solved (Math)", add Math Mastery XP.
+        - Check active missions and update progress.
+      </thinking_guidance>
+      <action>
+        Implement the tracking service.
+      </action>
+    </step>
+
+    <step number="3">
+      <title>Gamification UI</title>
+      <thinking_guidance>
+        Update Dashboard to show:
+        - **Mastery Section**: Progress bars for each category (Fire, Water, Math, etc.).
+        - **Missions Section**: Daily tasks list.
+      </thinking_guidance>
+      <action>
+        Implement the UI components.
+      </action>
+    </step>
+    
+    <step number="4">
+      <title>Integrate with Game Loop</title>
+      <thinking_guidance>
+        Call `trackEvent` from `useGameLoop` (or a server action called at end of game) to ensure progress is recorded.
+        *Note*: Secure this so users can't just call the API to fake wins. Ideally, game logic verification happens on server. For MVP, client-side trigger via Server Action is acceptable but risky.
+      </thinking_guidance>
+      <action>
+        Connect game events to the tracker.
+      </action>
+    </step>
+  </instructions>
+
+  <validation>
+    <execution_checklist>
+      <item>✅ Schema updated successfully</item>
+      <item>✅ Mission progress updates after a game</item>
+      <item>✅ Rewards are added to user balance upon claim</item>
+    </execution_checklist>
+  </validation>
+
+  <output_format>
+    <structure>
+      <section name="execution_log">Steps taken</section>
+      <section name="verification">Verification results</section>
+    </structure>
+    <format>Markdown</format>
+  </output_format>
+</prompt>

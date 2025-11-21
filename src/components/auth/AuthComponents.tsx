@@ -2,29 +2,29 @@
 
 import { useStackApp } from "@stackframe/stack";
 
-import Link from "next/link";
+
 
 export function LoginButton({ className }: { className?: string }) {
   const app = useStackApp();
   return (
-    <Link
+    <a
       href={app.urls.signIn}
       className={className || "px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"}
     >
       Login
-    </Link>
+    </a>
   );
 }
 
 export function SignupButton({ className }: { className?: string }) {
   const app = useStackApp();
   return (
-    <Link
+    <a
       href={app.urls.signUp}
       className={className || "px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"}
     >
       Sign Up
-    </Link>
+    </a>
   );
 }
 

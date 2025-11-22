@@ -1,10 +1,11 @@
 'use server';
 
 import { db } from "@/db";
-import { decks } from "@/db/schema";
+import { decks, users } from "@/db/schema";
 import { stackServerApp } from "@/lib/stack";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
 
 export async function startDeckGeneration(themeId: string) {
   const user = await stackServerApp.getUser();
@@ -65,8 +66,18 @@ export async function startDeckGeneration(themeId: string) {
     });
   }
 
-  // Trigger background processing (mock for now, or call API)
-  // fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/cron/process-deck-queue`, { method: 'POST' });
+  // Mark onboarding as complete
+  await db.update(users).set({ hasCompletedOnboarding: true }).where(eq(users.id, user.id));
+
+  // Trigger background processing
+  try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    fetch(`${appUrl}/api/cron/process-deck-queue`, { method: 'POST' }).catch(err => {
+      console.error('Failed to trigger background processing:', err);
+    });
+  } catch (error) {
+    console.error('Failed to trigger background processing:', error);
+  }
 
   revalidatePath('/onboarding');
 }

@@ -13,6 +13,7 @@ export const users = pgTable('users', {
   email: text('email').notNull().unique(),
   sparks: integer('sparks').default(0).notNull(),
   pityCounter: integer('pity_counter').default(0).notNull(),
+  hasCompletedOnboarding: boolean('has_completed_onboarding').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

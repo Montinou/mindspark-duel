@@ -31,24 +31,81 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Deck completed", deckId: deck.id });
   }
 
-  // 3. Generate images and upload to R2
+  // 3. Generate card text and images using AI
   const { generateCardImage } = await import("@/lib/ai/image-generator");
   const { uploadImage } = await import("@/lib/storage");
 
+  // Import Gemini API for text generation
+  const GEMINI_API_KEY = process.env.GEMINIAI_API_KEY;
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
   for (const { cards: card } of pendingCards) {
     try {
+      // Generate card text (name, description, flavor) using AI
+      let cardName = card.name;
+      let cardDescription = card.description;
+      let flavorText = "";
+      let imagePrompt = card.imagePrompt;
+
+      if (card.name === "Pending Card..." && GEMINI_API_KEY) {
+        const prompt = `
+          Create a unique, creative trading card for a game called "MindSpark Duel".
+          The card should be based on the theme: "${deck.theme}".
+          The card MUST belong to the element: "${card.element}".
+          The card has cost: ${card.cost}, power: ${card.power}, defense: ${card.defense}.
+
+          Return ONLY a valid JSON object with this structure:
+          {
+            "name": "Card Name",
+            "description": "Brief card effect description",
+            "flavorText": "Thematic flavor text",
+            "imagePrompt": "A detailed description of the card's image, suitable for an AI image generator. Fantasy style."
+          }
+
+          IMPORTANT: Generate all text in SPANISH.
+        `;
+
+        try {
+          const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }]
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const text = data.candidates[0].content.parts[0].text;
+            const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
+            const cardData = JSON.parse(jsonString);
+
+            cardName = cardData.name;
+            cardDescription = cardData.description;
+            flavorText = cardData.flavorText || "";
+            imagePrompt = cardData.imagePrompt;
+          }
+        } catch (aiError) {
+          console.error(`Failed to generate card text for ${card.id}:`, aiError);
+          cardName = `${card.element} Warrior`;
+          cardDescription = `A powerful ${deck.theme} unit.`;
+        }
+      }
+
       // Generate Image
-      const imageBuffer = await generateCardImage(card.imagePrompt || `Fantasy card art for ${card.name}`);
-      
+      const imageBuffer = await generateCardImage(imagePrompt || `Fantasy card art for ${cardName}`);
+
       // Upload to R2
       const fileName = `cards/${card.id}-${Date.now()}.png`;
       const imageUrl = await uploadImage(imageBuffer, fileName);
 
-      // Update card
+      // Update card with all generated data
       await db.update(cards).set({
-        name: card.name === "Pending Card..." ? `Generated ${card.element} Unit` : card.name, // Keep name if already set, or generate new one? For now, mock name update
+        name: cardName,
+        description: cardDescription,
+        flavorText: flavorText,
         imageUrl: imageUrl,
-        // We could also update the name here using AI if we wanted, but let's stick to image for now
+        imagePrompt: imagePrompt,
       }).where(eq(cards.id, card.id));
 
     } catch (error) {

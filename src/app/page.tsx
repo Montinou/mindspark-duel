@@ -11,6 +11,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import { AppShell } from "@/components/layout/AppShell";
 
 export default async function Home() {
   let user;
@@ -66,14 +67,11 @@ export default async function Home() {
   }
 
   return (
-    <main className="relative">
-      <div className="absolute top-4 right-4 z-50 flex gap-4">
-        <a href="/dashboard" className="px-4 py-2 bg-zinc-800 rounded-lg text-white hover:bg-zinc-700 transition-colors">
-          {t('common.dashboard')}
-        </a>
-        <UserButton />
+    <AppShell>
+      <div className="relative h-full">
+        {/* Removed absolute header since Sidebar handles nav */}
+        <Battlefield />
       </div>
-      <Battlefield />
-    </main>
+    </AppShell>
   );
 }

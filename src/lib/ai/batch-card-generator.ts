@@ -36,9 +36,9 @@ export async function generateCardBatch(request: BatchGenerationRequest): Promis
   const count = request.count || 10;
   const difficulty = request.difficulty || 5;
 
-  // Enhanced prompt for anime-style MTG proportion cards
+  // Optimized prompt for Full Art anime-style TCG cards (2025)
   const prompt = `
-You are an expert trading card game designer specializing in anime-style artwork.
+You are an expert trading card game designer specializing in premium full-art anime-style artwork.
 
 Generate a cohesive set of ${count} unique trading cards for "MindSpark Duel" with the following theme:
 **Theme**: ${request.theme}
@@ -47,61 +47,74 @@ Generate a cohesive set of ${count} unique trading cards for "MindSpark Duel" wi
 LANGUAGE REQUIREMENT:
 - All text (Name, Flavor Text, Effect Description) MUST be in SPANISH.
 
-CRITICAL STYLE REQUIREMENTS:
-1. **Art Style**: High-quality anime art style
-   - Think Studio Ghibli, Makoto Shinkai, or top anime trading card games
-   - Vibrant colors, detailed linework, dynamic compositions
-   - Character-focused portraits when applicable
+CRITICAL STYLE REQUIREMENTS (2025 OPTIMIZED):
+1. **Art Style**: Premium full-art anime style
+   - Studio Ghibli / Makoto Shinkai cinematic quality
+   - Oil painting aesthetic with rich textures and dramatic lighting
+   - Vibrant saturated colors, intricate details, sharp focus
+   - Character-focused when applicable, but immersive environments
+   - Professional TCG artwork quality (think MTG full art cards)
 
-2. **Card Proportions**: Magic the Gathering dimensions (2.5" x 3.5")
-   - Vertical portrait orientation
-   - Leave bottom 25% for text overlay (stats, name, flavor text)
-   - Focus composition on upper 75% of card
-   - Subject should fill frame dramatically
+2. **Full Art Composition** (CRITICAL - READ CAREFULLY):
+   - Vertical portrait orientation (5:7 ratio, approx 2.5" x 3.5")
+   - **FULL-BLEED borderless composition** - art extends to ALL EDGES
+   - **DO NOT leave bottom 25% empty** - we use glassmorphism UI overlays
+   - Subject fills frame dramatically with immersive environment surrounding it
+   - Composition should work with semi-transparent text overlays on top/bottom
+   - Think Magic the Gathering "borderless" or "extended art" cards
 
 3. **Thematic Coherence**:
    - All ${count} cards must feel like part of the same "set"
    - Shared visual motifs, color palettes, or design elements
    - Progressive narrative through flavor text
-   - Cross-references between cards (e.g., "sister card to X")
+   - Cross-references between cards when appropriate
 
 4. **Flavor Text**:
-   - Write evocative, thematic narrative text (1-2 sentences)
+   - Evocative, thematic narrative text (1-2 sentences)
    - Reference the broader lore of the theme
    - Make each card feel like part of a larger story
 
 5. **Effect Descriptions**:
    - Separate from flavor text
-   - Clear game mechanics (e.g., "Deal 3 damage", "Draw 2 cards")
+   - Clear game mechanics (e.g., "Inflige 3 de daño", "Roba 2 cartas")
    - Balanced for the card's cost
 
 6. **Tags**:
-   - Include 3-5 thematic tags per card
-   - Examples: ["dragon", "fire", "legendary"], ["samurai", "warrior", "honor"]
+   - Include 3-5 thematic tags per card in Spanish
+   - Examples: ["dragón", "fuego", "legendario"], ["samurái", "guerrero", "honor"]
 
 GAME BALANCE:
 - Cost range: 1-10 mana
-- Power range: 1-10 (REQUIRED - all cards MUST have power, even spells/enchantments)
-- Defense range: 1-10 (REQUIRED - all cards MUST have defense, even spells/enchantments)
-- Cost should correlate with total stats (cost ≈ power + defense / 2)
+- Power range: 1-10 (REQUIRED - all cards MUST have power)
+- Defense range: 1-10 (REQUIRED - all cards MUST have defense)
+- Cost should correlate with total stats (cost ≈ (power + defense) / 2)
 - Difficulty for educational problems: ${difficulty}/10
-- CRITICAL: Every card must have valid integer power and defense values. No nulls or zeros allowed.
+- CRITICAL: Every card must have valid integer power and defense values. No nulls or zeros.
+
+IMAGE PROMPT REQUIREMENTS (OPTIMIZED FOR 2025):
+- Start with subject description matching card name
+- Include: "Vertical portrait, full-bleed borderless composition extending to all edges"
+- Add style: "High-quality anime art style, oil painting aesthetic, dramatic cinematic lighting"
+- Add quality boosters: "masterpiece, highly detailed, vibrant saturated colors, rich textures, sharp focus"
+- Add technical: "Professional TCG artwork, Magic the Gathering full art card style"
+- EXCLUDE: "NO text, NO watermarks, NO borders, NO frames, NO reserved space"
+- Include theme context: "Theme: ${request.theme}"
 
 OUTPUT FORMAT:
 Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):
 {
-  "styleGuidelines": "Brief description of the visual style for this batch",
+  "styleGuidelines": "Brief description of the visual style for this batch (1-2 sentences)",
   "cards": [
     {
-      "name": "Card Name",
-      "flavorText": "Evocative thematic narrative (1-2 sentences)",
-      "effectDescription": "Clear game mechanics description",
+      "name": "Card Name (in Spanish)",
+      "flavorText": "Evocative thematic narrative in Spanish (1-2 sentences)",
+      "effectDescription": "Clear game mechanics in Spanish",
       "cost": integer (1-10),
       "power": integer (1-10),
       "defense": integer (1-10),
       "element": "Fire" | "Water" | "Earth" | "Air",
       "problemCategory": "Math" | "Logic" | "Science",
-      "imagePrompt": "Anime-style trading card art, Magic the Gathering card proportions (vertical 2.5x3.5 portrait). [Detailed subject description]. High-quality anime art, vibrant colors, dramatic composition, detailed linework, studio lighting. Leave bottom 25% empty for text overlay. Theme: ${request.theme}",
+      "imagePrompt": "[Detailed subject description]. Vertical portrait, full-bleed borderless composition extending to all edges. High-quality anime art style, oil painting aesthetic, dramatic cinematic lighting, vibrant saturated colors, intricate details, sharp focus. Subject fills frame with immersive environment. Professional TCG artwork, Magic the Gathering full art card style, masterpiece, highly detailed, rich textures. NO text, NO watermarks, NO borders, NO frames. Theme: ${request.theme}",
       "tags": ["tag1", "tag2", "tag3"]
     }
     // ... repeat for all ${count} cards
@@ -146,23 +159,44 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no code 
 
     console.log('✅ Batch record created:', batchRecord.id);
 
-    // 3. Generate images and save cards in parallel
+    // 3. Generate images and save cards in parallel using Gemini 2.5 Flash Image
     const cardPromises = batchData.cards.map(async (cardData: CardData, index: number) => {
       let imageUrl = "/placeholder.png";
 
       try {
-        // Generate and upload image to R2
-        console.log(`🖼️  Generating image ${index + 1}/${count}...`);
-        const imageResponse = await fetch(
-          `https://image.pollinations.ai/prompt/${encodeURIComponent(cardData.imagePrompt)}?width=500&height=700&nologo=true`
-        );
+        // Generate image using Gemini 2.5 Flash Image
+        console.log(`🖼️  Generating image ${index + 1}/${count} with Gemini...`);
 
-        if (imageResponse.ok) {
-          const arrayBuffer = await imageResponse.arrayBuffer();
-          const buffer = Buffer.from(arrayBuffer);
-          const fileName = `cards/${crypto.randomUUID()}.png`;
-          imageUrl = await uploadImage(buffer, fileName, 'image/png');
-          console.log(`✅ Image ${index + 1} uploaded`);
+        const imageGenResponse = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: cardData.imagePrompt }]
+            }],
+            generationConfig: {
+              responseModalities: ["IMAGE"],
+              temperature: 1.0,
+              topP: 0.95,
+            }
+          })
+        });
+
+        if (imageGenResponse.ok) {
+          const imageData = await imageGenResponse.json();
+
+          // Extract base64 image from response
+          const imagePart = imageData.candidates?.[0]?.content?.parts?.find(
+            (part: any) => part.inlineData?.mimeType?.startsWith('image/')
+          );
+
+          if (imagePart?.inlineData?.data) {
+            // Convert base64 to buffer
+            const buffer = Buffer.from(imagePart.inlineData.data, 'base64');
+            const fileName = `cards/${crypto.randomUUID()}.png`;
+            imageUrl = await uploadImage(buffer, fileName, 'image/png');
+            console.log(`✅ Image ${index + 1} uploaded`);
+          }
         }
       } catch (imgError) {
         console.error(`⚠️  Failed to generate/upload image for card ${index + 1}:`, imgError);

@@ -32,12 +32,13 @@ export async function POST(req: Request) {
   }
 
   // 3. Generate card text and images using AI
-  const { generateCardImage } = await import("@/lib/ai/image-generator");
-  const { uploadImage } = await import("@/lib/storage");
+  const { generateImageWithGemini } = await import("@/lib/ai/card-generator");
+  // const { uploadImage } = await import("@/lib/storage"); // No longer needed here as generateImageWithGemini handles it
 
   // Import Gemini API for text generation
   const GEMINI_API_KEY = process.env.GEMINIAI_API_KEY;
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+  // Use gemini-2.0-flash-exp for consistency
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`;
 
   for (const { cards: card } of pendingCards) {
     try {
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
             "name": "Card Name",
             "description": "Brief card effect description",
             "flavorText": "Thematic flavor text",
-            "imagePrompt": "A detailed description of the card's image, suitable for an AI image generator. Fantasy style."
+            "imagePrompt": "OPTIMIZED FULL ART PROMPT - [Detailed subject description matching card name]. Vertical portrait orientation, full-bleed borderless composition extending to all edges. Magic the Gathering full art card style. High-resolution digital painting with dramatic cinematic lighting, vibrant saturated colors, intricate details, sharp focus. The subject fills the frame dramatically with immersive environment surrounding it. Professional TCG artwork quality, masterpiece, highly detailed, rich textures. NO text, NO watermarks, NO borders, NO frames. Theme: ${deck.theme}"
           }
 
           IMPORTANT: Generate all text in SPANISH.
@@ -92,12 +93,16 @@ export async function POST(req: Request) {
         }
       }
 
-      // Generate Image
-      const imageBuffer = await generateCardImage(imagePrompt || `Fantasy card art for ${cardName}`);
-
-      // Upload to R2
-      const fileName = `cards/${card.id}-${Date.now()}.png`;
-      const imageUrl = await uploadImage(imageBuffer, fileName);
+      // Generate Image using Gemini
+      let imageUrl = card.imageUrl;
+      if (imagePrompt) {
+        try {
+           imageUrl = await generateImageWithGemini(imagePrompt);
+        } catch (imgError) {
+           console.error(`Failed to generate image for ${card.id}:`, imgError);
+           // Keep existing placeholder or fallback
+        }
+      }
 
       // Update card with all generated data
       await db.update(cards).set({

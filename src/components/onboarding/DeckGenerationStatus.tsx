@@ -2,8 +2,30 @@
 
 import { motion } from 'framer-motion';
 import { Loader2, Sparkles } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { checkDeckStatus } from '@/app/actions/user';
 
 export function DeckGenerationStatus() {
+  const router = useRouter();
+  const [status, setStatus] = useState('generating');
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const result = await checkDeckStatus();
+        if (result.status === 'completed') {
+          setStatus('completed');
+          router.push('/dashboard');
+        }
+      } catch (error) {
+        console.error("Failed to check deck status:", error);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [router]);
+
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center">
       <motion.div
@@ -32,7 +54,7 @@ export function DeckGenerationStatus() {
       </div>
       
       <p className="text-xs text-zinc-500 font-mono">
-        Generating card art and stats...
+        {status === 'completed' ? 'Deck Ready! Redirecting...' : 'Generating card art and stats...'}
       </p>
     </div>
   );

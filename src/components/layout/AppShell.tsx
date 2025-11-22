@@ -1,0 +1,49 @@
+'use client';
+
+import { Sidebar } from './Sidebar';
+import { Menu, X } from 'lucide-react';
+import { useState } from 'react';
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  return (
+    <div className="flex h-screen bg-zinc-950 text-white overflow-hidden">
+      {/* Desktop Sidebar */}
+      <div className="hidden md:block">
+        <Sidebar />
+      </div>
+
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-zinc-950 border-b border-zinc-800 p-4 flex items-center justify-between">
+        <h1 className="text-lg font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+          MindSpark
+        </h1>
+        <button 
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-2 text-zinc-400 hover:text-white"
+        >
+          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-40 md:hidden pt-16">
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="absolute left-0 top-0 bottom-0 w-64 bg-zinc-950 border-r border-zinc-800 z-50 animate-in slide-in-from-left pt-16">
+            <Sidebar className="border-none" />
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto pt-16 md:pt-0 relative">
+        {children}
+      </main>
+    </div>
+  );
+}

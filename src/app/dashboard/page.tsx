@@ -3,6 +3,10 @@ import { cards, userCards, users, mastery } from "@/db/schema";
 import { stackServerApp } from "@/lib/stack";
 import { eq, count } from "drizzle-orm";
 
+import { AppShell } from "@/components/layout/AppShell";
+import Link from "next/link";
+import { Swords } from "lucide-react";
+
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
@@ -29,20 +33,31 @@ export default async function DashboardPage() {
   const masteryTitle = getMasteryTitle(totalMasteryLevel);
 
   return (
-    <div className="p-8 space-y-8">
-      <header>
-        <h1 className="text-3xl font-bold">Welcome back, {user.displayName}</h1>
-        <p className="text-zinc-400">Your magical journey continues.</p>
-      </header>
+    <AppShell>
+      <div className="p-8 space-y-8">
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Welcome back, {user.displayName}</h1>
+            <p className="text-zinc-400">Your magical journey continues.</p>
+          </div>
+          <Link 
+            href="/" 
+            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors shadow-lg shadow-blue-500/20"
+          >
+            <Swords size={20} />
+            Enter Arena
+          </Link>
+        </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard title="Total Cards" value={cardCount.value} />
-        <StatCard title="Mastery Level" value={totalMasteryLevel} subtext={masteryTitle} />
-        <StatCard title="Sparks" value={userData?.sparks || 0} subtext="Currency" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <StatCard title="Total Cards" value={cardCount.value} />
+          <StatCard title="Mastery Level" value={totalMasteryLevel} subtext={masteryTitle} />
+          <StatCard title="Sparks" value={userData?.sparks || 0} subtext="Currency" />
+        </div>
+
+        {/* Recent Activity or Featured could go here */}
       </div>
-
-      {/* Recent Activity or Featured could go here */}
-    </div>
+    </AppShell>
   );
 }
 

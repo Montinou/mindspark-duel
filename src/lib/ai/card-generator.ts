@@ -6,7 +6,11 @@ import { db } from '@/db';
 import { cards } from '@/db/schema';
 
 const GEMINI_API_KEY = process.env.GEMINIAI_API_KEY;
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+// Use gemini-2.0-flash-exp for image generation capabilities
+const TEXT_MODEL = "gemini-2.0-flash-exp"; 
+const IMAGE_MODEL = "gemini-2.0-flash-exp";
+
+const BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
 export interface GenerateCardOptions {
   topic?: string;
@@ -16,9 +20,66 @@ export interface GenerateCardOptions {
   userId?: string;
 }
 
+export async function generateImageWithGemini(prompt: string): Promise<string> {
+  if (!GEMINI_API_KEY) {
+    throw new Error("GEMINIAI_API_KEY is not set");
+  }
+
+  console.log('🖼️  Generating image with Gemini...');
+  const apiUrl = `${BASE_URL}/${IMAGE_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: prompt }]
+        }],
+        generationConfig: {
+          responseModalities: ["IMAGE"],
+          temperature: 1.0,
+          topP: 0.95,
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Gemini API Error (${response.status}): ${errorText}`);
+    }
+
+    const data = await response.json();
+    
+    // Extract base64 image from response
+    // The structure for image response in Gemini API:
+    // candidates[0].content.parts[0].inlineData.data (base64)
+    const imagePart = data.candidates?.[0]?.content?.parts?.find(
+      (part: any) => part.inlineData?.mimeType?.startsWith('image/')
+    );
+
+    if (!imagePart?.inlineData?.data) {
+      throw new Error("No image data found in Gemini response");
+    }
+
+    // Convert base64 to buffer
+    const buffer = Buffer.from(imagePart.inlineData.data, 'base64');
+    const fileName = `cards/${crypto.randomUUID()}.png`;
+    
+    // Upload to R2
+    const imageUrl = await uploadImage(buffer, fileName, 'image/png');
+    console.log('✅ Image generated and uploaded with Gemini:', imageUrl);
+    return imageUrl;
+
+  } catch (error) {
+    console.error("Failed to generate/upload image with Gemini:", error);
+    throw error;
+  }
+}
+
 export async function generateCard(options: GenerateCardOptions): Promise<Card> {
   if (!GEMINI_API_KEY) {
-    throw new Error("GOOGLE_GENERATIVE_AI_API_KEY is not set");
+    throw new Error("GEMINIAI_API_KEY is not set");
   }
 
   const { topic, theme, difficulty = 5, element, userId } = options;
@@ -30,7 +91,7 @@ export async function generateCard(options: GenerateCardOptions): Promise<Card> 
     The card should be based on the theme/topic: "${themeText}".
     ${elementInstruction}
     The difficulty level for the educational problem is: ${difficulty} (1-10).
-    
+
     Return ONLY a valid JSON object with this structure:
     {
       "name": "Card Name",
@@ -40,17 +101,23 @@ export async function generateCard(options: GenerateCardOptions): Promise<Card> 
       "defense": integer (1-10),
       "element": "Fire" | "Water" | "Earth" | "Air",
       "problemCategory": "Math" | "Logic" | "Science",
-      "imagePrompt": "A detailed description of the card's image, suitable for an AI image generator. Fantasy style."
+      "imagePrompt": "OPTIMIZED FULL ART PROMPT - [Detailed subject description matching card name]. Vertical portrait orientation, full-bleed borderless composition extending to all edges. Magic the Gathering full art card style. High-resolution digital painting with dramatic cinematic lighting, vibrant saturated colors, intricate details, sharp focus. The subject fills the frame dramatically with immersive environment surrounding it. Professional TCG artwork quality, masterpiece, highly detailed, rich textures. NO text, NO watermarks, NO borders, NO frames. Theme: ${themeText}"
     }
-    
-    Make the stats balanced for the cost.
-    The name should be fantasy-themed but related to the topic.
-    IMPORTANT: Generate the Name and Description in SPANISH.
+
+    CRITICAL INSTRUCTIONS:
+    - Stats must be balanced for cost (cost ≈ (power + defense) / 2)
+    - Name should be fantasy-themed but related to "${themeText}"
+    - Description (flavor text) must be evocative and match the visual
+    - Name and Description MUST be in SPANISH
+    - imagePrompt must describe a FULL-BLEED composition (art extends to all edges, NO reserved space)
+    - imagePrompt should include subject, environment, lighting, mood, and artistic style
   `;
 
   try {
     // 1. Generate Card Data
-    const response = await fetch(API_URL, {
+    const apiUrl = `${BASE_URL}/${TEXT_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+    
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -74,35 +141,12 @@ export async function generateCard(options: GenerateCardOptions): Promise<Card> 
     
     const cardData = JSON.parse(jsonString);
 
-    // 2. Generate Image (Placeholder for now, or use another API if available)
-    // Since we don't have a direct image generation API configured yet in this file,
-    // we will use a placeholder or if the user wants, we can use a specific image gen API.
-    // For now, let's assume we want to use a placeholder or the user will provide an image gen service.
-    // WAIT, the plan said "Call Google's Image Generation API (Imagen)".
-    // I need to check if I have access to Imagen or DALL-E.
-    // The user mentioned "usemos clodflare para guardar las imagenes".
-    // I will use a placeholder image generation for now or try to use Gemini if it supports image generation (it does, but via a different endpoint/model usually).
-    // Actually, for this step, I'll stick to the plan but I need an image source.
-    // Let's use a placeholder service that returns an image buffer for testing R2 upload, 
-    // OR if I can use `generate_image` tool... no, I need to do it in code.
-    // Let's use a simple fetch to a placeholder image service for now to test the pipeline, 
-    // as setting up Imagen might require more auth.
-    // actually, let's try to generate a real image if possible.
-    // For now, I will fetch a random image from unsplash or similar based on keywords to simulate generation
-    // and upload THAT to R2.
-    
+    // 2. Generate Image using Gemini
     let imageUrl = "/placeholder.png";
     try {
-        // Simulate image generation by fetching a relevant image
-        const imageResponse = await fetch(`https://image.pollinations.ai/prompt/${encodeURIComponent(cardData.imagePrompt)}`);
-        if (imageResponse.ok) {
-            const arrayBuffer = await imageResponse.arrayBuffer();
-            const buffer = Buffer.from(arrayBuffer);
-            const fileName = `cards/${crypto.randomUUID()}.png`;
-            imageUrl = await uploadImage(buffer, fileName);
-        }
+      imageUrl = await generateImageWithGemini(cardData.imagePrompt);
     } catch (imgError) {
-        console.error("Failed to generate/upload image:", imgError);
+      console.error("Failed to generate image, using placeholder:", imgError);
     }
     
     // 3. Save card to database

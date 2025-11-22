@@ -6,9 +6,9 @@ const INITIAL_MANA = 1;
 const MAX_MANA = 10;
 const STARTING_HAND_SIZE = 5;
 
-// Mock Deck for testing
+// Mock Deck for testing - Using valid UUIDs
 const MOCK_DECK: Card[] = Array.from({ length: 30 }).map((_, i) => ({
-  id: `card-${i}`,
+  id: crypto.randomUUID(),
   name: i % 2 === 0 ? "Fireball" : "Stone Golem",
   description: i % 2 === 0 ? "Deals 3 damage." : "A sturdy defender.",
   cost: (i % 5) + 1,
@@ -16,8 +16,8 @@ const MOCK_DECK: Card[] = Array.from({ length: 30 }).map((_, i) => ({
   defense: i % 2 === 0 ? 0 : (i % 5) + 2,
   element: i % 2 === 0 ? "Fire" : "Earth",
   problemCategory: "Math",
-  imageUrl: i % 2 === 0 
-    ? "https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=400&q=80" 
+  imageUrl: i % 2 === 0
+    ? "https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=400&q=80"
     : "https://images.unsplash.com/photo-1535082623926-b3e352fe0765?w=400&q=80",
   canAttack: false,
   isTapped: false
@@ -58,8 +58,14 @@ export const useGameLoop = () => {
         return prev;
       }
 
-      const newCards = MOCK_DECK.slice(0, count).map(c => ({ ...c, id: `${c.id}-${Date.now()}-${Math.random()}` })); // Unique IDs
-      
+      // Get random cards from deck (preserving their UUIDs)
+      const availableCards = [...MOCK_DECK];
+      const newCards = [];
+      for (let i = 0; i < count; i++) {
+        const randomIndex = Math.floor(Math.random() * availableCards.length);
+        newCards.push({ ...availableCards[randomIndex] });
+      }
+
       return {
         ...prev,
         [playerId]: {

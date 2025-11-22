@@ -1,13 +1,9 @@
 'use client';
 
 import { Card as CardComponent } from "@/components/game/Card";
-import type { Card } from "@/db/schema";
 
 interface CollectionCardProps {
-  card: Card & {
-    canAttack: boolean;
-    isTapped: boolean;
-  };
+  card: any;
 }
 
 export function CollectionCard({ card }: CollectionCardProps) {

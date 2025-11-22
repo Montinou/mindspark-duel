@@ -1,7 +1,6 @@
 import { stackServerApp } from "@/lib/stack";
 import { t } from "@/lib/i18n";
-import { Battlefield } from "@/components/game/Battlefield";
-import { LoginButton, SignupButton, UserButton } from "@/components/auth/AuthComponents";
+import { GamePage } from "@/components/game/GamePage";
 import { Hero } from "@/components/landing/Hero";
 import { Features } from "@/components/landing/Features";
 import { HowItWorks } from "@/components/landing/HowItWorks";
@@ -11,7 +10,6 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import { AppShell } from "@/components/layout/AppShell";
 
 export default async function Home() {
   let user;
@@ -67,11 +65,9 @@ export default async function Home() {
   }
 
   return (
-    <AppShell>
-      <div className="relative h-full">
-        {/* Removed absolute header since Sidebar handles nav */}
-        <Battlefield />
-      </div>
-    </AppShell>
+    <GamePage
+      userName={user.displayName || t('common.unknown_wizard')}
+      userId={user.id}
+    />
   );
 }

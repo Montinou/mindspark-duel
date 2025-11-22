@@ -8,9 +8,14 @@ import { ProblemModal } from './ProblemModal';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Swords, Shield, Zap, Hourglass } from 'lucide-react';
+import type { Card as CardType } from '@/types/game';
 
-export function Battlefield() {
-  const { gameState, playCard, resolveProblem, endTurn } = useGameLoop();
+interface BattlefieldProps {
+  userDeck: CardType[];
+}
+
+export function Battlefield({ userDeck }: BattlefieldProps) {
+  const { gameState, playCard, resolveProblem, endTurn } = useGameLoop(userDeck);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const isMyTurn = gameState.currentPhase === 'main' || gameState.currentPhase === 'draw';

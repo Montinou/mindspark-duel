@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { cards, userCards } from "@/db/schema";
 import { stackServerApp } from "@/lib/stack";
 import { eq } from "drizzle-orm";
-import { Card as CardComponent } from "@/components/game/Card";
+import { CollectionCard } from "@/components/game/CollectionCard";
 
 export const dynamic = 'force-dynamic';
 
@@ -27,29 +27,27 @@ export default async function CollectionPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
         {myCards.map(({ card }) => (
-          <div key={card.id} className="scale-75 origin-top-left">
-              <CardComponent 
-                card={{
-                  ...card,
-                  flavorText: card.flavorText || undefined,
-                  effectDescription: card.effectDescription || undefined,
-                  imageUrl: card.imageUrl || undefined,
-                  imagePrompt: card.imagePrompt || undefined,
-                  theme: card.theme || undefined,
-                  tags: card.tags || undefined,
-                  batchId: card.batchId || undefined,
-                  batchOrder: card.batchOrder || undefined,
-                  createdById: card.createdById || undefined,
-                  createdAt: card.createdAt || undefined,
-                  canAttack: false,
-                  isTapped: false
-                }}
-              onClick={() => {}}
-            />
-          </div>
+          <CollectionCard
+            key={card.id}
+            card={{
+              ...card,
+              flavorText: card.flavorText ?? undefined,
+              effectDescription: card.effectDescription ?? undefined,
+              imageUrl: card.imageUrl ?? undefined,
+              imagePrompt: card.imagePrompt ?? undefined,
+              theme: card.theme ?? undefined,
+              tags: card.tags ?? undefined,
+              batchId: card.batchId ?? undefined,
+              batchOrder: card.batchOrder ?? undefined,
+              createdById: card.createdById ?? undefined,
+              createdAt: card.createdAt ?? undefined,
+              canAttack: false,
+              isTapped: false
+            }}
+          />
         ))}
       </div>
-      
+
       {myCards.length === 0 && (
         <div className="text-center py-20 text-zinc-500">
           No cards found. Visit the Arcane Library to start your collection!

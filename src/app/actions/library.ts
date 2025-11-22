@@ -93,3 +93,31 @@ export async function researchTome(tomeType: TomeType) {
 
   return savedCards;
 }
+
+export async function getUserCards() {
+  const user = await stackServerApp.getUser();
+  if (!user) return [];
+
+  const myCards = await db
+    .select({
+      card: cards
+    })
+    .from(userCards)
+    .innerJoin(cards, eq(userCards.cardId, cards.id))
+    .where(eq(userCards.userId, user.id));
+
+  return myCards.map(({ card }) => ({
+    id: card.id,
+    name: card.name,
+    description: card.description,
+    cost: card.cost,
+    power: card.power,
+    defense: card.defense,
+    element: card.element,
+    problemCategory: card.problemCategory,
+    imageUrl: card.imageUrl || undefined,
+    flavorText: card.flavorText || undefined,
+    canAttack: false,
+    isTapped: false
+  }));
+}

@@ -10,6 +10,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import { getUserCards } from "@/app/actions/library";
 
 export default async function Home() {
   let user;
@@ -64,10 +65,14 @@ export default async function Home() {
     redirect('/onboarding');
   }
 
+  // Get user's cards for the game
+  const userCardsList = await getUserCards();
+
   return (
     <GamePage
       userName={user.displayName || t('common.unknown_wizard')}
       userId={user.id}
+      userCards={userCardsList}
     />
   );
 }

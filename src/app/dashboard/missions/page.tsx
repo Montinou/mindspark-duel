@@ -2,8 +2,9 @@ import { db } from "@/db";
 import { mastery, missions, userMissions } from "@/db/schema";
 import { stackServerApp } from "@/lib/stack";
 import { eq, and } from "drizzle-orm";
-import { MissionCard } from "@/components/gamification/MissionCard";
+
 import { MasteryProgress } from "@/components/gamification/MasteryProgress";
+import { MissionsClient } from "./MissionsClient";
 
 export const dynamic = 'force-dynamic';
 
@@ -65,27 +66,7 @@ export default async function MissionsPage() {
           <p className="text-zinc-400">Complete tasks to earn Sparks.</p>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {myMissions.map(({ um, m }) => (
-            <MissionCard 
-              key={um.id}
-              title={m.title}
-              description={m.description}
-              progress={um.progress}
-              total={m.requirementCount}
-              reward={m.rewardAmount}
-              completed={um.completed}
-              claimed={um.claimed}
-              // onClaim logic would need a client component wrapper or server action
-              // For now, let's leave it visual.
-            />
-          ))}
-           {myMissions.length === 0 && (
-            <div className="col-span-full text-zinc-500 italic">
-              No active missions. Check back tomorrow!
-            </div>
-          )}
-        </div>
+        <MissionsClient missions={myMissions} />
       </section>
     </div>
   );

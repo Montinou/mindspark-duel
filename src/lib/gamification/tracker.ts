@@ -8,6 +8,8 @@ export type GameEvent =
   | { type: 'PROBLEM_SOLVED'; category: string; difficulty: number }
   | { type: 'GAME_PLAYED' };
 
+import { checkAchievements } from "./achievements";
+
 export async function trackEvent(userId: string, event: GameEvent) {
   try {
     // 1. Update Mastery
@@ -57,6 +59,10 @@ export async function trackEvent(userId: string, event: GameEvent) {
         // If just completed, maybe notify user? (For now, just silent update)
       }
     }
+
+    // 3. Check Achievements
+    await checkAchievements(userId, event);
+
   } catch (error) {
     console.error("Error tracking event:", error);
   }

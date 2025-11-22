@@ -123,6 +123,33 @@ export const userMissions = pgTable("user_missions", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const achievementCategoryEnum = pgEnum('achievement_category', ['Combat', 'Collection', 'Mastery', 'Social', 'Special']);
+export const achievementTierEnum = pgEnum('achievement_tier', ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond']);
+
+export const achievements = pgTable("achievements", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  category: achievementCategoryEnum("category").notNull(),
+  tier: achievementTierEnum("tier").notNull(),
+  requirementType: text("requirement_type").notNull(),
+  requirementCount: integer("requirement_count").notNull(),
+  icon: text("icon").notNull(),
+  rewardSparks: integer("reward_sparks").default(0),
+  hidden: boolean("hidden").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userAchievements = pgTable("user_achievements", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").references(() => users.id).notNull(),
+  achievementId: uuid("achievement_id").references(() => achievements.id).notNull(),
+  progress: integer("progress").default(0).notNull(),
+  unlockedAt: timestamp("unlocked_at"),
+  claimed: boolean("claimed").default(false),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   userCards: many(userCards),
@@ -131,6 +158,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   gamesAsPlayer: many(gameSessions, { relationName: 'player' }),
   gamesAsEnemy: many(gameSessions, { relationName: 'enemy' }),
   gamesWon: many(gameSessions, { relationName: 'winner' }),
+  userAchievements: many(userAchievements),
 }));
 
 export const cardBatchesRelations = relations(cardBatches, ({ one, many }) => ({
@@ -215,6 +243,17 @@ export const userMissionsRelations = relations(userMissions, ({ one }) => ({
   }),
 }));
 
+export const userAchievementsRelations = relations(userAchievements, ({ one }) => ({
+  user: one(users, {
+    fields: [userAchievements.userId],
+    references: [users.id],
+  }),
+  achievement: one(achievements, {
+    fields: [userAchievements.achievementId],
+    references: [achievements.id],
+  }),
+}));
+
 // Export types for TypeScript
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -240,3 +279,6 @@ export type NewDeck = typeof decks.$inferInsert;
 export type Mastery = typeof mastery.$inferSelect;
 export type Mission = typeof missions.$inferSelect;
 export type UserMission = typeof userMissions.$inferSelect;
+
+export type Achievement = typeof achievements.$inferSelect;
+export type UserAchievement = typeof userAchievements.$inferSelect;

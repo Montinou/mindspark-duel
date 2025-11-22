@@ -13,7 +13,8 @@
     "db:studio": "drizzle-kit studio",
     "db:test": "tsx src/lib/examples/test-db.ts",
     "r2:test": "tsx src/lib/examples/test-r2.ts",
-    "generate:sets": "tsx src/lib/examples/generate-starter-sets.ts"
+    "generate:sets": "tsx src/lib/examples/generate-starter-sets.ts",
+    "seed:achievements": "tsx src/db/seed-achievements.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.71",

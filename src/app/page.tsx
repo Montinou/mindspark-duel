@@ -12,7 +12,14 @@ import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export default async function Home() {
-  const user = await stackServerApp.getUser();
+  let user;
+  try {
+    user = await stackServerApp.getUser();
+  } catch (error) {
+    console.error("Failed to fetch Stack Auth user:", error);
+    // Fallback to null user (unauthenticated) or show error
+    user = null;
+  }
 
   if (!user) {
     return (

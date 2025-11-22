@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { generateProblemForCard } from '@/lib/ai/problem-generator';
 import { db } from '@/db';
 import { cards } from '@/db/schema';
@@ -13,6 +14,18 @@ export async function POST(request: NextRequest) {
     if (!cardId) {
       return NextResponse.json(
         { error: 'cardId is required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate cardId is a valid UUID
+    const idSchema = z.string().uuid();
+    const result = idSchema.safeParse(cardId);
+
+    if (!result.success) {
+      console.warn(`Invalid cardId format: ${cardId}. Skipping DB lookup.`);
+      return NextResponse.json(
+        { error: 'Invalid cardId format. Expected UUID.' },
         { status: 400 }
       );
     }

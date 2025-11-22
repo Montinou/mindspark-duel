@@ -18,10 +18,10 @@ export function Card({ card, onClick, disabled, isPlayable }: CardProps) {
       whileTap={!disabled ? { scale: 0.95 } : {}}
       className={`
         relative w-56 h-80 rounded-xl p-4 flex flex-col gap-3 cursor-pointer transition-all duration-200
-        ${disabled ? 'opacity-60 grayscale cursor-not-allowed' : 'shadow-2xl hover:shadow-blue-500/20'}
+        ${disabled ? 'grayscale brightness-75 cursor-not-allowed' : 'shadow-2xl hover:shadow-blue-500/20'}
         ${isPlayable ? 'ring-2 ring-blue-400 ring-offset-2 ring-offset-zinc-900' : ''}
         ${card.canAttack ? 'ring-2 ring-red-500 ring-offset-2 ring-offset-zinc-900 animate-pulse' : ''}
-        ${card.isTapped ? 'opacity-70 grayscale' : ''}
+        ${card.isTapped ? 'grayscale brightness-90' : ''}
         bg-gradient-to-br from-zinc-800 to-zinc-900 border border-zinc-700
       `}
       onClick={() => !disabled && onClick?.(card)}

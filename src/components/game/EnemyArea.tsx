@@ -19,12 +19,13 @@ export function EnemyArea({ enemy }: EnemyAreaProps) {
             key={`enemy-card-${index}`}
             initial={{ y: -50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="w-16 h-24 bg-red-900/80 rounded-lg border-2 border-red-700 shadow-lg mx-1 relative group"
+            whileHover={{ scale: 1.15, y: -10, zIndex: 50 }}
+            className="w-16 h-24 bg-red-900/80 rounded-lg border-2 border-red-700 shadow-lg mx-1 relative group cursor-pointer transition-all hover:border-red-500 hover:shadow-[0_0_15px_rgba(239,68,68,0.4)]"
             style={{
                 transform: `rotate(${(index - enemy.hand.length / 2) * 5}deg)`
             }}
           >
-             <div className="absolute inset-0 flex items-center justify-center opacity-20">
+             <div className="absolute inset-0 flex items-center justify-center opacity-20 group-hover:opacity-30 transition-opacity">
                 <Skull size={24} />
              </div>
           </motion.div>

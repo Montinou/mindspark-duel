@@ -1,6 +1,5 @@
 import { db } from "@/db";
 import { achievements } from "@/db/schema";
-import { v4 as uuidv4 } from 'uuid';
 
 const INITIAL_ACHIEVEMENTS = [
   // Combat

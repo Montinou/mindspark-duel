@@ -21,6 +21,8 @@ import { StackProvider } from "@stackframe/stack";
 import { stackServerApp } from "@/lib/stack";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
+import { Toaster } from "sonner";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -34,6 +36,7 @@ export default function RootLayout({
         <StackProvider app={stackServerApp}>
           <TooltipProvider>
             {children}
+            <Toaster />
           </TooltipProvider>
         </StackProvider>
       </body>

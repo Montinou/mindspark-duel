@@ -112,70 +112,68 @@ export async function generateCard(options: GenerateCardOptions): Promise<Card> 
     - imagePrompt should include subject, environment, lighting, mood, and artistic style
   `;
 
-  try {
-    // 1. Generate Card Data
-    const apiUrl = `${BASE_URL}/${TEXT_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
-    
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: prompt }]
-        }]
-      })
-    });
+  // 1. Generate Card Data
+  const apiUrl = `${BASE_URL}/${TEXT_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
-    if (!response.ok) {
-      throw new Error(`Gemini API Error: ${response.statusText}`);
-    }
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      contents: [{
+        parts: [{ text: prompt }]
+      }]
+    })
+  });
 
-    const data = await response.json();
-    const text = data.candidates[0].content.parts[0].text;
-    
-    // Clean up markdown code blocks if present
-    const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    
-    const cardData = JSON.parse(jsonString);
-
-    // 2. Generate Image using Imagen 3 - NO FALLBACK, FAIL FAST
-    console.log('🎨 Starting image generation for card:', cardData.name);
-    const imageUrl = await generateImageWithGemini(cardData.imagePrompt);
-
-    // 3. Save card to database
-    console.log('💾 Saving card to database:', cardData.name);
-    const [savedCard] = await db
-      .insert(cards)
-      .values({
-        name: cardData.name,
-        description: cardData.description,
-        cost: cardData.cost,
-        power: cardData.power,
-        defense: cardData.defense,
-        element: cardData.element,
-        problemCategory: cardData.problemCategory,
-        imageUrl: imageUrl,
-        imagePrompt: cardData.imagePrompt,
-        createdById: userId || null,
-      })
-      .returning();
-
-    console.log('✅ Card successfully created:', savedCard.id);
-
-    // 4. Return card with database ID
-    return {
-      id: savedCard.id,
-      name: savedCard.name,
-      description: savedCard.description,
-      cost: savedCard.cost,
-      power: savedCard.power,
-      defense: savedCard.defense,
-      element: savedCard.element,
-      problemCategory: savedCard.problemCategory,
-      imageUrl: savedCard.imageUrl!,
-      imagePrompt: cardData.imagePrompt
-    };
+  if (!response.ok) {
+    throw new Error(`Gemini API Error: ${response.statusText}`);
   }
+
+  const data = await response.json();
+  const text = data.candidates[0].content.parts[0].text;
+
+  // Clean up markdown code blocks if present
+  const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
+
+  const cardData = JSON.parse(jsonString);
+
+  // 2. Generate Image using Imagen 3 - NO FALLBACK, FAIL FAST
+  console.log('🎨 Starting image generation for card:', cardData.name);
+  const imageUrl = await generateImageWithGemini(cardData.imagePrompt);
+
+  // 3. Save card to database
+  console.log('💾 Saving card to database:', cardData.name);
+  const [savedCard] = await db
+    .insert(cards)
+    .values({
+      name: cardData.name,
+      description: cardData.description,
+      cost: cardData.cost,
+      power: cardData.power,
+      defense: cardData.defense,
+      element: cardData.element,
+      problemCategory: cardData.problemCategory,
+      imageUrl: imageUrl,
+      imagePrompt: cardData.imagePrompt,
+      createdById: userId || null,
+    })
+    .returning();
+
+  console.log('✅ Card successfully created:', savedCard.id);
+
+  // 4. Return card with database ID
+  return {
+    id: savedCard.id,
+    name: savedCard.name,
+    description: savedCard.description,
+    cost: savedCard.cost,
+    power: savedCard.power,
+    defense: savedCard.defense,
+    element: savedCard.element,
+    problemCategory: savedCard.problemCategory,
+    imageUrl: savedCard.imageUrl!,
+    imagePrompt: cardData.imagePrompt
+  };
 }

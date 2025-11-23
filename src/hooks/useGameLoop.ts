@@ -113,40 +113,27 @@ export const useGameLoop = (userDeck: Card[] = []) => {
       activeProblem: null // Clear any old problem
     }));
 
-    try {
-      // Fetch real problem from AI
-      const response = await fetch('/api/problems', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardId: card.id })
-      });
+    // Fetch problem from AI - NO FALLBACK
+    console.log('🎯 Fetching problem for card:', card.id);
+    const response = await fetch('/api/problems', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cardId: card.id })
+    });
 
-      if (!response.ok) throw new Error("Failed to generate problem");
-
-      const data = await response.json();
-      
-      setGameState(prev => ({
-        ...prev,
-        activeProblem: data.problem
-      }));
-    } catch (error) {
-      console.error("Problem generation failed:", error);
-      // Fallback to a simple local problem if API fails
-      const num1 = Math.floor(Math.random() * 10) + 1;
-      const num2 = Math.floor(Math.random() * 10) + 1;
-      const ans = num1 + num2;
-      
-      setGameState(prev => ({
-        ...prev,
-        activeProblem: {
-          question: `(Offline Fallback) ${num1} + ${num2}`,
-          options: [String(ans), String(ans+1), String(ans-1), String(ans+2)].sort(() => Math.random() - 0.5),
-          correctAnswer: String(ans),
-          difficulty: 1,
-          cardId: card.id
-        }
-      }));
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Problem API Error:', errorText);
+      throw new Error(`Failed to generate problem: ${response.status} - ${errorText}`);
     }
+
+    const data = await response.json();
+    console.log('✅ Problem generated:', data.problem.question);
+
+    setGameState(prev => ({
+      ...prev,
+      activeProblem: data.problem
+    }));
   }, [gameState.currentPhase, gameState.player.mana]);
 
   const resolveProblem = useCallback((answer: string, timeTakenMs: number) => {

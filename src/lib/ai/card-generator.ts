@@ -22,59 +22,58 @@ export interface GenerateCardOptions {
 
 export async function generateImageWithGemini(prompt: string): Promise<string> {
   if (!GEMINI_API_KEY) {
-    throw new Error("GEMINIAI_API_KEY is not set");
+    throw new Error("❌ CRITICAL: GEMINIAI_API_KEY is not set");
   }
 
-  console.log('🖼️  Generating image with Gemini...');
-  const apiUrl = `${BASE_URL}/${IMAGE_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+  console.log('🖼️  Generating image with Imagen 3 via Gemini API...');
+  console.log('📝 Prompt:', prompt.substring(0, 150) + '...');
 
-  try {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: prompt }]
-        }],
-        generationConfig: {
-          responseModalities: ["IMAGE"],
-          temperature: 1.0,
-          topP: 0.95,
-        }
-      })
-    });
+  // Use the correct Imagen 3 endpoint
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:generateImage?key=${GEMINI_API_KEY}`;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Gemini API Error (${response.status}): ${errorText}`);
-    }
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prompt: prompt,
+      number_of_images: 1,
+      aspect_ratio: "3:4", // Portrait orientation for cards
+      safety_filter_level: "block_only_high",
+      person_generation: "allow_adult"
+    })
+  });
 
-    const data = await response.json();
-    
-    // Extract base64 image from response
-    // The structure for image response in Gemini API:
-    // candidates[0].content.parts[0].inlineData.data (base64)
-    const imagePart = data.candidates?.[0]?.content?.parts?.find(
-      (part: any) => part.inlineData?.mimeType?.startsWith('image/')
-    );
-
-    if (!imagePart?.inlineData?.data) {
-      throw new Error("No image data found in Gemini response");
-    }
-
-    // Convert base64 to buffer
-    const buffer = Buffer.from(imagePart.inlineData.data, 'base64');
-    const fileName = `cards/${crypto.randomUUID()}.png`;
-    
-    // Upload to R2
-    const imageUrl = await uploadImage(buffer, fileName, 'image/png');
-    console.log('✅ Image generated and uploaded with Gemini:', imageUrl);
-    return imageUrl;
-
-  } catch (error) {
-    console.error("Failed to generate/upload image with Gemini:", error);
-    throw error;
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('❌ Imagen API Error Response:', errorText);
+    throw new Error(`Imagen API Error (${response.status}): ${errorText}`);
   }
+
+  const data = await response.json();
+  console.log('📦 Imagen API Response structure:', Object.keys(data));
+
+  // Extract the generated image
+  // The response structure: { generatedImages: [{ bytesBase64Encoded: "..." }] }
+  const imageData = data.generatedImages?.[0]?.bytesBase64Encoded;
+
+  if (!imageData) {
+    console.error('❌ Imagen API Full Response:', JSON.stringify(data, null, 2));
+    throw new Error("No image data found in Imagen response. Check response structure above.");
+  }
+
+  // Convert base64 to buffer
+  const buffer = Buffer.from(imageData, 'base64');
+  const fileName = `cards/${crypto.randomUUID()}.png`;
+
+  console.log('☁️  Uploading to Cloudflare R2:', fileName);
+
+  // Upload to Cloudflare R2 - NO FALLBACK
+  const imageUrl = await uploadImage(buffer, fileName, 'image/png');
+
+  console.log('✅ SUCCESS: Image generated with Imagen 3 and uploaded to R2');
+  console.log('🔗 URL:', imageUrl);
+
+  return imageUrl;
 }
 
 export async function generateCard(options: GenerateCardOptions): Promise<Card> {
@@ -141,15 +140,12 @@ export async function generateCard(options: GenerateCardOptions): Promise<Card> 
     
     const cardData = JSON.parse(jsonString);
 
-    // 2. Generate Image using Gemini
-    let imageUrl = "/placeholder.png";
-    try {
-      imageUrl = await generateImageWithGemini(cardData.imagePrompt);
-    } catch (imgError) {
-      console.error("Failed to generate image, using placeholder:", imgError);
-    }
-    
+    // 2. Generate Image using Imagen 3 - NO FALLBACK, FAIL FAST
+    console.log('🎨 Starting image generation for card:', cardData.name);
+    const imageUrl = await generateImageWithGemini(cardData.imagePrompt);
+
     // 3. Save card to database
+    console.log('💾 Saving card to database:', cardData.name);
     const [savedCard] = await db
       .insert(cards)
       .values({
@@ -161,9 +157,12 @@ export async function generateCard(options: GenerateCardOptions): Promise<Card> 
         element: cardData.element,
         problemCategory: cardData.problemCategory,
         imageUrl: imageUrl,
+        imagePrompt: cardData.imagePrompt,
         createdById: userId || null,
       })
       .returning();
+
+    console.log('✅ Card successfully created:', savedCard.id);
 
     // 4. Return card with database ID
     return {
@@ -175,54 +174,8 @@ export async function generateCard(options: GenerateCardOptions): Promise<Card> 
       defense: savedCard.defense,
       element: savedCard.element,
       problemCategory: savedCard.problemCategory,
-      imageUrl: savedCard.imageUrl || "/placeholder.png"
+      imageUrl: savedCard.imageUrl!,
+      imagePrompt: cardData.imagePrompt
     };
-
-  } catch (error) {
-    console.error("Failed to generate card:", error);
-
-    // Create fallback card in database
-    try {
-      const [fallbackCard] = await db
-        .insert(cards)
-        .values({
-          name: "Glitch in the Matrix",
-          description: "The spell fizzled due to magical interference (API Error).",
-          cost: 1,
-          power: 1,
-          defense: 1,
-          element: "Earth",
-          problemCategory: "Logic",
-          imageUrl: "/placeholder.png",
-          createdById: userId || null,
-        })
-        .returning();
-
-      return {
-        id: fallbackCard.id,
-        name: fallbackCard.name,
-        description: fallbackCard.description,
-        cost: fallbackCard.cost,
-        power: fallbackCard.power,
-        defense: fallbackCard.defense,
-        element: fallbackCard.element,
-        problemCategory: fallbackCard.problemCategory,
-        imageUrl: fallbackCard.imageUrl || "/placeholder.png"
-      };
-    } catch (dbError) {
-      console.error("Failed to create fallback card in database:", dbError);
-      // Last resort: return card without database persistence
-      return {
-        id: crypto.randomUUID(),
-        name: "Glitch in the Matrix",
-        description: "The spell fizzled due to magical interference (API Error).",
-        cost: 1,
-        power: 1,
-        defense: 1,
-        element: "Earth",
-        problemCategory: "Logic",
-        imageUrl: "/placeholder.png"
-      };
-    }
   }
 }

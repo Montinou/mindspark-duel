@@ -41,87 +41,102 @@ export async function POST(req: Request) {
   const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`;
 
   for (const { cards: card } of pendingCards) {
-    try {
-      // Generate card text (name, description, flavor) using AI
-      let cardName = card.name;
-      let cardDescription = card.description;
-      let flavorText = "";
-      let imagePrompt = card.imagePrompt;
+    console.log(`\n🎴 Processing card ${card.id} (${card.element})...`);
 
-      if (card.name === "Pending Card..." && GEMINI_API_KEY) {
-        const prompt = `
-          Create a unique, creative trading card for a game called "MindSpark Duel".
-          The card should be based on the theme: "${deck.theme}".
-          The card MUST belong to the element: "${card.element}".
-          The card has cost: ${card.cost}, power: ${card.power}, defense: ${card.defense}.
-
-          Return ONLY a valid JSON object with this structure:
-          {
-            "name": "Card Name",
-            "description": "Brief card effect description",
-            "flavorText": "Thematic flavor text",
-            "imagePrompt": "OPTIMIZED FULL ART PROMPT - [Detailed subject description matching card name]. Vertical portrait orientation, full-bleed borderless composition extending to all edges. Magic the Gathering full art card style. High-resolution digital painting with dramatic cinematic lighting, vibrant saturated colors, intricate details, sharp focus. The subject fills the frame dramatically with immersive environment surrounding it. Professional TCG artwork quality, masterpiece, highly detailed, rich textures. NO text, NO watermarks, NO borders, NO frames. Theme: ${deck.theme}"
-          }
-
-          IMPORTANT: Generate all text in SPANISH.
-        `;
-
-        try {
-          const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }]
-            })
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            const text = data.candidates[0].content.parts[0].text;
-            const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
-            const cardData = JSON.parse(jsonString);
-
-            cardName = cardData.name;
-            cardDescription = cardData.description;
-            flavorText = cardData.flavorText || "";
-            imagePrompt = cardData.imagePrompt;
-          }
-        } catch (aiError) {
-          console.error(`Failed to generate card text for ${card.id}:`, aiError);
-          cardName = `${card.element} Warrior`;
-          cardDescription = `A powerful ${deck.theme} unit.`;
-        }
-      }
-
-      // Generate Image using Gemini
-      let imageUrl = card.imageUrl;
-      if (imagePrompt) {
-        try {
-           imageUrl = await generateImageWithGemini(imagePrompt);
-        } catch (imgError) {
-           console.error(`Failed to generate image for ${card.id}:`, imgError);
-           // Keep existing placeholder or fallback
-        }
-      }
-
-      // Update card with all generated data
-      await db.update(cards).set({
-        name: cardName,
-        description: cardDescription,
-        flavorText: flavorText,
-        imageUrl: imageUrl,
-        imagePrompt: imagePrompt,
-      }).where(eq(cards.id, card.id));
-
-    } catch (error) {
-      console.error(`Failed to process card ${card.id}:`, error);
-      // Optional: Mark as failed or retry count
+    // Generate card text (name, description, flavor) using AI
+    if (card.name !== "Pending Card..." || !GEMINI_API_KEY) {
+      throw new Error(`Card ${card.id} is not pending or GEMINI_API_KEY is missing`);
     }
+
+    const prompt = `
+      Create a unique, creative trading card for a game called "MindSpark Duel".
+      The card should be based on the theme: "${deck.theme}".
+      The card MUST belong to the element: "${card.element}".
+      The card has cost: ${card.cost}, power: ${card.power}, defense: ${card.defense}.
+
+      Return ONLY a valid JSON object with this structure:
+      {
+        "name": "Card Name",
+        "description": "Brief card effect description",
+        "flavorText": "Thematic flavor text",
+        "imagePrompt": "OPTIMIZED FULL ART PROMPT - [Detailed subject description matching card name]. Vertical portrait orientation, full-bleed borderless composition extending to all edges. Magic the Gathering full art card style. High-resolution digital painting with dramatic cinematic lighting, vibrant saturated colors, intricate details, sharp focus. The subject fills the frame dramatically with immersive environment surrounding it. Professional TCG artwork quality, masterpiece, highly detailed, rich textures. NO text, NO watermarks, NO borders, NO frames. Theme: ${deck.theme}"
+      }
+
+      IMPORTANT: Generate all text in SPANISH.
+    `;
+
+    console.log('📝 Generating card text with Gemini...');
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Gemini text generation failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const text = data.candidates[0].content.parts[0].text;
+    const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    const cardData = JSON.parse(jsonString);
+
+    console.log(`✅ Text generated for: ${cardData.name}`);
+
+    // Generate Image using Imagen 3 - NO FALLBACK
+    console.log('🖼️  Generating image...');
+    const imageUrl = await generateImageWithGemini(cardData.imagePrompt);
+
+    // Update card with all generated data
+    console.log('💾 Updating card in database...');
+    await db.update(cards).set({
+      name: cardData.name,
+      description: cardData.description,
+      flavorText: cardData.flavorText || "",
+      imageUrl: imageUrl,
+      imagePrompt: cardData.imagePrompt,
+    }).where(eq(cards.id, card.id));
+
+    console.log(`✅ Card ${card.id} processed successfully!`);
   }
 
-  return NextResponse.json({ 
-    message: "Processed batch", 
-    processedCount: pendingCards.length,
-    remaining: "Check again" 
-  });
+  // 4. Check if there are more pending cards for this deck
+  const remainingCards = await db.select().from(cards)
+    .innerJoin(userCards, eq(cards.id, userCards.cardId))
+    .where(and(
+      eq(userCards.userId, deck.userId),
+      eq(cards.name, "Pending Card...")
+    ))
+    .limit(1);
+
+  if (remainingCards.length > 0) {
+    console.log('🔄 More cards pending, triggering next batch...');
+    try {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      // Fire and forget - don't await
+      fetch(`${appUrl}/api/cron/process-deck-queue`, { method: 'POST' }).catch(err => {
+        console.error('Failed to trigger next batch:', err);
+      });
+    } catch (error) {
+      console.error('Failed to trigger next batch:', error);
+    }
+    
+    return NextResponse.json({ 
+      message: "Processed batch, triggering next", 
+      processedCount: pendingCards.length,
+      remaining: true 
+    });
+  } else {
+    // All done!
+    console.log('✨ Deck generation complete!');
+    await db.update(decks).set({ status: 'completed' }).where(eq(decks.id, deck.id));
+    return NextResponse.json({ 
+      message: "Deck completed", 
+      processedCount: pendingCards.length,
+      remaining: false,
+      deckId: deck.id 
+    });
+  }
 }

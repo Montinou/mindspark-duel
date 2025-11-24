@@ -48,26 +48,46 @@ export default {
         ? `The card MUST belong to the element: "${element}".`
         : "Choose a suitable element (Fire, Water, Earth, Air).";
 
-      const prompt = `You are a creative card game designer. Create a trading card for "MindSpark Duel" based on theme: "${themeText}". ${elementInstruction}
+      const prompt = `Eres un diseñador creativo de juegos de cartas. Crea una carta para "MindSpark Duel" basada en el tema: "${themeText}". ${elementInstruction}
 
-Return ONLY valid JSON (no markdown, no extra text):
+INSTRUCCIONES ESTRICTAS:
+1. Debes responder ÚNICAMENTE con JSON válido
+2. NO incluyas markdown, código, explicaciones ni texto extra
+3. NO uses comillas dentro de los valores de texto
+4. RESPETA EXACTAMENTE esta estructura:
+
 {
-  "name": "Card Name (in SPANISH)",
-  "description": "Flavor text (in SPANISH, 1-2 sentences)",
+  "name": "Nombre de la Carta",
+  "description": "Texto descriptivo en español de 1-2 oraciones",
   "cost": 5,
   "power": 6,
   "defense": 4,
   "element": "Fire",
   "problemCategory": "Math",
-  "imagePrompt": "A detailed fantasy art description for vertical portrait trading card. Full-bleed artwork style. Theme: ${themeText}"
+  "imagePrompt": "Descripcion detallada en ingles para arte vertical de carta tipo trading card estilo full-bleed"
 }
 
-CRITICAL Rules:
-- name and description: MUST be in SPANISH
-- element: MUST be EXACTLY one of: Fire, Water, Earth, Air (English only!)
-- problemCategory: MUST be EXACTLY one of: Math, Logic, Science (English only!)
-- Balanced stats: cost = (power + defense) / 2
-- imagePrompt: short, clear, English only, no quotes`;
+REGLAS OBLIGATORIAS:
+- name: En ESPAÑOL, sin comillas internas
+- description: En ESPAÑOL, 1-2 oraciones, sin comillas internas
+- cost: Número entero (promedio de power + defense dividido por 2)
+- power: Número entero entre 1-10
+- defense: Número entero entre 1-10
+- element: DEBE ser EXACTAMENTE uno de estos: Fire, Water, Earth, Air
+- problemCategory: DEBE ser EXACTAMENTE uno de estos: Math, Logic, Science
+- imagePrompt: En INGLÉS, descripción corta y clara, SIN comillas
+
+EJEMPLO VÁLIDO:
+{
+  "name": "El Dragon de Fuego",
+  "description": "Un poderoso dragon que domina las llamas del inframundo.",
+  "cost": 5,
+  "power": 7,
+  "defense": 3,
+  "element": "Fire",
+  "problemCategory": "Math",
+  "imagePrompt": "Majestic red dragon breathing fire in a volcanic landscape vertical portrait card art full bleed style"
+}`;
 
       console.log('🤖 Generating card data with Llama 3.1 8B...');
       console.log('📝 Theme:', themeText);

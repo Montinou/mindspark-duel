@@ -12,6 +12,9 @@ import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getUserCards } from "@/app/actions/library";
 
+// Force dynamic rendering for auth checks
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   let user;
   try {

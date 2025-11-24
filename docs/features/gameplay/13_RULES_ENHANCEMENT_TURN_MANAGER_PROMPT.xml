@@ -1,0 +1,1784 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║           GAME RULES ENHANCEMENT & TURN MANAGER IMPLEMENTATION               ║
+║                           Mindspark Duel                                     ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+DESCRIPCIÓN:
+Este prompt tiene un doble propósito:
+1. Documentar de forma comprehensiva las reglas completas del juego (evolución de 00_GAME_RULES.xml)
+2. Implementar el sistema de gestión de turnos que orquesta el flujo del juego
+
+Incluye todas las mecánicas implementadas hasta ahora:
+- Sistema de problemas duales (ambos jugadores resuelven simultáneamente)
+- Cálculo de daño con bonificaciones (precisión + elemental)
+- Ventajas elementales (Fuego > Aire > Tierra > Agua > Fuego)
+- Gestión de mana, fases, y alternancia de turnos
+-->
+
+<prompt>
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 1: METADATA (OBLIGATORIO)                                        -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <metadata>
+    <title>Game Rules Enhancement & Turn Manager Implementation</title>
+    <phase>Gameplay - Core Systems</phase>
+    <difficulty>high</difficulty>
+    <estimated_time>240-300 minutes (4-5 hours)</estimated_time>
+    <version>2.0</version>
+    <last_updated>2025-11-24</last_updated>
+
+    <prerequisites>
+      <prerequisite>12_BATTLE_PROBLEMS_IMPLEMENTATION_PROMPT.xml completed</prerequisite>
+      <prerequisite>Battle API endpoints (/api/battle/initiate, /api/battle/resolve) working</prerequisite>
+      <prerequisite>User Profile System implemented</prerequisite>
+      <prerequisite>Card generation with tags working</prerequisite>
+    </prerequisites>
+
+    <dependencies>
+      <dependency>Next.js 16.0.0</dependency>
+      <dependency>TypeScript</dependency>
+      <dependency>NeonDB (game sessions table)</dependency>
+      <dependency>Stack Auth</dependency>
+      <dependency>Workers AI (Llama 3.1 8B)</dependency>
+    </dependencies>
+  </metadata>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 2: COMPREHENSIVE GAME RULES                                     -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <game_rules>
+    <introduction>
+      Mindspark Duel es un juego de cartas educativo donde los jugadores deben resolver
+      problemas matemáticos, lógicos y científicos para lanzar hechizos y convocar criaturas.
+      El objetivo es reducir la salud del oponente a 0 mediante combate estratégico y
+      resolución precisa de problemas.
+    </introduction>
+
+    <!-- ─────────────────────────────────────────────────────────────────── -->
+    <!-- RULE SET 1: GAME SETUP                                               -->
+    <!-- ─────────────────────────────────────────────────────────────────── -->
+
+    <rule_set id="setup">
+      <title>Configuración del Juego</title>
+
+      <rule id="setup.players">
+        <name>Jugadores</name>
+        <description>
+          - 1 Jugador Humano vs 1 Oponente AI ("The Dark Quizmaster")
+          - Cada jugador tiene estadísticas independientes (HP, Mana, Deck, Hand, Board)
+        </description>
+      </rule>
+
+      <rule id="setup.deck">
+        <name>Mazos</name>
+        <description>
+          - Cada jugador inicia con un mazo de 20-30 cartas
+          - El mazo se baraja al inicio del juego
+          - Las cartas se extraen de arriba hacia abajo
+          - FATIGA: Si se intenta robar de un mazo vacío, se recibe daño progresivo
+            (1 daño en el primer robo, 2 en el segundo, 3 en el tercero, etc.)
+        </description>
+      </rule>
+
+      <rule id="setup.hand">
+        <name>Mano Inicial</name>
+        <description>
+          - Cada jugador roba 5 cartas al inicio del juego
+          - Límite de mano: 10 cartas (cartas adicionales se descartan)
+          - Las cartas robadas se agregan a la mano inmediatamente
+        </description>
+      </rule>
+
+      <rule id="setup.health">
+        <name>Puntos de Vida (HP)</name>
+        <description>
+          - Cada jugador inicia con 100 HP
+          - HP mínimo: 0 (no puede ser negativo)
+          - HP máximo inicial: 100 (puede aumentarse con hechizos/criaturas)
+          - CONDICIÓN DE VICTORIA: Reducir HP del oponente a 0
+        </description>
+      </rule>
+
+      <rule id="setup.mana">
+        <name>Sistema de Mana</name>
+        <description>
+          - Mana inicial: 1/1 (1 mana actual, 1 mana máximo)
+          - Cada turno: Mana actual se recarga a Mana Máximo
+          - Cada turno: Mana Máximo aumenta en 1 (máximo 10)
+          - Turno 1: 1/1 mana
+          - Turno 2: 2/2 mana
+          - Turno 3: 3/3 mana
+          - ...
+          - Turno 10+: 10/10 mana (cap alcanzado)
+        </description>
+      </rule>
+    </rule_set>
+
+    <!-- ─────────────────────────────────────────────────────────────────── -->
+    <!-- RULE SET 2: TURN STRUCTURE                                           -->
+    <!-- ─────────────────────────────────────────────────────────────────── -->
+
+    <rule_set id="turn_structure">
+      <title>Estructura de Turnos</title>
+
+      <description>
+        El juego se desarrolla en turnos que alternan entre Jugador y Oponente.
+        Cada turno tiene 4 fases secuenciales que DEBEN ejecutarse en orden.
+        No se pueden saltar fases ni ejecutar acciones fuera de fase.
+      </description>
+
+      <phase id="start_phase" number="1">
+        <name>Fase de Inicio (Start Phase)</name>
+        <actions>
+          <action order="1">
+            <name>Recargar Mana</name>
+            <description>Mana actual = Mana máximo</description>
+            <example>Si el jugador tiene 5/5 mana al final del turno anterior, vuelve a 5/5</example>
+          </action>
+          <action order="2">
+            <name>Incrementar Mana Máximo</name>
+            <description>Mana máximo += 1 (cap en 10)</description>
+            <example>5/5 → 6/6, pero 10/10 → 10/10 (no aumenta más)</example>
+          </action>
+          <action order="3">
+            <name>Robar Carta</name>
+            <description>
+              Robar 1 carta del mazo
+              - Si el mazo está vacío: aplicar daño de FATIGA
+              - Fatiga aumenta progresivamente: 1, 2, 3, 4, ...
+            </description>
+          </action>
+          <action order="4">
+            <name>Activar Efectos de Inicio de Turno</name>
+            <description>Triggers de cartas "al inicio del turno" se activan aquí</description>
+          </action>
+        </actions>
+        <restrictions>
+          <restriction>El jugador NO puede tomar acciones manuales en esta fase</restriction>
+          <restriction>Es completamente automática</restriction>
+        </restrictions>
+      </phase>
+
+      <phase id="main_phase" number="2">
+        <name>Fase Principal (Main Phase)</name>
+        <actions>
+          <action>
+            <name>Jugar Cartas</name>
+            <description>
+              El jugador puede jugar cualquier número de cartas mientras tenga:
+              1. Mana suficiente (costo de la carta ≤ mana actual)
+              2. Espacio en el tablero (máximo 7 criaturas)
+              3. Resolver el problema asociado correctamente
+            </description>
+          </action>
+        </actions>
+
+        <card_playing_flow>
+          <step number="1">Seleccionar carta de la mano</step>
+          <step number="2">Verificar mana suficiente (UI muestra cartas jugables)</step>
+          <step number="3">Clic en "Jugar Carta" → Deducir mana</step>
+          <step number="4">
+            Modal de Problema se abre:
+            - Problema generado por Workers AI basado en:
+              * Categoría de la carta (Math/Logic/Science)
+              * Dificultad configurada
+              * Tags temáticos de la carta
+              * Perfil del usuario (edad, nivel educativo, intereses)
+          </step>
+          <step number="5">
+            El jugador resuelve el problema:
+            - Si CORRECTO: La carta se juega exitosamente (criatura al tablero / hechizo se ejecuta)
+            - Si INCORRECTO: "Spell Fizzle" - carta se descarta, mana perdido
+          </step>
+          <step number="6">
+            Bonus por velocidad (opcional para MVP):
+            - Si se responde en &lt;5 segundos: "Critical Cast" (efecto x1.5)
+          </step>
+        </card_playing_flow>
+
+        <restrictions>
+          <restriction>SOLO se pueden jugar cartas en esta fase</restriction>
+          <restriction>NO se puede atacar en esta fase</restriction>
+          <restriction>El jugador puede terminar la fase manualmente con botón "End Main Phase"</restriction>
+        </restrictions>
+      </phase>
+
+      <phase id="combat_phase" number="3">
+        <name>Fase de Combate (Combat Phase)</name>
+        <actions>
+          <action>
+            <name>Declarar Ataques</name>
+            <description>
+              Las criaturas en el tablero pueden atacar:
+              - Objetivo: Héroe enemigo O criaturas enemigas
+              - Restricción: Criaturas con "Summoning Sickness" NO pueden atacar
+                (una criatura puede atacar solo en turnos DESPUÉS del turno en que fue convocada)
+            </description>
+          </action>
+        </actions>
+
+        <combat_system>
+          <combat_type id="creature_vs_hero">
+            <name>Criatura vs Héroe</name>
+            <description>
+              Cuando una criatura ataca directamente al héroe enemigo:
+              1. Se generan 2 problemas simultáneamente:
+                 - Problema del atacante (basado en la carta atacante)
+                 - Problema del defensor (basado en una carta aleatoria del defensor o categoría genérica)
+              2. Ambos jugadores resuelven sus problemas
+              3. Se calcula el daño de cada lado usando la fórmula de daño
+              4. El daño neto se aplica a los HP correspondientes
+            </description>
+
+            <damage_calculation>
+              <formula>
+                Daño Total = Daño Base + Bonus de Precisión + Bonus Elemental
+              </formula>
+
+              <component id="base_damage">
+                <name>Daño Base</name>
+                <formula>max(1, Poder del Atacante - Defensa del Defensor)</formula>
+                <description>
+                  Mínimo 1 de daño siempre (incluso si defensa &gt; poder)
+                </description>
+              </component>
+
+              <component id="accuracy_bonus">
+                <name>Bonus de Precisión</name>
+                <formula>Respuesta Correcta ? ceil(Daño Base * 0.5) : 0</formula>
+                <description>
+                  +50% de daño si el atacante responde correctamente su problema
+                </description>
+              </component>
+
+              <component id="elemental_bonus">
+                <name>Bonus Elemental</name>
+                <formula>Ventaja Elemental ? ceil(Daño Base * 0.25) : 0</formula>
+                <description>
+                  +25% de daño si el atacante tiene ventaja elemental sobre el defensor
+                </description>
+              </component>
+
+              <example>
+                <scenario>
+                  Carta Atacante: Poder = 8, Elemento = Fuego
+                  Carta Defensora: Defensa = 3, Elemento = Aire
+                  Atacante responde correctamente
+                </scenario>
+                <calculation>
+                  Daño Base = max(1, 8 - 3) = 5
+                  Bonus Precisión = ceil(5 * 0.5) = 3
+                  Bonus Elemental = ceil(5 * 0.25) = 2  (Fuego &gt; Aire)
+                  Daño Total = 5 + 3 + 2 = 10 HP
+                </calculation>
+              </example>
+            </damage_calculation>
+
+            <dual_problem_resolution>
+              <scenario id="both_correct">
+                <condition>Ambos jugadores responden correctamente</condition>
+                <result>Ambos infligen daño completo, se restan mutuamente HP</result>
+              </scenario>
+              <scenario id="attacker_correct_defender_wrong">
+                <condition>Atacante correcto, Defensor incorrecto</condition>
+                <result>Solo el atacante inflige daño (con bonus de precisión)</result>
+              </scenario>
+              <scenario id="attacker_wrong_defender_correct">
+                <condition>Atacante incorrecto, Defensor correcto</condition>
+                <result>Solo el defensor inflige daño de contraataque</result>
+              </scenario>
+              <scenario id="both_wrong">
+                <condition>Ambos jugadores responden incorrectamente</condition>
+                <result>Ninguno inflige daño (empate, se cancela el ataque)</result>
+              </scenario>
+            </dual_problem_resolution>
+          </combat_type>
+
+          <combat_type id="creature_vs_creature">
+            <name>Criatura vs Criatura</name>
+            <description>
+              Mismo sistema de problemas duales y cálculo de daño.
+              Diferencia: El daño se aplica a las criaturas en lugar de a los héroes.
+              - Si HP de criatura ≤ 0: La criatura muere y se remueve del tablero
+            </description>
+          </combat_type>
+        </combat_system>
+
+        <restrictions>
+          <restriction>SOLO se puede atacar en esta fase</restriction>
+          <restriction>NO se pueden jugar cartas en esta fase</restriction>
+          <restriction>Criaturas solo pueden atacar UNA VEZ por turno</restriction>
+        </restrictions>
+      </phase>
+
+      <phase id="end_phase" number="4">
+        <name>Fase Final (End Phase)</name>
+        <actions>
+          <action order="1">
+            <name>Limpiar Efectos Temporales</name>
+            <description>
+              Efectos que duran "hasta el final del turno" expiran aquí
+            </description>
+          </action>
+          <action order="2">
+            <name>Remover "Summoning Sickness"</name>
+            <description>
+              Criaturas que fueron convocadas este turno pierden summoning sickness
+              (podrán atacar en el próximo turno del jugador)
+            </description>
+          </action>
+          <action order="3">
+            <name>Pasar Turno al Oponente</name>
+            <description>
+              El turno termina automáticamente y pasa al oponente
+              - El contador de turnos se incrementa
+              - El jugador activo cambia (player ↔ opponent)
+              - Se inicia la Fase de Inicio del nuevo turno
+            </description>
+          </action>
+        </actions>
+
+        <restrictions>
+          <restriction>Es completamente automática (no hay acciones manuales)</restriction>
+          <restriction>No se pueden jugar cartas ni atacar</restriction>
+        </restrictions>
+      </phase>
+    </rule_set>
+
+    <!-- ─────────────────────────────────────────────────────────────────── -->
+    <!-- RULE SET 3: CARD TYPES & MECHANICS                                   -->
+    <!-- ─────────────────────────────────────────────────────────────────── -->
+
+    <rule_set id="card_types">
+      <title>Tipos de Cartas y Mecánicas</title>
+
+      <card_type id="creature">
+        <name>Criatura (Creature)</name>
+        <properties>
+          <property>Permanece en el tablero después de ser jugada</property>
+          <property>Tiene estadísticas: Poder (ataque) y Defensa (HP)</property>
+          <property>Puede atacar una vez por turno (solo en Combat Phase)</property>
+          <property>Sufre "Summoning Sickness" el turno que es convocada (no puede atacar ese turno)</property>
+          <property>Muere si su HP ≤ 0 (se remueve del tablero)</property>
+        </properties>
+        <examples>
+          <example>
+            <name>Dragón de Fuego Infernal</name>
+            <stats>Poder: 8, Defensa: 6, Costo: 7 mana</stats>
+            <element>Fuego</element>
+            <category>Math</category>
+          </example>
+        </examples>
+      </card_type>
+
+      <card_type id="spell">
+        <name>Hechizo (Spell)</name>
+        <properties>
+          <property>Efecto único que se ejecuta inmediatamente</property>
+          <property>Se descarta después de usarse (no permanece en tablero)</property>
+          <property>Efectos comunes: Daño directo, Curación, Buff, Debuff</property>
+          <property>NO requiere problema dual (solo el jugador resuelve un problema)</property>
+        </properties>
+        <examples>
+          <example>
+            <name>Bola de Fuego</name>
+            <effect>Inflige 5 de daño a una criatura o héroe</effect>
+            <cost>4 mana</cost>
+            <category>Science</category>
+          </example>
+        </examples>
+      </card_type>
+
+      <card_metadata>
+        <metadata_field id="element">
+          <name>Elemento</name>
+          <values>Fuego, Agua, Tierra, Aire</values>
+          <purpose>Determina ventajas elementales en combate</purpose>
+        </metadata_field>
+
+        <metadata_field id="problem_category">
+          <name>Categoría de Problema</name>
+          <values>Math, Logic, Science</values>
+          <purpose>Determina el tipo de problema que se genera al jugar la carta</purpose>
+        </metadata_field>
+
+        <metadata_field id="tags">
+          <name>Tags Temáticos</name>
+          <values>Array de 2-4 palabras clave en español</values>
+          <purpose>
+            Contexto para generación de problemas temáticos
+            (ej: ["dragón", "fuego", "infierno"] → problema sobre temperatura o combustión)
+          </purpose>
+        </metadata_field>
+
+        <metadata_field id="cost">
+          <name>Costo de Mana</name>
+          <values>1-10</values>
+          <purpose>Cantidad de mana requerida para jugar la carta</purpose>
+        </metadata_field>
+      </card_metadata>
+    </rule_set>
+
+    <!-- ─────────────────────────────────────────────────────────────────── -->
+    <!-- RULE SET 4: ELEMENTAL ADVANTAGE SYSTEM                               -->
+    <!-- ─────────────────────────────────────────────────────────────────── -->
+
+    <rule_set id="elemental_system">
+      <title>Sistema de Ventajas Elementales</title>
+
+      <description>
+        El elemento de una carta determina ventajas de daño en combate.
+        El sistema funciona como "piedra-papel-tijera" circular:
+      </description>
+
+      <advantage_cycle>
+        <advantage>
+          <attacker>Fuego</attacker>
+          <defeats>Aire</defeats>
+          <bonus>+25% daño</bonus>
+          <rationale>El fuego consume oxígeno del aire</rationale>
+        </advantage>
+
+        <advantage>
+          <attacker>Aire</attacker>
+          <defeats>Tierra</defeats>
+          <bonus>+25% daño</bonus>
+          <rationale>El viento erosiona la tierra</rationale>
+        </advantage>
+
+        <advantage>
+          <attacker>Tierra</attacker>
+          <defeats>Agua</defeats>
+          <bonus>+25% daño</bonus>
+          <rationale>La tierra absorbe y bloquea el agua</rationale>
+        </advantage>
+
+        <advantage>
+          <attacker>Agua</attacker>
+          <defeats>Fuego</defeats>
+          <bonus>+25% daño</bonus>
+          <rationale>El agua apaga el fuego</rationale>
+        </advantage>
+      </advantage_cycle>
+
+      <implementation>
+        <code language="typescript">
+          <![CDATA[
+const advantages: Record<string, string> = {
+  'Fire': 'Air',
+  'Air': 'Earth',
+  'Earth': 'Water',
+  'Water': 'Fire',
+};
+
+function hasElementalAdvantage(attacker: string, defender: string): boolean {
+  return advantages[attacker] === defender;
+}
+
+// Usage in damage calculation:
+const elementalBonus = hasElementalAdvantage(attackCard.element, defenseCard.element)
+  ? Math.ceil(baseDamage * 0.25)
+  : 0;
+          ]]>
+        </code>
+      </implementation>
+    </rule_set>
+
+    <!-- ─────────────────────────────────────────────────────────────────── -->
+    <!-- RULE SET 5: AI OPPONENT BEHAVIOR                                     -->
+    <!-- ─────────────────────────────────────────────────────────────────── -->
+
+    <rule_set id="ai_opponent">
+      <title>Comportamiento del Oponente AI</title>
+
+      <description>
+        El oponente AI ("The Dark Quizmaster") sigue las mismas reglas que el jugador
+        pero con comportamiento automatizado.
+      </description>
+
+      <ai_decision_making>
+        <strategy id="card_playing">
+          <name>Estrategia de Juego de Cartas</name>
+          <priority_list>
+            <priority level="1">Jugar cartas "on curve" (usar todo el mana disponible)</priority>
+            <priority level="2">Preferir criaturas sobre hechizos en turnos tempranos</priority>
+            <priority level="3">Guardar hechizos de remoción para criaturas grandes del jugador</priority>
+          </priority_list>
+        </strategy>
+
+        <strategy id="combat">
+          <name>Estrategia de Combate</name>
+          <priority_list>
+            <priority level="1">Atacar directamente al héroe si no hay amenazas en el tablero</priority>
+            <priority level="2">Intercambiar favorablemente (matar criatura enemiga sin perder la propia)</priority>
+            <priority level="3">Ignorar criaturas pequeñas si puede ganar por daño directo en 2-3 turnos</priority>
+          </priority_list>
+        </strategy>
+
+        <problem_solving>
+          <name>Resolución de Problemas del AI</name>
+          <accuracy_formula>AI Accuracy = max(0.3, 1 - difficulty / 15)</accuracy_formula>
+          <description>
+            El AI no resuelve problemas realmente, pero simula respuestas con precisión variable:
+            - Dificultad 1-3: ~90% precisión
+            - Dificultad 4-6: ~70% precisión
+            - Dificultad 7-9: ~50% precisión
+            - Dificultad 10+: ~30% precisión (mínimo)
+          </description>
+          <implementation>
+            <code language="typescript">
+              <![CDATA[
+function generateAIAnswer(problem: BattleProblem): string {
+  const aiAccuracy = Math.max(0.3, 1 - problem.difficulty / 15);
+  const answersCorrectly = Math.random() < aiAccuracy;
+
+  if (answersCorrectly) {
+    return problem.answer; // Respuesta correcta
+  } else {
+    return problem.answer + ' (incorrect)'; // Respuesta incorrecta
+  }
+}
+              ]]>
+            </code>
+          </implementation>
+        </problem_solving>
+
+        <thinking_delay>
+          <name>Simulación de "Pensamiento"</name>
+          <description>
+            Agregar delay de 1-3 segundos antes de que el AI tome acciones
+            para simular que está "pensando" y hacer el juego más humano
+          </description>
+        </thinking_delay>
+      </ai_decision_making>
+    </rule_set>
+
+    <!-- ─────────────────────────────────────────────────────────────────── -->
+    <!-- RULE SET 6: WIN/LOSS CONDITIONS                                      -->
+    <!-- ─────────────────────────────────────────────────────────────────── -->
+
+    <rule_set id="win_loss">
+      <title>Condiciones de Victoria y Derrota</title>
+
+      <win_condition id="hp_zero">
+        <name>HP del Oponente = 0</name>
+        <description>
+          Si los HP del oponente llegan a 0 o menos, el jugador gana inmediatamente
+        </description>
+        <trigger>Después de cualquier daño aplicado</trigger>
+      </win_condition>
+
+      <loss_condition id="player_hp_zero">
+        <name>HP del Jugador = 0</name>
+        <description>
+          Si los HP del jugador llegan a 0 o menos, el jugador pierde inmediatamente
+        </description>
+        <trigger>Después de cualquier daño recibido</trigger>
+      </loss_condition>
+
+      <fatigue_system>
+        <name>Sistema de Fatiga (Deck Vacío)</name>
+        <description>
+          Si un jugador intenta robar una carta de un mazo vacío, recibe daño de fatiga:
+        </description>
+        <damage_progression>
+          <draw number="1">1 daño</draw>
+          <draw number="2">2 daño</draw>
+          <draw number="3">3 daño</draw>
+          <draw number="4">4 daño</draw>
+          <note>Y así sucesivamente... aumenta 1 por cada robo adicional</note>
+        </damage_progression>
+        <implementation>
+          <code language="typescript">
+            <![CDATA[
+let fatigueCounter = 0;
+
+function drawCard(player: Player): void {
+  if (player.deck.length === 0) {
+    // Deck vacío, aplicar fatiga
+    fatigueCounter += 1;
+    player.hp -= fatigueCounter;
+    console.log(`💀 ${player.name} sufre ${fatigueCounter} de daño por fatiga`);
+  } else {
+    // Robar carta normalmente
+    const card = player.deck.shift();
+    player.hand.push(card);
+  }
+}
+            ]]>
+          </code>
+        </implementation>
+      </fatigue_system>
+
+      <draw_condition>
+        <name>Empate (Doble KO)</name>
+        <description>
+          Si ambos jugadores llegan a 0 HP simultáneamente (ej: en combate dual),
+          se considera empate
+        </description>
+      </draw_condition>
+    </rule_set>
+
+    <!-- ─────────────────────────────────────────────────────────────────── -->
+    <!-- RULE SET 7: PROGRESSION SYSTEMS                                      -->
+    <!-- ─────────────────────────────────────────────────────────────────── -->
+
+    <rule_set id="progression">
+      <title>Sistemas de Progresión</title>
+
+      <progression_system id="mastery">
+        <name>Sistema de Maestría</name>
+        <description>
+          Los jugadores ganan puntos de maestría al resolver problemas correctamente:
+          - Maestría en categorías (Math, Logic, Science)
+          - Maestría en dificultades (problemas más difíciles = más puntos)
+          - Desbloquea cartas especiales al alcanzar ciertos niveles
+        </description>
+      </progression_system>
+
+      <progression_system id="missions">
+        <name>Misiones Diarias</name>
+        <description>
+          Tareas opcionales que otorgan recompensas:
+          - "Resuelve 10 problemas de Math"
+          - "Gana 3 batallas con cartas de Fuego"
+          - "Inflige 50 de daño con ventaja elemental"
+        </description>
+      </progression_system>
+
+      <progression_system id="collection">
+        <name>Colección de Cartas</name>
+        <description>
+          - Los jugadores desbloquean cartas permanentemente
+          - Pueden crear mazos personalizados
+          - Sistema de rareza: Común, Raro, Épico, Legendario
+        </description>
+      </progression_system>
+
+      <progression_system id="pity">
+        <name>Pity Counter (Anti-Frustración)</name>
+        <description>
+          Si un jugador pierde 3 veces consecutivas:
+          - Ofrece sugerencias de estrategia
+          - Reduce ligeramente la dificultad de problemas AI
+          - Puede ofrecer 1 carta gratis para mejorar el mazo
+        </description>
+      </progression_system>
+    </rule_set>
+  </game_rules>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 3: CONTEXT (OBLIGATORIO)                                        -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <context>
+    <project_info>
+      <name>Mindspark Duel</name>
+      <current_location>src/lib/game/</current_location>
+      <framework>Next.js 16.0.0 (App Router)</framework>
+      <status>
+        - Battle System complete (dual problems, damage calculation, elemental advantages)
+        - User Profile System complete
+        - Card generation with tags complete
+        - NEEDED: Turn Manager to orchestrate game flow
+      </status>
+    </project_info>
+
+    <objective>
+      <primary>
+        Implementar el Turn Manager que orquesta el flujo completo del juego según
+        las reglas definidas en este documento. El Turn Manager es el "motor" que
+        controla:
+        1. Progresión de fases (Start → Main → Combat → End)
+        2. Gestión de mana (recarga, incremento, gasto)
+        3. Mecánica de robo de cartas
+        4. Alternancia de turnos entre jugador y oponente
+        5. Validación de acciones por fase
+        6. Integración con Battle System para resolución de combates
+      </primary>
+
+      <success_criteria>
+        <criterion>✅ Turnos avanzan correctamente (contador incrementa)</criterion>
+        <criterion>✅ Mana recarga y maxMana aumenta cada turno</criterion>
+        <criterion>✅ Se roban cartas correctamente (5 al inicio, +1 por turno)</criterion>
+        <criterion>✅ Fases progresan en orden (no se pueden saltar)</criterion>
+        <criterion>✅ Acciones validadas por fase (no jugar cartas en Combat)</criterion>
+        <criterion>✅ Turno pasa al oponente después de End Phase</criterion>
+        <criterion>✅ Estado del juego persiste en base de datos</criterion>
+        <criterion>✅ Sistema de fatiga funciona (daño al robar de mazo vacío)</criterion>
+      </success_criteria>
+    </objective>
+
+    <goal>
+      Crear el "corazón" del juego - el sistema que hace que los turnos fluyan suavemente
+      de inicio a fin, enforcea las reglas del juego, y provee un framework estructurado
+      para todas las acciones del jugador. Esta es la base para gameplay estratégico.
+    </goal>
+  </context>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 4: CURRENT STATE                                                -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <current_state>
+    <directory_structure>
+      <![CDATA[
+src/
+├── lib/
+│   ├── battle-service.ts         # EXISTS - Battle logic (damage, problems)
+│   └── game/                     # TO CREATE - Game orchestration
+│       ├── turn-manager.ts       # NEW - Core turn management
+│       ├── phase-controller.ts   # NEW - Phase progression
+│       ├── deck-service.ts       # NEW - Card drawing & fatigue
+│       └── game-state.ts         # NEW - State management
+├── app/api/
+│   ├── battle/                   # EXISTS - Battle endpoints
+│   └── game/                     # TO CREATE - Game flow endpoints
+│       ├── start/route.ts        # NEW - Start new game
+│       ├── action/route.ts       # NEW - Perform game action
+│       └── advance-phase/route.ts # NEW - Move to next phase
+└── types/
+    ├── battle.ts                 # EXISTS - Battle types
+    └── game.ts                   # EXISTS - Needs TurnManager types
+      ]]>
+    </directory_structure>
+
+    <key_files>
+      <file path="src/types/game.ts">
+        Contains base game types (GameState, Player, Phase).
+        NEEDS: TurnManager, TurnState, GameAction types
+      </file>
+      <file path="src/lib/battle-service.ts">
+        Battle logic complete (generateBattleProblem, calculateDamage, resolveBattle).
+        READY for integration with turn flow.
+      </file>
+      <file path="src/db/schema.ts">
+        Game sessions table exists.
+        MAY NEED: Additional fields for turn state (turnNumber, currentPhase, etc.)
+      </file>
+    </key_files>
+
+    <current_implementation>
+      El juego actualmente tiene:
+      ✅ Sistema de batalla (resolución de problemas duales, cálculo de daño)
+      ✅ Generación de cartas con tags temáticos
+      ✅ Sistema de perfil de usuario
+      ✅ Workers AI integrados
+
+      Pero FALTA la capa de orquestación:
+      ❌ No hay gestión de turnos
+      ❌ No hay progresión de fases
+      ❌ No hay validación de acciones por fase
+      ❌ No hay sistema de mana
+      ❌ No hay robo de cartas / fatiga
+
+      Este prompt agrega esa capa faltante.
+    </current_implementation>
+  </current_state>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 5: REQUIREMENTS                                                 -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <requirements>
+    <technical>
+      <requirement priority="critical">
+        Turn Manager debe ser determinístico (mismos inputs = mismos outputs)
+      </requirement>
+      <requirement priority="critical">
+        Cambios de estado deben ser atómicos (no progresiones parciales de turno)
+      </requirement>
+      <requirement priority="high">
+        Transiciones de fase deben validar prerequisitos (no saltar fases)
+      </requirement>
+      <requirement priority="high">
+        Cálculos de mana deben coincidir EXACTAMENTE con las reglas definidas
+      </requirement>
+      <requirement priority="medium">
+        Historial de turnos debe guardarse para debugging
+      </requirement>
+      <requirement priority="low">
+        Soporte para "undo" de acciones accidentales (nice to have)
+      </requirement>
+    </technical>
+
+    <functional>
+      <requirement>Jugador roba 5 cartas al inicio del juego</requirement>
+      <requirement>Jugador roba 1 carta en Start Phase</requirement>
+      <requirement>Mana recarga a maxMana en Start Phase</requirement>
+      <requirement>maxMana aumenta +1 cada turno (cap en 10)</requirement>
+      <requirement>Cartas solo se pueden jugar en Main Phase</requirement>
+      <requirement>Ataques solo pueden ocurrir en Combat Phase</requirement>
+      <requirement>Turno pasa automáticamente después de End Phase</requirement>
+      <requirement>Daño de fatiga si se roba de mazo vacío (1, 2, 3, ...)</requirement>
+      <requirement>Ventajas elementales aplican correctamente (+25% daño)</requirement>
+      <requirement>Bonus de precisión aplica si respuesta correcta (+50% daño)</requirement>
+    </functional>
+
+    <non_functional>
+      <requirement>Transiciones de fase deben completar en &lt;100ms</requirement>
+      <requirement>Estado de turno debe persistir a DB en &lt;500ms</requirement>
+      <requirement>UI nunca debe mostrar estado inconsistente durante transiciones</requirement>
+      <requirement>Logs claros para debugging (cada acción debe ser trazable)</requirement>
+    </non_functional>
+  </requirements>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 6: INSTRUCTIONS (OBLIGATORIO)                                   -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <instructions>
+    <step number="1">
+      <title>Extend TypeScript Types for Turn Management</title>
+      <action>
+        Extend src/types/game.ts with turn management types:
+
+        ```typescript
+        export interface TurnState {
+          gameId: string;
+          turnNumber: number;
+          activePlayer: 'player' | 'opponent';
+          currentPhase: 'start' | 'main' | 'combat' | 'end';
+          playerMana: number;
+          playerMaxMana: number;
+          opponentMana: number;
+          opponentMaxMana: number;
+          playerFatigueCounter: number;
+          opponentFatigueCounter: number;
+          actions: GameAction[];
+        }
+
+        export interface GameAction {
+          type: 'play_card' | 'attack' | 'end_phase' | 'pass_turn';
+          playerId: string;
+          timestamp: Date;
+          data: Record<string, any>;
+        }
+
+        export type PhaseType = 'start' | 'main' | 'combat' | 'end';
+
+        export interface ActionResult {
+          success: boolean;
+          message?: string;
+          updatedState?: TurnState;
+        }
+        ```
+
+        Ensure compatibility with existing GameState and Player interfaces.
+      </action>
+      <validation>
+        <execution_success>
+          ✅ npx tsc --noEmit passes without errors
+          ✅ All turn-related types exported from src/types/game.ts
+          ✅ Types compatible with existing battle types
+        </execution_success>
+      </validation>
+    </step>
+
+    <step number="2">
+      <title>Implement Phase Controller</title>
+      <action>
+        Create src/lib/game/phase-controller.ts:
+
+        This module handles phase transitions and validates actions per phase.
+        It's a pure, deterministic module with no side effects.
+
+        Key functions:
+        - getNextPhase(currentPhase): Returns the next phase in sequence
+        - isActionAllowedInPhase(action, phase): Validates if action can happen in phase
+        - getPhaseHooks(): Returns callbacks for onEnterPhase, onExitPhase
+
+        Example implementation in EXAMPLES section below.
+      </action>
+      <validation>
+        <execution_success>
+          ✅ Unit tests pass for phase progression
+          ✅ Cannot skip phases (enforced sequentially)
+          ✅ Phase-specific actions properly validated
+        </execution_success>
+      </validation>
+    </step>
+
+    <step number="3">
+      <title>Implement Deck Service</title>
+      <action>
+        Create src/lib/game/deck-service.ts:
+
+        Handles card drawing mechanics and fatigue system.
+
+        Key functions:
+        - drawCard(gameId, playerId): Draws 1 card from deck
+        - applyFatigue(playerId, fatigueCounter): Applies progressive fatigue damage
+        - initializeDeck(playerId, cardIds): Creates shuffled deck at game start
+
+        Fatigue logic:
+        - Track fatigueCounter per player
+        - Increment by 1 each time drawing from empty deck
+        - Apply fatigueCounter damage to player HP
+      </action>
+      <validation>
+        <execution_success>
+          ✅ Draws 5 cards at game start
+          ✅ Draws 1 card at start of each turn
+          ✅ Fatigue damage increases progressively (1, 2, 3, ...)
+          ✅ Deck count updates correctly
+        </execution_success>
+      </validation>
+    </step>
+
+    <step number="4">
+      <title>Implement Turn Manager Core</title>
+      <action>
+        Create src/lib/game/turn-manager.ts:
+
+        This is the main orchestrator. TurnManager class with methods:
+
+        - constructor(gameId): Load game state from DB
+        - startTurn(): Execute Start Phase (recharge mana, draw card, increment maxMana)
+        - executeAction(action): Validate and execute player action
+        - advancePhase(): Move to next phase
+        - endTurn(): Cleanup and pass to opponent
+
+        Integrate with:
+        - PhaseController for phase logic
+        - DeckService for card drawing
+        - battle-service.ts for combat resolution
+
+        See detailed code example in EXAMPLES section.
+      </action>
+      <validation>
+        <execution_success>
+          ✅ Can start new turn successfully
+          ✅ Mana recharges correctly (refills to maxMana)
+          ✅ maxMana increments by 1 per turn (caps at 10)
+          ✅ Actions validated per phase
+          ✅ Turn counter increments
+          ✅ Turn passes to opponent after End Phase
+        </execution_success>
+      </validation>
+    </step>
+
+    <step number="5">
+      <title>Create Game Flow API Endpoints</title>
+      <action>
+        Create 3 endpoints:
+
+        1. **POST /api/game/start**
+           - Initialize new game session
+           - Create TurnManager instance
+           - Draw starting hands (5 cards each)
+           - Set initial state (turn 1, Main Phase, 1/1 mana)
+           - Return initial GameState
+
+        2. **POST /api/game/action**
+           - Accepts { gameId, action: GameAction }
+           - Load TurnManager
+           - Call turnManager.executeAction(action)
+           - Return { success, result, updatedState }
+
+        3. **POST /api/game/advance-phase**
+           - Accepts { gameId }
+           - Load TurnManager
+           - Call turnManager.advancePhase()
+           - Return { currentPhase, updatedState }
+
+        All endpoints:
+        - Integrate Stack Auth (verify user owns game session)
+        - Persist state to database
+        - Return proper error codes (401, 400, 500)
+      </action>
+      <validation>
+        <execution_success>
+          ✅ All endpoints return 200 on success
+          ✅ Unauthorized requests return 401
+          ✅ Invalid actions return 400 with clear error message
+          ✅ State persists correctly to database
+          ✅ Can reload game state and continue
+        </execution_success>
+      </validation>
+    </step>
+
+    <step number="6">
+      <title>Integrate with Battle System</title>
+      <action>
+        Update card playing flow to use Turn Manager:
+
+        1. Player clicks "Play Card" in UI
+        2. Frontend calls POST /api/game/action with type: 'play_card'
+        3. Turn Manager validates:
+           - Is it Main Phase? ✅
+           - Does player have enough mana? ✅
+           - Is card in player's hand? ✅
+        4. If valid:
+           - Deduct mana
+           - Call POST /api/battle/initiate (generates problem)
+           - Return problem to player
+        5. Player solves problem
+        6. Frontend calls POST /api/battle/resolve
+        7. If correct:
+           - Card played successfully (creature to board / spell executed)
+        8. If incorrect:
+           - Card discarded, mana lost
+        9. Turn Manager records action in history
+
+        Create integration helper: src/lib/game/card-play-integration.ts
+      </action>
+      <validation>
+        <execution_success>
+          ✅ Can play card in Main Phase successfully
+          ✅ Cannot play card in Combat Phase (returns error)
+          ✅ Mana deducted before battle starts
+          ✅ Card removed from hand after successful solve
+          ✅ Card discarded if problem failed (mana still spent)
+        </execution_success>
+      </validation>
+    </step>
+
+    <step number="7">
+      <title>Add Turn State Persistence</title>
+      <action>
+        Extend database schema if needed:
+
+        ```typescript
+        // src/db/schema.ts
+        export const gameSessions = pgTable('game_sessions', {
+          id: uuid('id').primaryKey().defaultRandom(),
+          // ... existing fields ...
+          turnState: jsonb('turn_state').$type<TurnState>(),
+          actionHistory: jsonb('action_history').$type<GameAction[]>(),
+          updatedAt: timestamp('updated_at').defaultNow(),
+        });
+        ```
+
+        Implement in TurnManager:
+        - persistState(): Save turnState to database (atomic transaction)
+        - loadState(): Load turnState from database
+
+        Run migration:
+        ```bash
+        npx drizzle-kit generate
+        npx drizzle-kit migrate
+        ```
+      </action>
+      <validation>
+        <execution_success>
+          ✅ Turn state persists to database on every change
+          ✅ Can reload game state from database
+          ✅ State consistency maintained across page refreshes
+          ✅ Action history logged correctly
+        </execution_success>
+      </validation>
+    </step>
+
+    <step number="8">
+      <title>Testing & Validation</title>
+      <action>
+        Create comprehensive test suite: scripts/test-turn-manager.ts
+
+        Tests should cover:
+        1. Turn Progression (turn counter increments, phases advance)
+        2. Mana Management (refills, increments, caps at 10)
+        3. Phase Restrictions (can't play card in Combat, can't attack in Main)
+        4. Fatigue System (damage increases progressively when deck empty)
+        5. State Persistence (save/load from database)
+
+        Run test script:
+        ```bash
+        npx tsx scripts/test-turn-manager.ts
+        ```
+
+        Expected output: All tests pass ✅
+      </action>
+      <validation>
+        <execution_success>
+          ✅ All tests pass
+          ✅ No TypeScript errors
+          ✅ Turn Manager behaves deterministically
+          ✅ Console logs show clear turn progression
+        </execution_success>
+      </validation>
+    </step>
+
+    <step number="9">
+      <title>Git Commit</title>
+      <action>
+        Commit all changes with descriptive message:
+
+        ```bash
+        git add .
+        git commit -m "feat: implement Turn Manager and comprehensive game rules
+
+        GAME RULES:
+        - Documented complete game rules (setup, turn structure, combat, elements)
+        - Dual problem system for battles (both players solve)
+        - Damage calculation: base + accuracy bonus + elemental bonus
+        - Elemental advantage cycle: Fire > Air > Earth > Water > Fire
+        - Fatigue system for empty deck (progressive damage)
+
+        TURN MANAGER:
+        - Implemented TurnManager class with phase progression
+        - Phase Controller for sequential phase transitions
+        - Deck Service with card drawing and fatigue
+        - Mana management (recharge, increment, cap at 10)
+        - Game flow API endpoints (/api/game/start, action, advance-phase)
+        - Integration with Battle System
+        - State persistence to database
+
+        TESTS:
+        ✅ Turn progression working
+        ✅ Mana management correct
+        ✅ Phase restrictions enforced
+        ✅ Fatigue system functional
+
+        🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+        Co-Authored-By: Claude <noreply@anthropic.com>"
+        ```
+      </action>
+    </step>
+  </instructions>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 7: EXAMPLES                                                     -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <examples>
+    <example type="code">
+      <description>Turn Manager Core Implementation</description>
+      <code language="typescript">
+        <![CDATA[
+// src/lib/game/turn-manager.ts
+
+import { db } from '@/db';
+import { gameSessions } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { TurnState, GameAction, ActionResult, PhaseType } from '@/types/game';
+import { drawCard, applyFatigue } from './deck-service';
+import { getNextPhase, isActionAllowedInPhase } from './phase-controller';
+
+export class TurnManager {
+  private state: TurnState;
+
+  constructor(gameId: string) {
+    // Load state from database (synchronous for example, should be async)
+    this.state = this.loadStateSync(gameId);
+  }
+
+  /**
+   * Start new turn for active player
+   * Executes Start Phase automatically
+   */
+  async startTurn(): Promise<TurnState> {
+    const { activePlayer } = this.state;
+
+    console.log(`🎮 Starting turn ${this.state.turnNumber + 1} for ${activePlayer}`);
+
+    // Increment turn counter
+    this.state.turnNumber += 1;
+
+    // Recharge mana and increment max mana
+    if (activePlayer === 'player') {
+      this.state.playerMaxMana = Math.min(10, this.state.playerMaxMana + 1);
+      this.state.playerMana = this.state.playerMaxMana;
+    } else {
+      this.state.opponentMaxMana = Math.min(10, this.state.opponentMaxMana + 1);
+      this.state.opponentMana = this.state.opponentMaxMana;
+    }
+
+    console.log(`💎 Mana recharged: ${this.getCurrentMana()}/${this.getCurrentMaxMana()}`);
+
+    // Draw card (handles fatigue if deck empty)
+    await this.drawCardForActivePlayer();
+
+    // Advance to Main Phase (Start Phase is automatic)
+    this.state.currentPhase = 'main';
+
+    await this.persistState();
+
+    return this.state;
+  }
+
+  /**
+   * Execute a game action (play card, attack, etc.)
+   * Validates action is legal before executing
+   */
+  async executeAction(action: GameAction): Promise<ActionResult> {
+    console.log(`⚡ Executing action: ${action.type} in ${this.state.currentPhase} phase`);
+
+    // Validate action is legal
+    if (!this.isActionLegal(action)) {
+      const error = `Action ${action.type} not allowed in ${this.state.currentPhase} phase`;
+      console.error(`❌ ${error}`);
+      return { success: false, message: error };
+    }
+
+    // Execute action logic
+    const result = await this.performAction(action);
+
+    if (result.success) {
+      // Record in history
+      this.state.actions.push(action);
+      await this.persistState();
+    }
+
+    return result;
+  }
+
+  /**
+   * Advance to next phase in sequence
+   * If in End Phase, ends turn and starts opponent's turn
+   */
+  async advancePhase(): Promise<TurnState> {
+    const previousPhase = this.state.currentPhase;
+    const nextPhase = getNextPhase(this.state.currentPhase);
+
+    console.log(`📍 Advancing phase: ${previousPhase} → ${nextPhase}`);
+
+    if (nextPhase === 'start') {
+      // End Phase completed, pass turn to opponent
+      await this.endTurn();
+      return this.startTurn();
+    } else {
+      this.state.currentPhase = nextPhase;
+      await this.persistState();
+      return this.state;
+    }
+  }
+
+  /**
+   * Check if action is legal in current phase
+   */
+  private isActionLegal(action: GameAction): boolean {
+    const { currentPhase, activePlayer } = this.state;
+
+    // Only active player can act
+    if (action.playerId !== activePlayer) {
+      console.error(`❌ Player ${action.playerId} is not the active player`);
+      return false;
+    }
+
+    // Check phase restrictions
+    return isActionAllowedInPhase(action.type, currentPhase);
+  }
+
+  /**
+   * Perform the actual action logic
+   */
+  private async performAction(action: GameAction): Promise<ActionResult> {
+    switch (action.type) {
+      case 'play_card':
+        return this.playCard(action.data.cardId);
+      case 'attack':
+        return this.attack(action.data.attackerId, action.data.targetId);
+      case 'end_phase':
+        await this.advancePhase();
+        return { success: true, message: 'Phase advanced' };
+      default:
+        return { success: false, message: `Unknown action type: ${action.type}` };
+    }
+  }
+
+  /**
+   * Play a card from hand
+   */
+  private async playCard(cardId: string): Promise<ActionResult> {
+    // This will integrate with battle-service.ts
+    // 1. Check mana cost
+    // 2. Deduct mana
+    // 3. Trigger battle flow (generate problem)
+    // 4. Return problem to player
+    // (Detailed implementation in card-play-integration.ts)
+
+    console.log(`🎴 Playing card: ${cardId}`);
+    return { success: true, message: 'Card play initiated' };
+  }
+
+  /**
+   * Execute attack
+   */
+  private async attack(attackerId: string, targetId: string): Promise<ActionResult> {
+    // This will integrate with battle-service.ts
+    // Generate dual problems and resolve combat
+    console.log(`⚔️  Attack: ${attackerId} → ${targetId}`);
+    return { success: true, message: 'Attack initiated' };
+  }
+
+  /**
+   * Draw card for active player (handles fatigue)
+   */
+  private async drawCardForActivePlayer(): Promise<void> {
+    const { activePlayer } = this.state;
+
+    try {
+      await drawCard(this.state.gameId, activePlayer);
+      console.log(`🃏 ${activePlayer} drew a card`);
+    } catch (error: any) {
+      if (error.message === 'FATIGUE') {
+        // Deck empty, apply fatigue damage
+        const fatigueCounter = activePlayer === 'player'
+          ? ++this.state.playerFatigueCounter
+          : ++this.state.opponentFatigueCounter;
+
+        await applyFatigue(this.state.gameId, activePlayer, fatigueCounter);
+        console.log(`💀 ${activePlayer} suffers ${fatigueCounter} fatigue damage`);
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * End current turn, cleanup, and pass to opponent
+   */
+  private async endTurn(): Promise<void> {
+    console.log(`🏁 Ending turn ${this.state.turnNumber}`);
+
+    // Clear temporary effects
+    // Remove summoning sickness from creatures
+    // (Detailed implementation here)
+
+    // Switch active player
+    this.state.activePlayer = this.state.activePlayer === 'player' ? 'opponent' : 'player';
+
+    // Clear actions for new turn
+    this.state.actions = [];
+
+    await this.persistState();
+  }
+
+  /**
+   * Get current mana of active player
+   */
+  private getCurrentMana(): number {
+    return this.state.activePlayer === 'player'
+      ? this.state.playerMana
+      : this.state.opponentMana;
+  }
+
+  /**
+   * Get current max mana of active player
+   */
+  private getCurrentMaxMana(): number {
+    return this.state.activePlayer === 'player'
+      ? this.state.playerMaxMana
+      : this.state.opponentMaxMana;
+  }
+
+  /**
+   * Get current state (for API responses)
+   */
+  public getState(): TurnState {
+    return { ...this.state };
+  }
+
+  /**
+   * Save state to database
+   */
+  private async persistState(): Promise<void> {
+    await db.update(gameSessions)
+      .set({
+        turnState: this.state,
+        updatedAt: new Date(),
+      })
+      .where(eq(gameSessions.id, this.state.gameId));
+  }
+
+  /**
+   * Load state from database (sync version for constructor)
+   */
+  private loadStateSync(gameId: string): TurnState {
+    // In real implementation, this should be async
+    // For now, return mock state
+    return {
+      gameId,
+      turnNumber: 0,
+      activePlayer: 'player',
+      currentPhase: 'start',
+      playerMana: 0,
+      playerMaxMana: 0,
+      opponentMana: 0,
+      opponentMaxMana: 0,
+      playerFatigueCounter: 0,
+      opponentFatigueCounter: 0,
+      actions: [],
+    };
+  }
+}
+        ]]>
+      </code>
+    </example>
+
+    <example type="code">
+      <description>Phase Controller Implementation</description>
+      <code language="typescript">
+        <![CDATA[
+// src/lib/game/phase-controller.ts
+
+import { PhaseType } from '@/types/game';
+
+/**
+ * Get the next phase in sequence
+ * If current phase is 'end', returns 'start' (indicating turn should pass)
+ */
+export function getNextPhase(currentPhase: PhaseType): PhaseType {
+  const sequence: PhaseType[] = ['start', 'main', 'combat', 'end'];
+  const currentIndex = sequence.indexOf(currentPhase);
+
+  if (currentIndex === -1) {
+    throw new Error(`Invalid phase: ${currentPhase}`);
+  }
+
+  // If at end, wrap to start (signals turn pass)
+  if (currentIndex === sequence.length - 1) {
+    return 'start';
+  }
+
+  return sequence[currentIndex + 1];
+}
+
+/**
+ * Check if an action type is allowed in a given phase
+ */
+export function isActionAllowedInPhase(
+  actionType: string,
+  phase: PhaseType
+): boolean {
+  const phaseRules: Record<PhaseType, string[]> = {
+    start: [], // No manual actions in Start Phase
+    main: ['play_card', 'end_phase'],
+    combat: ['attack', 'end_phase'],
+    end: [], // No manual actions in End Phase (automatic)
+  };
+
+  const allowedActions = phaseRules[phase] || [];
+  return allowedActions.includes(actionType);
+}
+
+/**
+ * Get phase hooks (for future extensibility)
+ */
+export interface PhaseHooks {
+  onEnterPhase?: (phase: PhaseType) => void;
+  onExitPhase?: (phase: PhaseType) => void;
+}
+
+export function getPhaseHooks(phase: PhaseType): PhaseHooks {
+  // Future: Add phase-specific hooks here
+  // Example: onEnterCombat, onExitMain, etc.
+  return {};
+}
+        ]]>
+      </code>
+    </example>
+
+    <example type="usage">
+      <description>Using Turn Manager in API Endpoint</description>
+      <code language="typescript">
+        <![CDATA[
+// src/app/api/game/action/route.ts
+
+import { NextRequest, NextResponse } from 'next/server';
+import { stackServerApp } from '@/lib/stack';
+import { TurnManager } from '@/lib/game/turn-manager';
+import { z } from 'zod';
+
+const actionSchema = z.object({
+  gameId: z.string().uuid(),
+  action: z.object({
+    type: z.enum(['play_card', 'attack', 'end_phase', 'pass_turn']),
+    data: z.record(z.any()).optional(),
+  }),
+});
+
+export async function POST(req: NextRequest) {
+  try {
+    const user = await stackServerApp.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { gameId, action } = actionSchema.parse(body);
+
+    // Load Turn Manager for this game
+    const turnManager = new TurnManager(gameId);
+
+    // Execute action
+    const result = await turnManager.executeAction({
+      type: action.type,
+      playerId: user.id,
+      timestamp: new Date(),
+      data: action.data || {},
+    });
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.message },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      result,
+      state: turnManager.getState(),
+    });
+  } catch (error) {
+    console.error('Error executing action:', error);
+    return NextResponse.json(
+      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+        ]]>
+      </code>
+    </example>
+
+    <anti_patterns>
+      <anti_pattern>
+        <description>Don't allow phase skipping</description>
+        <bad_code>
+          <![CDATA[
+// ❌ BAD - Allows skipping phases
+function advancePhase() {
+  state.currentPhase = 'combat'; // Jumps from start to combat!
+}
+          ]]>
+        </bad_code>
+        <good_code>
+          <![CDATA[
+// ✅ GOOD - Enforces sequential progression
+function advancePhase() {
+  const sequence = ['start', 'main', 'combat', 'end'];
+  const currentIndex = sequence.indexOf(state.currentPhase);
+  const nextIndex = (currentIndex + 1) % sequence.length;
+  state.currentPhase = sequence[nextIndex];
+}
+          ]]>
+        </good_code>
+      </anti_pattern>
+
+      <anti_pattern>
+        <description>Don't mutate state without validation</description>
+        <bad_code>
+          <![CDATA[
+// ❌ BAD - Direct mutation without checks
+function playCard(cardId: string) {
+  state.playerMana -= card.cost; // Might go negative!
+  state.hand = state.hand.filter(c => c.id !== cardId);
+}
+          ]]>
+        </bad_code>
+        <good_code>
+          <![CDATA[
+// ✅ GOOD - Validate before mutating
+function playCard(cardId: string) {
+  const card = state.hand.find(c => c.id === cardId);
+
+  if (!card) {
+    throw new Error('Card not in hand');
+  }
+
+  if (state.playerMana < card.cost) {
+    throw new Error('Insufficient mana');
+  }
+
+  if (state.currentPhase !== 'main') {
+    throw new Error('Can only play cards in Main Phase');
+  }
+
+  // Now safe to mutate
+  state.playerMana -= card.cost;
+  state.hand = state.hand.filter(c => c.id !== cardId);
+}
+          ]]>
+        </good_code>
+      </anti_pattern>
+    </anti_patterns>
+  </examples>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 8: VALIDATION (OBLIGATORIO)                                     -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <validation>
+    <execution_checklist>
+      <item>✅ Turn counter increments correctly (1, 2, 3, ...)</item>
+      <item>✅ Mana recharges to maxMana at start of turn</item>
+      <item>✅ maxMana increases by 1 per turn (capped at 10)</item>
+      <item>✅ Player draws 5 cards at game start</item>
+      <item>✅ Player draws 1 card at Start Phase</item>
+      <item>✅ Phases progress in correct order (start → main → combat → end)</item>
+      <item>✅ Cannot play cards outside Main Phase</item>
+      <item>✅ Cannot attack outside Combat Phase</item>
+      <item>✅ Turn passes to opponent after End Phase</item>
+      <item>✅ Fatigue damage applied when deck empty (1, 2, 3, ...)</item>
+      <item>✅ State persists correctly to database</item>
+      <item>✅ Can reload game and continue from saved state</item>
+      <item>✅ Action history logged for debugging</item>
+      <item>✅ Elemental advantages calculate correctly (+25% damage)</item>
+      <item>✅ Accuracy bonus applies when answer correct (+50% damage)</item>
+      <item>✅ Dual problem system works (both players solve)</item>
+      <item>✅ TypeScript compilation succeeds with no errors</item>
+    </execution_checklist>
+
+    <smoke_tests>
+      <test>
+        <name>Complete Turn Flow</name>
+        <command>Play full game: start → 10 turns → end</command>
+        <expected>All phases work, mana progresses correctly (1→10), turns pass</expected>
+      </test>
+      <test>
+        <name>Invalid Action Rejection</name>
+        <command>Try to play card in Combat Phase</command>
+        <expected>Returns 400 error: "Can only play cards in Main Phase"</expected>
+      </test>
+      <test>
+        <name>Mana Cap</name>
+        <command>Play 15 turns</command>
+        <expected>maxMana stays at 10 after turn 10</expected>
+      </test>
+      <test>
+        <name>Fatigue Progression</name>
+        <command>Draw from empty deck 5 times</command>
+        <expected>Damage: 1, 2, 3, 4, 5 (cumulative -15 HP)</expected>
+      </test>
+      <test>
+        <name>Elemental Advantage</name>
+        <command>Fire attacks Air</command>
+        <expected>+25% damage bonus applied</expected>
+      </test>
+    </smoke_tests>
+  </validation>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 9: OUTPUT FORMAT                                                -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <output_format>
+    <structure>
+      <section name="implementation_summary">
+        Summary of what was implemented:
+        - Files created (turn-manager.ts, phase-controller.ts, deck-service.ts, etc.)
+        - API endpoints added (/api/game/start, action, advance-phase)
+        - Database changes (turnState, actionHistory fields)
+        - Integration with Battle System
+      </section>
+
+      <section name="game_rules_summary">
+        Summary of comprehensive game rules documented:
+        - Setup (deck, HP, mana, hand)
+        - Turn structure (4 phases in detail)
+        - Dual problem system
+        - Damage calculation formula
+        - Elemental advantages
+        - AI behavior
+        - Win/loss conditions
+      </section>
+
+      <section name="test_results">
+        Results from test-turn-manager.ts:
+        - Turn progression test ✅
+        - Mana management test ✅
+        - Phase restrictions test ✅
+        - Fatigue system test ✅
+        - State persistence test ✅
+      </section>
+
+      <section name="integration_notes">
+        How Turn Manager integrates with:
+        - Battle System (dual problems, damage calculation)
+        - Card playing flow (validation → problem → resolution)
+        - Database (state persistence)
+        - UI components (phase display, mana counters)
+      </section>
+
+      <section name="next_steps">
+        Recommendations for:
+        - Prompt #14: AI Opponent decision making
+        - Prompt #15: Problem Solving UI components
+        - Phase 4: Battle UI implementation
+      </section>
+    </structure>
+
+    <format>Markdown with code blocks, checklists, and clear sections</format>
+  </output_format>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 10: NOTES                                                       -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <notes>
+    <note type="important">
+      The Turn Manager is the "single source of truth" for game state.
+      ALL game actions MUST go through TurnManager.executeAction() to ensure
+      consistency, proper validation, and rule enforcement.
+    </note>
+
+    <note type="architecture">
+      This prompt serves dual purpose:
+      1. Documentation of comprehensive game rules (evolution of 00_GAME_RULES.xml v1.0)
+      2. Implementation guide for Turn Manager
+
+      The game rules section should be referenced by all future gameplay prompts
+      to ensure consistency and alignment.
+    </note>
+
+    <note type="performance">
+      Phase transitions should be instantaneous (&lt;100ms). Avoid heavy computations
+      in phase change hooks. Defer expensive operations (like AI decision making)
+      to separate background tasks or async queues.
+    </note>
+
+    <note type="future">
+      Future enhancements could include:
+      - Turn timers (30 seconds per turn with visual "rope" indicator)
+      - Turn replay system for game analysis
+      - Spectator mode (watch live games)
+      - Tournament mode with best-of-3 matches
+      - Card bans/restrictions for competitive play
+    </note>
+
+    <note type="testing">
+      Comprehensive testing is critical for Turn Manager.
+      Any bugs in turn progression will cascade to all gameplay.
+      Test matrix should cover:
+      - Normal flow (all phases in order)
+      - Edge cases (empty deck, 0 mana, full hand)
+      - Error cases (invalid actions, wrong phase)
+      - Persistence (save/load mid-turn)
+    </note>
+  </notes>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 11: NEXT STEPS                                                  -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <next_steps>
+    After completing this prompt, proceed to:
+
+    1. **14_AI_OPPONENT_PROMPT.xml** - Implement AI decision making
+       - Use Turn Manager for AI actions
+       - Implement strategy (card selection, targeting)
+       - Problem solving simulation with difficulty-based accuracy
+
+    2. **15_PROBLEM_SOLVING_UI_PROMPT.xml** - Create UI components
+       - ProblemModal component (displays problems)
+       - BattleSequence component (shows damage calculations)
+       - DualProblemView (side-by-side problems for player + opponent)
+
+    3. **Phase 4: Battle UI Implementation** - Build frontend
+       - Game board UI (player hand, opponent hand, creatures on board)
+       - Phase indicator (current phase, turn number)
+       - Mana counters (current/max with visual gems)
+       - HP bars with damage animations
+       - Turn pass button
+  </next_steps>
+</prompt>

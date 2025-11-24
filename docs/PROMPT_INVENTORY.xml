@@ -21,7 +21,7 @@ USO:
 TOTAL DE PROMPTS: 13
 -->
 
-<prompt_inventory version="1.0">
+<prompt_inventory version="2.0">
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <!-- METADATA                                                                 -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -31,6 +31,9 @@ TOTAL DE PROMPTS: 13
     <last_updated>2025-11-24</last_updated>
     <total_prompts>13</total_prompts>
     <total_categories>4</total_categories>
+    <version_notes>
+      v2.0: Prompt #13 enhanced to comprehensive dual-purpose document (Game Rules + Turn Manager)
+    </version_notes>
     <documentation_structure>
       <![CDATA[
 docs/
@@ -568,8 +571,61 @@ docs/
       <last_updated>2025-11-24</last_updated>
     </prompt>
 
+    <prompt id="13" status="planned">
+      <file>13_RULES_ENHANCEMENT_TURN_MANAGER_PROMPT.xml</file>
+      <title>Game Rules Enhancement &amp; Turn Manager Implementation</title>
+      <phase>Gameplay - Core Systems</phase>
+      <difficulty>high</difficulty>
+      <estimated_time>240-300 minutes (4-5 hours)</estimated_time>
+      <description>
+        Dual-purpose prompt that:
+        1. Documents comprehensive game rules (evolution of 00_GAME_RULES.xml v1.0 → v2.0)
+           - Complete turn structure (4 phases: Start, Main, Combat, End)
+           - Dual problem system mechanics (both players solve simultaneously)
+           - Damage calculation formula (base + accuracy bonus 50% + elemental bonus 25%)
+           - Elemental advantage cycle (Fire > Air > Earth > Water > Fire)
+           - Fatigue system for empty decks (progressive damage: 1, 2, 3, ...)
+           - AI opponent behavior and decision making
+           - Win/loss conditions and progression systems
+
+        2. Implements Turn Manager orchestration system
+           - TurnManager class with phase progression
+           - PhaseController for sequential phase transitions
+           - Deck Service with card drawing and fatigue
+           - Mana management (recharge, increment, cap at 10)
+           - Game flow API endpoints (/api/game/start, action, advance-phase)
+           - Integration with Battle System (prompt #12)
+           - State persistence to database
+      </description>
+      <dependencies>
+        <dependency>12_BATTLE_PROBLEMS_IMPLEMENTATION_PROMPT.xml (REQUIRED)</dependency>
+        <dependency>Battle API endpoints working</dependency>
+        <dependency>User Profile System implemented</dependency>
+        <dependency>Game session system exists</dependency>
+      </dependencies>
+      <key_deliverables>
+        <deliverable>Comprehensive game rules documentation (all mechanics detailed)</deliverable>
+        <deliverable>TurnManager class with deterministic state management</deliverable>
+        <deliverable>PhaseController for sequential phase transitions</deliverable>
+        <deliverable>Deck Service with card drawing and fatigue system</deliverable>
+        <deliverable>API endpoints: /api/game/start, /api/game/action, /api/game/advance-phase</deliverable>
+        <deliverable>Integration layer between Turn Manager and Battle System</deliverable>
+        <deliverable>Turn state persistence (database schema + migrations)</deliverable>
+        <deliverable>Test suite for turn progression, mana management, phase restrictions</deliverable>
+      </key_deliverables>
+      <technical_complexity>
+        <item>Deterministic state management (same inputs = same outputs)</item>
+        <item>Atomic state changes (no partial turn progressions)</item>
+        <item>Phase progression validation (cannot skip phases)</item>
+        <item>Integration with existing Battle System</item>
+        <item>Progressive fatigue damage calculation</item>
+        <item>Turn history logging for debugging</item>
+      </technical_complexity>
+      <last_updated>2025-11-24</last_updated>
+      <prerequisite_for>14_AI_OPPONENT_PROMPT.xml, 15_PROBLEM_SOLVING_UI_PROMPT.xml, Phase 4 Battle UI</prerequisite_for>
+    </prompt>
+
     <future_prompts>
-      <prompt>13_TURN_MANAGER_PROMPT.xml (Planned)</prompt>
       <prompt>14_AI_OPPONENT_PROMPT.xml (Planned)</prompt>
       <prompt>15_PROBLEM_SOLVING_UI_PROMPT.xml (Planned)</prompt>
     </future_prompts>
@@ -629,11 +685,18 @@ docs/
       <note>REQUIRES prompt 11 (User Profile System) to be completed first</note>
     </phase>
 
-    <phase number="7" name="Advanced Gameplay">
-      <prompt_ref id="13">13_TURN_MANAGER_PROMPT.xml (Planned)</prompt_ref>
+    <phase number="7" name="Turn Management &amp; Game Flow">
+      <prompt_ref id="13">13_RULES_ENHANCEMENT_TURN_MANAGER_PROMPT.xml (Planned)</prompt_ref>
+      <note>Comprehensive game rules documentation + Turn Manager implementation</note>
+      <note>REQUIRES prompt 12 (Battle System) to be completed first</note>
+      <note>This is the orchestration layer that makes all game mechanics work together</note>
+    </phase>
+
+    <phase number="8" name="Advanced Gameplay">
       <prompt_ref id="14">14_AI_OPPONENT_PROMPT.xml (Planned)</prompt_ref>
       <prompt_ref id="15">15_PROBLEM_SOLVING_UI_PROMPT.xml (Planned)</prompt_ref>
-      <note>Advanced game mechanics - turn management, AI opponent, problem UI enhancements</note>
+      <note>AI opponent decision making and problem UI enhancements</note>
+      <note>REQUIRES prompt 13 (Turn Manager) to be completed first</note>
     </phase>
   </execution_order>
 
@@ -648,8 +711,8 @@ docs/
 
     <by_difficulty>
       <difficulty level="easy">1</difficulty>
-      <difficulty level="medium">7</difficulty>
-      <difficulty level="high">5</difficulty>
+      <difficulty level="medium">6</difficulty>
+      <difficulty level="high">6</difficulty>
     </by_difficulty>
 
     <by_status>
@@ -660,7 +723,8 @@ docs/
 
     <total_estimated_time>
       <completed>1320-1710 minutes (~22-28.5 hours)</completed>
-      <planned>195-260 minutes (~3.25-4.3 hours)</planned>
+      <planned>435-560 minutes (~7.25-9.3 hours)</planned>
+      <note>Prompt #13 significantly expanded: 240-300 minutes (was 60-90 in v1.0)</note>
     </total_estimated_time>
 
     <by_category>
@@ -669,7 +733,7 @@ docs/
       <category name="onboarding">5</category>
       <category name="gamification">1</category>
       <category name="store">1</category>
-      <category name="gameplay">4 (3 future)</category>
+      <category name="gameplay">7 (3 planned, including enhanced #13)</category>
     </by_category>
   </statistics>
 

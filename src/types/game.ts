@@ -67,3 +67,66 @@ export interface GameState {
   pendingCard: Card | null; // Card waiting for problem resolution
   winner: 'player' | 'enemy' | null;
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// TURN MANAGER TYPES
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Phase types for turn management (aligned with game rules)
+ * 'start' -> 'main' -> 'combat' -> 'end'
+ */
+export type PhaseType = 'start' | 'main' | 'combat' | 'end';
+
+/**
+ * Complete state of a turn in the game
+ * This is the single source of truth for turn progression
+ */
+export interface TurnState {
+  gameId: string;
+  turnNumber: number;
+  activePlayer: 'player' | 'opponent';
+  currentPhase: PhaseType;
+
+  // Mana tracking
+  playerMana: number;
+  playerMaxMana: number;
+  opponentMana: number;
+  opponentMaxMana: number;
+
+  // Fatigue tracking (for empty deck draws)
+  playerFatigueCounter: number;
+  opponentFatigueCounter: number;
+
+  // Action history for this turn
+  actions: GameAction[];
+}
+
+/**
+ * Types of actions a player can take during a turn
+ */
+export type GameActionType =
+  | 'play_card'       // Play a card from hand (Main Phase only)
+  | 'attack'          // Attack with a creature (Combat Phase only)
+  | 'end_phase'       // Manually end current phase
+  | 'pass_turn';      // Pass turn to opponent
+
+/**
+ * Represents a single action taken by a player
+ */
+export interface GameAction {
+  type: GameActionType;
+  playerId: string;
+  timestamp: Date;
+  data: Record<string, any>; // Action-specific data (cardId, targetId, etc.)
+}
+
+/**
+ * Result of executing a game action
+ */
+export interface ActionResult {
+  success: boolean;
+  message?: string;
+  updatedState?: TurnState;
+  error?: string;
+}

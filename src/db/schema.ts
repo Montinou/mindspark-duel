@@ -98,6 +98,11 @@ export const gameSessions = pgTable('game_sessions', {
   turnsCount: integer('turns_count').default(0).notNull(),
   startedAt: timestamp('started_at').defaultNow().notNull(),
   endedAt: timestamp('ended_at'),
+
+  // Turn Manager state persistence (added for prompt #13)
+  gameState: json('game_state'), // Full ExtendedGameState (includes decks, hands, boards, HP, etc.)
+  actionHistory: json('action_history'), // Array of GameAction[] for debugging/replay
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 export const mastery = pgTable("mastery", {

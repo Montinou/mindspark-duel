@@ -34,79 +34,49 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Deck completed", deckId: deck.id });
   }
 
-  // 3. Generate card text and images using AI
-  const { generateImageWithGemini } = await import("@/lib/ai/card-generator");
-  // const { uploadImage } = await import("@/lib/storage"); // No longer needed here as generateImageWithGemini handles it
-
-  // Import Gemini API for text generation
-  const GEMINI_API_KEY = process.env.GEMINIAI_API_KEY;
-  // Use gemini-2.0-flash-exp for consistency
-  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`;
+  // 3. Generate card text and images using Workers AI
+  const { generateCard } = await import("@/lib/ai/card-generator");
 
   for (const { cards: card } of pendingCards) {
     console.log(`\n🎴 Processing card ${card.id} (${card.element})...`);
 
-    // Generate card text (name, description, flavor) using AI
-    if (card.name !== "Pending Card..." || !GEMINI_API_KEY) {
-      throw new Error(`Card ${card.id} is not pending or GEMINI_API_KEY is missing`);
+    if (card.name !== "Pending Card...") {
+      throw new Error(`Card ${card.id} is not pending`);
     }
 
-    const prompt = `
-      Create a unique, creative trading card for a game called "MindSpark Duel".
-      The card should be based on the theme: "${deck.theme}".
-      The card MUST belong to the element: "${card.element}".
-      The card has cost: ${card.cost}, power: ${card.power}, defense: ${card.defense}.
+    console.log('🎴 Generating complete card with Workers AI...');
 
-      Return ONLY a valid JSON object with this structure:
-      {
-        "name": "Card Name",
-        "description": "Brief card effect description",
-        "flavorText": "Thematic flavor text",
-        "imagePrompt": "OPTIMIZED FULL ART PROMPT - [Detailed subject description matching card name]. Vertical portrait orientation, full-bleed borderless composition extending to all edges. Magic the Gathering full art card style. High-resolution digital painting with dramatic cinematic lighting, vibrant saturated colors, intricate details, sharp focus. The subject fills the frame dramatically with immersive environment surrounding it. Professional TCG artwork quality, masterpiece, highly detailed, rich textures. NO text, NO watermarks, NO borders, NO frames. Theme: ${deck.theme}"
-      }
-
-      IMPORTANT: Generate all text in SPANISH.
-    `;
-
-    console.log('📝 Generating card text with Gemini...');
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
-      })
+    // Generate complete card using Workers AI
+    const generatedCard = await generateCard({
+      theme: deck.theme,
+      element: card.element as "Fire" | "Water" | "Earth" | "Air",
+      difficulty: 5,
+      userId: deck.userId
     });
 
-    if (!response.ok) {
-      throw new Error(`Gemini text generation failed: ${response.statusText}`);
-    }
+    console.log(`✅ Card generated: "${generatedCard.name}"`);
 
-    const data = await response.json();
-    const text = data.candidates[0].content.parts[0].text;
-    const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    const cardData = JSON.parse(jsonString);
-
-    console.log(`✅ Text generated for: ${cardData.name}`);
-
-    // Generate Image using Imagen 3 - NO FALLBACK
-    console.log('🖼️  Generating image...');
-    const imageUrl = await generateImageWithGemini(cardData.imagePrompt);
-
-    // Update card with all generated data
+    // Update the existing pending card with generated data
     console.log('💾 Updating card in database...');
     await db.update(cards).set({
-      name: cardData.name,
-      description: cardData.description,
-      flavorText: cardData.flavorText || "",
-      imageUrl: imageUrl,
-      imagePrompt: cardData.imagePrompt,
+      name: generatedCard.name,
+      description: generatedCard.description,
+      imageUrl: generatedCard.imageUrl,
+      imagePrompt: generatedCard.imagePrompt,
+      problemCategory: generatedCard.problemCategory,
+      // Keep original cost, power, defense from pending card
     }).where(eq(cards.id, card.id));
+
+    // Delete the duplicate card created by generateCard()
+    if (generatedCard.id !== card.id) {
+      await db.delete(cards).where(eq(cards.id, generatedCard.id));
+    }
 
     console.log(`✅ Card ${card.id} processed successfully!`);
 
-    // Add delay between cards to respect rate limits (10 seconds)
-    console.log('⏱️  Waiting 10 seconds before next card...');
-    await sleep(10000);
+    // Small delay between cards
+    console.log('⏱️  Waiting 2 seconds before next card...');
+    await sleep(2000);
   }
 
   // 4. Check if there are more pending cards for this deck

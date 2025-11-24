@@ -10,6 +10,10 @@ export interface ProblemGenerationRequest {
   userAge?: number;
   userEducationLevel?: "elementary" | "middle" | "high" | "college" | "other";
   userInterests?: string[];
+  // Card context for battle problems
+  cardName?: string;
+  cardElement?: "Fire" | "Water" | "Earth" | "Air";
+  cardTags?: string[];
 }
 
 export interface ProblemResponse {
@@ -39,7 +43,7 @@ export default {
 
     try {
       const body = await request.json() as ProblemGenerationRequest;
-      const { category, difficulty, theme, userAge, userEducationLevel, userInterests } = body;
+      const { category, difficulty, theme, userAge, userEducationLevel, userInterests, cardName, cardElement, cardTags } = body;
 
       if (!category || !difficulty) {
         return new Response(
@@ -71,9 +75,32 @@ export default {
         userContext += '\n';
       }
 
+      // Build card context for battle problems
+      let cardContext = '';
+      if (cardName || cardElement || (cardTags && cardTags.length > 0)) {
+        cardContext = '\n\nCONTEXTO DE CARTA (BATALLA):';
+        if (cardName) {
+          cardContext += `\n- La carta jugada es: "${cardName}"`;
+        }
+        if (cardElement) {
+          const elementNames: Record<string, string> = {
+            Fire: 'Fuego',
+            Water: 'Agua',
+            Earth: 'Tierra',
+            Air: 'Aire'
+          };
+          cardContext += `\n- Elemento: ${elementNames[cardElement]}`;
+        }
+        if (cardTags && cardTags.length > 0) {
+          cardContext += `\n- Tags temáticos: ${cardTags.join(', ')}`;
+        }
+        cardContext += '\n- IMPORTANTE: El problema debe estar relacionado temáticamente con la carta (usar tags, elemento o nombre como inspiración)';
+        cardContext += '\n';
+      }
+
       const themeContext = theme ? ` relacionado con el tema "${theme}"` : '';
 
-      const prompt = `Genera un problema educativo para la categoría ${category} con dificultad ${difficulty} (escala 1-10)${themeContext}.${userContext}
+      const prompt = `Genera un problema educativo para la categoría ${category} con dificultad ${difficulty} (escala 1-10)${themeContext}.${userContext}${cardContext}
 
 INSTRUCCIONES ESTRICTAS:
 1. Debes responder ÚNICAMENTE con JSON válido

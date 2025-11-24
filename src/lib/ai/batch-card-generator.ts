@@ -2,7 +2,9 @@ import { Card, CardBatch } from '@/types/game';
 import { uploadImage } from '../storage';
 import { db } from '@/db';
 import { cards, cardBatches } from '@/db/schema';
+import { generateImageWithWorkersAI } from './card-generator';
 
+// Workers AI endpoints (Gemini only used for text generation)
 const GEMINI_API_KEY = process.env.GEMINIAI_API_KEY;
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
@@ -159,45 +161,15 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no code 
 
     console.log('✅ Batch record created:', batchRecord.id);
 
-    // 3. Generate images and save cards in parallel using Gemini 2.5 Flash Image
+    // 3. Generate images and save cards in parallel using Cloudflare Workers AI (Flux 1 Schnell)
     const cardPromises = batchData.cards.map(async (cardData: CardData, index: number) => {
       let imageUrl = "/placeholder.png";
 
       try {
-        // Generate image using Gemini 2.5 Flash Image
-        console.log(`🖼️  Generating image ${index + 1}/${count} with Gemini...`);
-
-        const imageGenResponse = await fetch(API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{ text: cardData.imagePrompt }]
-            }],
-            generationConfig: {
-              responseModalities: ["IMAGE"],
-              temperature: 1.0,
-              topP: 0.95,
-            }
-          })
-        });
-
-        if (imageGenResponse.ok) {
-          const imageData = await imageGenResponse.json();
-
-          // Extract base64 image from response
-          const imagePart = imageData.candidates?.[0]?.content?.parts?.find(
-            (part: any) => part.inlineData?.mimeType?.startsWith('image/')
-          );
-
-          if (imagePart?.inlineData?.data) {
-            // Convert base64 to buffer
-            const buffer = Buffer.from(imagePart.inlineData.data, 'base64');
-            const fileName = `cards/${crypto.randomUUID()}.png`;
-            imageUrl = await uploadImage(buffer, fileName, 'image/png');
-            console.log(`✅ Image ${index + 1} uploaded`);
-          }
-        }
+        // Generate image using Cloudflare Workers AI (Flux 1 Schnell)
+        console.log(`🖼️  Generating image ${index + 1}/${count} with Workers AI...`);
+        imageUrl = await generateImageWithWorkersAI(cardData.imagePrompt);
+        console.log(`✅ Image ${index + 1} uploaded to R2`);
       } catch (imgError) {
         console.error(`⚠️  Failed to generate/upload image for card ${index + 1}:`, imgError);
       }

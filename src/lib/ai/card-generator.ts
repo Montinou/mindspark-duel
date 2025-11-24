@@ -27,6 +27,7 @@ interface CardDataResponse {
   element: "Fire" | "Water" | "Earth" | "Air";
   problemCategory: "Math" | "Logic" | "Science";
   imagePrompt: string;
+  tags: string[]; // 2-4 thematic keywords from Workers AI
 }
 
 interface ProblemResponse {
@@ -177,6 +178,7 @@ export async function generateCard(options: GenerateCardOptions): Promise<Card> 
       problemCategory: cardData.problemCategory,
       imageUrl: imageUrl,
       imagePrompt: cardData.imagePrompt,
+      tags: cardData.tags,
       createdById: userId || null,
     })
     .returning();

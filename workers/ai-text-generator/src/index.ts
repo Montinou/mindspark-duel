@@ -18,6 +18,7 @@ export interface CardDataResponse {
   element: "Fire" | "Water" | "Earth" | "Air";
   problemCategory: "Math" | "Logic" | "Science";
   imagePrompt: string;
+  tags: string[]; // 2-4 thematic keywords in Spanish for contextual problem generation
 }
 
 export default {
@@ -64,7 +65,8 @@ INSTRUCCIONES ESTRICTAS:
   "defense": 4,
   "element": "Fire",
   "problemCategory": "Math",
-  "imagePrompt": "Descripcion detallada en ingles para arte vertical de carta tipo trading card estilo full-bleed"
+  "imagePrompt": "Descripcion detallada en ingles para arte vertical de carta tipo trading card estilo full-bleed",
+  "tags": ["palabra1", "palabra2", "palabra3"]
 }
 
 REGLAS OBLIGATORIAS:
@@ -76,6 +78,7 @@ REGLAS OBLIGATORIAS:
 - element: DEBE ser EXACTAMENTE uno de estos: Fire, Water, Earth, Air
 - problemCategory: DEBE ser EXACTAMENTE uno de estos: Math, Logic, Science
 - imagePrompt: En INGLÉS, descripción corta y clara, SIN comillas
+- tags: Array de 2-4 palabras clave temáticas en ESPAÑOL (relacionadas con nombre, elemento, tema)
 
 EJEMPLO VÁLIDO:
 {
@@ -86,7 +89,8 @@ EJEMPLO VÁLIDO:
   "defense": 3,
   "element": "Fire",
   "problemCategory": "Math",
-  "imagePrompt": "Majestic red dragon breathing fire in a volcanic landscape vertical portrait card art full bleed style"
+  "imagePrompt": "Majestic red dragon breathing fire in a volcanic landscape vertical portrait card art full bleed style",
+  "tags": ["dragón", "fuego", "volcán"]
 }`;
 
       console.log('🤖 Generating card data with Llama 3.1 8B...');
@@ -98,7 +102,7 @@ EJEMPLO VÁLIDO:
           messages: [
             {
               role: 'system',
-              content: 'You are a creative game designer specializing in trading card games. You generate perfectly valid JSON responses without any markdown formatting or extra text.'
+              content: 'Eres un diseñador de juegos experto en cartas de trading. Generas respuestas JSON perfectamente válidas sin formato markdown ni texto adicional. Siempre respetas la estructura exacta solicitada.'
             },
             {
               role: 'user',
@@ -143,8 +147,8 @@ EJEMPLO VÁLIDO:
       }
 
       // Validate required fields
-      if (!cardData.name || !cardData.element || !cardData.imagePrompt) {
-        throw new Error('Missing required fields in generated card data');
+      if (!cardData.name || !cardData.element || !cardData.imagePrompt || !cardData.tags || cardData.tags.length < 2) {
+        throw new Error('Missing required fields in generated card data (tags must have at least 2 keywords)');
       }
 
       console.log('✅ Card data generated:', cardData.name);

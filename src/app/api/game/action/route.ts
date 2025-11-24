@@ -14,6 +14,12 @@ import { db } from '@/db';
 import { gameSessions } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { TurnManager, ExtendedGameState } from '@/lib/game/turn-manager';
+import {
+  loadTurnManagerFromDB,
+  saveTurnManagerToDB,
+  checkGameEnd,
+  endGame,
+} from '@/lib/game/game-state-persistence';
 import { GameActionType } from '@/types/game';
 import { z } from 'zod';
 
@@ -64,24 +70,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 6. Load Turn Manager state
-    // NOTE: In production, this should load from database
-    // For now, we'll need to reconstruct the state
-    // This is a simplified version - full implementation in step 7 (persistence)
-
-    // TODO: Load full game state from database once persistence is implemented
-    // For now, return error indicating state persistence is needed
-    return NextResponse.json(
-      {
-        error: 'State persistence not yet implemented',
-        message: 'Please complete step 7 (database persistence) first',
-      },
-      { status: 501 }
-    );
-
-    // This code will be uncommented after step 7:
-    /*
-    const turnManager = loadTurnManagerFromDB(gameId);
+    // 6. Load Turn Manager state from database
+    const turnManager = await loadTurnManagerFromDB(gameId);
 
     // 7. Execute action
     const result = await turnManager.executeAction({
@@ -101,14 +91,21 @@ export async function POST(req: NextRequest) {
     // 8. Save updated state to database
     await saveTurnManagerToDB(turnManager);
 
-    // 9. Update turn count
-    await db
-      .update(gameSessions)
-      .set({ turnsCount: turnManager.getState().turnNumber })
-      .where(eq(gameSessions.id, gameId));
-
-    // 10. Get updated game state
+    // 9. Check if game has ended (player HP <= 0)
     const gameState = turnManager.getState();
+    const gameEndCheck = checkGameEnd(gameState);
+
+    if (gameEndCheck.isEnded) {
+      // Determine winner ID
+      let winnerId: string | null = null;
+      if (gameEndCheck.winner === 'player') {
+        winnerId = gameSession.playerId;
+      } else if (gameEndCheck.winner === 'opponent' && gameSession.enemyId) {
+        winnerId = gameSession.enemyId;
+      }
+
+      await endGame(gameId, winnerId);
+    }
 
     console.log(`⚡ Action executed: ${action.type}`);
     console.log(`📍 Current phase: ${gameState.currentPhase}`);
@@ -119,6 +116,8 @@ export async function POST(req: NextRequest) {
       result: {
         message: result.message,
       },
+      gameEnded: gameEndCheck.isEnded,
+      winner: gameEndCheck.winner,
       state: {
         turnNumber: gameState.turnNumber,
         activePlayer: gameState.activePlayer,
@@ -138,7 +137,6 @@ export async function POST(req: NextRequest) {
       playerBoard: gameState.playerBoard,
       opponentBoard: gameState.opponentBoard,
     });
-    */
   } catch (error) {
     console.error('Error executing action:', error);
 

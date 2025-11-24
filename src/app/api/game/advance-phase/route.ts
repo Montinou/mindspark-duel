@@ -13,6 +13,12 @@ import { stackServerApp } from '@/lib/stack';
 import { db } from '@/db';
 import { gameSessions } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import {
+  loadTurnManagerFromDB,
+  saveTurnManagerToDB,
+  checkGameEnd,
+  endGame,
+} from '@/lib/game/game-state-persistence';
 import { z } from 'zod';
 
 const advancePhaseSchema = z.object({
@@ -58,20 +64,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 6. Load Turn Manager state
-    // NOTE: In production, this should load from database
-    // For now, return error indicating state persistence is needed
-    return NextResponse.json(
-      {
-        error: 'State persistence not yet implemented',
-        message: 'Please complete step 7 (database persistence) first',
-      },
-      { status: 501 }
-    );
-
-    // This code will be uncommented after step 7:
-    /*
-    const turnManager = loadTurnManagerFromDB(gameId);
+    // 6. Load Turn Manager state from database
+    const turnManager = await loadTurnManagerFromDB(gameId);
 
     // 7. Advance phase
     await turnManager.advancePhase();
@@ -79,8 +73,20 @@ export async function POST(req: NextRequest) {
     // 8. Save updated state to database
     await saveTurnManagerToDB(turnManager);
 
-    // 9. Get updated game state
+    // 9. Check if game has ended
     const gameState = turnManager.getState();
+    const gameEndCheck = checkGameEnd(gameState);
+
+    if (gameEndCheck.isEnded) {
+      let winnerId: string | null = null;
+      if (gameEndCheck.winner === 'player') {
+        winnerId = gameSession.playerId;
+      } else if (gameEndCheck.winner === 'opponent' && gameSession.enemyId) {
+        winnerId = gameSession.enemyId;
+      }
+
+      await endGame(gameId, winnerId);
+    }
 
     console.log(`📍 Phase advanced to: ${gameState.currentPhase}`);
     console.log(`🎮 Turn: ${gameState.turnNumber}`);
@@ -88,6 +94,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      gameEnded: gameEndCheck.isEnded,
+      winner: gameEndCheck.winner,
       state: {
         turnNumber: gameState.turnNumber,
         activePlayer: gameState.activePlayer,
@@ -107,7 +115,6 @@ export async function POST(req: NextRequest) {
       playerBoard: gameState.playerBoard,
       opponentBoard: gameState.opponentBoard,
     });
-    */
   } catch (error) {
     console.error('Error advancing phase:', error);
 

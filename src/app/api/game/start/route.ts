@@ -15,6 +15,7 @@ import { db } from '@/db';
 import { gameSessions, cards, userCards } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { createTurnManager } from '@/lib/game/turn-manager';
+import { saveTurnManagerToDB } from '@/lib/game/game-state-persistence';
 import { Card } from '@/types/game';
 import { z } from 'zod';
 
@@ -103,7 +104,10 @@ export async function POST(req: NextRequest) {
     // 7. Start first turn (this will draw starting hands and set initial state)
     await turnManager.startTurn();
 
-    // 8. Get game state
+    // 8. Save initial state to database
+    await saveTurnManagerToDB(turnManager);
+
+    // 9. Get game state
     const gameState = turnManager.getState();
 
     console.log(`🎮 Game started: ${gameSession.id}`);

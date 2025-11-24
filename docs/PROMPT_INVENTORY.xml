@@ -18,10 +18,10 @@ USO:
 - Mantener sincronizado con la estructura de carpetas en @docs/
 
 ÚLTIMA ACTUALIZACIÓN: 2025-11-24
-TOTAL DE PROMPTS: 13
+TOTAL DE PROMPTS: 14
 -->
 
-<prompt_inventory version="2.0">
+<prompt_inventory version="2.1">
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <!-- METADATA                                                                 -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -29,9 +29,10 @@ TOTAL DE PROMPTS: 13
   <metadata>
     <project>Mindspark Duel</project>
     <last_updated>2025-11-24</last_updated>
-    <total_prompts>13</total_prompts>
+    <total_prompts>14</total_prompts>
     <total_categories>4</total_categories>
     <version_notes>
+      v2.1: Added Prompt #14 (AI Opponent "The Dark Quizmaster")
       v2.0: Prompt #13 enhanced to comprehensive dual-purpose document (Game Rules + Turn Manager)
     </version_notes>
     <documentation_structure>
@@ -625,8 +626,50 @@ docs/
       <prerequisite_for>14_AI_OPPONENT_PROMPT.xml, 15_PROBLEM_SOLVING_UI_PROMPT.xml, Phase 4 Battle UI</prerequisite_for>
     </prompt>
 
+    <prompt id="14" status="planned">
+      <file>14_AI_OPPONENT_PROMPT.xml</file>
+      <title>Implement AI Opponent "The Dark Quizmaster"</title>
+      <phase>Gameplay - AI Systems</phase>
+      <difficulty>high</difficulty>
+      <estimated_time>180-240 minutes (3-4 hours)</estimated_time>
+      <description>
+        Implements "The Dark Quizmaster", the AI opponent that provides strategic gameplay:
+        - Priority-based decision making (lethal > survival > tempo > combat)
+        - Card value evaluation with situation bonuses
+        - Strategic card selection (on-curve play, mana efficiency)
+        - Combat targeting (threat assessment, face damage priority)
+        - Problem solving simulation with difficulty-based accuracy (30-90%)
+        - Human-like thinking delays (0.5-5 seconds per action)
+        - Configurable difficulty levels (Easy/Normal/Hard)
+        - Integration with Turn Manager and Battle System
+      </description>
+      <dependencies>
+        <dependency>13_RULES_ENHANCEMENT_TURN_MANAGER_PROMPT.xml (REQUIRED)</dependency>
+        <dependency>12_BATTLE_PROBLEMS_IMPLEMENTATION_PROMPT.xml (REQUIRED)</dependency>
+        <dependency>Turn Manager API working</dependency>
+        <dependency>Battle System API working</dependency>
+      </dependencies>
+      <key_deliverables>
+        <deliverable>AIOpponent class with full turn execution</deliverable>
+        <deliverable>DecisionMaker with 5-level priority framework</deliverable>
+        <deliverable>CardEvaluator with scoring formula</deliverable>
+        <deliverable>ProblemSolver with difficulty-based accuracy</deliverable>
+        <deliverable>API endpoint /api/ai/take-turn</deliverable>
+        <deliverable>Game loop integration (auto-trigger AI turn)</deliverable>
+        <deliverable>Test suite with win rate validation</deliverable>
+      </key_deliverables>
+      <technical_complexity>
+        <item>Deterministic decision making (same state = same actions)</item>
+        <item>Card value assessment with dynamic situation bonuses</item>
+        <item>Threat evaluation and defensive play logic</item>
+        <item>Difficulty scaling (Easy: 40% win rate, Hard: 60% win rate)</item>
+        <item>Intentional suboptimal plays for balance</item>
+      </technical_complexity>
+      <last_updated>2025-11-24</last_updated>
+      <prerequisite_for>15_PROBLEM_SOLVING_UI_PROMPT.xml, Full game loop testing</prerequisite_for>
+    </prompt>
+
     <future_prompts>
-      <prompt>14_AI_OPPONENT_PROMPT.xml (Planned)</prompt>
       <prompt>15_PROBLEM_SOLVING_UI_PROMPT.xml (Planned)</prompt>
     </future_prompts>
   </category>
@@ -692,11 +735,16 @@ docs/
       <note>This is the orchestration layer that makes all game mechanics work together</note>
     </phase>
 
-    <phase number="8" name="Advanced Gameplay">
+    <phase number="8" name="AI Opponent">
       <prompt_ref id="14">14_AI_OPPONENT_PROMPT.xml (Planned)</prompt_ref>
+      <note>AI opponent "The Dark Quizmaster" with strategic decision making</note>
+      <note>REQUIRES prompts 12 (Battle System) and 13 (Turn Manager) completed</note>
+    </phase>
+
+    <phase number="9" name="Battle UI &amp; Polish">
       <prompt_ref id="15">15_PROBLEM_SOLVING_UI_PROMPT.xml (Planned)</prompt_ref>
-      <note>AI opponent decision making and problem UI enhancements</note>
-      <note>REQUIRES prompt 13 (Turn Manager) to be completed first</note>
+      <note>Problem UI enhancements and battle animations</note>
+      <note>Phase 4 of prompt #12: ProblemModal, BattleSequence, DualProblemView</note>
     </phase>
   </execution_order>
 
@@ -705,26 +753,27 @@ docs/
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
 
   <statistics>
-    <total_prompts>13</total_prompts>
+    <total_prompts>14</total_prompts>
     <completed_prompts>10</completed_prompts>
-    <planned_prompts>3</planned_prompts>
+    <planned_prompts>4</planned_prompts>
 
     <by_difficulty>
       <difficulty level="easy">1</difficulty>
       <difficulty level="medium">6</difficulty>
-      <difficulty level="high">6</difficulty>
+      <difficulty level="high">7</difficulty>
     </by_difficulty>
 
     <by_status>
       <status name="completed">10</status>
       <status name="in_progress">0</status>
-      <status name="planned">3</status>
+      <status name="planned">4</status>
     </by_status>
 
     <total_estimated_time>
       <completed>1320-1710 minutes (~22-28.5 hours)</completed>
-      <planned>435-560 minutes (~7.25-9.3 hours)</planned>
-      <note>Prompt #13 significantly expanded: 240-300 minutes (was 60-90 in v1.0)</note>
+      <planned>615-800 minutes (~10.25-13.3 hours)</planned>
+      <note>Prompt #13 expanded to comprehensive dual-purpose: 240-300 minutes</note>
+      <note>Prompt #14 added for AI opponent: 180-240 minutes</note>
     </total_estimated_time>
 
     <by_category>
@@ -733,7 +782,7 @@ docs/
       <category name="onboarding">5</category>
       <category name="gamification">1</category>
       <category name="store">1</category>
-      <category name="gameplay">7 (3 planned, including enhanced #13)</category>
+      <category name="gameplay">8 (4 planned: #13, #14, #15, Phase 4 UI)</category>
     </by_category>
   </statistics>
 

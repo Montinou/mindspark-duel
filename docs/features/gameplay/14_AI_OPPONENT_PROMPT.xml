@@ -1,0 +1,920 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║                     AI OPPONENT IMPLEMENTATION PROMPT                        ║
+║                           Mindspark Duel                                     ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+DESCRIPCIÓN:
+Implementa "The Dark Quizmaster", el oponente AI del juego. Este sistema de IA
+toma decisiones estratégicas durante las partidas: qué cartas jugar, qué objetivos
+atacar, y simula resolución de problemas con precisión variable basada en dificultad.
+
+Este prompt construye sobre el Turn Manager (#13) y Battle System (#12) para crear
+un oponente competente pero vencible que enseña estrategia sin frustrar al jugador.
+-->
+
+<prompt>
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 1: METADATA (OBLIGATORIO)                                        -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <metadata>
+    <title>Implement AI Opponent "The Dark Quizmaster"</title>
+    <phase>Gameplay - AI Systems</phase>
+    <difficulty>high</difficulty>
+    <estimated_time>180-240 minutes (3-4 hours)</estimated_time>
+    <version>1.0</version>
+    <last_updated>2025-11-24</last_updated>
+
+    <prerequisites>
+      <prerequisite>13_RULES_ENHANCEMENT_TURN_MANAGER_PROMPT.xml completed</prerequisite>
+      <prerequisite>12_BATTLE_PROBLEMS_IMPLEMENTATION_PROMPT.xml completed</prerequisite>
+      <prerequisite>Turn Manager working (game flow orchestration)</prerequisite>
+      <prerequisite>Battle System working (dual problems, damage calculation)</prerequisite>
+    </prerequisites>
+
+    <dependencies>
+      <dependency>Next.js 16.0.0</dependency>
+      <dependency>TypeScript</dependency>
+      <dependency>NeonDB (game sessions, AI state)</dependency>
+      <dependency>Turn Manager API (/api/game/action)</dependency>
+      <dependency>Battle System API (/api/battle/initiate, /api/battle/resolve)</dependency>
+    </dependencies>
+  </metadata>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 2: CONTEXT (OBLIGATORIO)                                        -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <context>
+    <project_info>
+      <name>Mindspark Duel</name>
+      <current_location>src/lib/ai/</current_location>
+      <framework>Next.js 16.0.0 (App Router)</framework>
+      <status>
+        - Turn Manager complete (phase progression, mana management)
+        - Battle System complete (dual problems, damage calculation)
+        - NEEDED: AI opponent decision making and strategy
+      </status>
+    </project_info>
+
+    <objective>
+      <primary>
+        Implementar un oponente AI ("The Dark Quizmaster") que:
+        1. Toma decisiones estratégicas de juego (qué cartas jugar, cuándo atacar)
+        2. Usa el Turn Manager para ejecutar acciones válidas
+        3. Simula resolución de problemas con precisión variable (basada en dificultad)
+        4. Proporciona desafío balanceado (competente pero vencible)
+        5. Ayuda al jugador a aprender estrategia (no frustra con decisiones perfectas)
+      </primary>
+
+      <success_criteria>
+        <criterion>✅ AI toma turno automáticamente cuando es su turno</criterion>
+        <criterion>✅ AI juega cartas inteligentemente ("on curve", gasta mana eficientemente)</criterion>
+        <criterion>✅ AI ataca con estrategia (prioriza objetivos amenazantes)</criterion>
+        <criterion>✅ AI responde problemas con precisión basada en dificultad (30-90%)</criterion>
+        <criterion>✅ AI pierde ~50% de las partidas (balance adecuado)</criterion>
+        <criterion>✅ AI simula "pensamiento" con delays (1-2 segundos por decisión)</criterion>
+      </success_criteria>
+    </objective>
+
+    <goal>
+      Crear un oponente AI que sea:
+      - Competente: Juega razonablemente bien, no comete errores obvios
+      - Predecible: El jugador puede aprender patrones y anticipar acciones
+      - Vencible: Comete errores estratégicos ocasionales, no es perfecto
+      - Educativo: Ayuda al jugador a aprender mecánicas y estrategia
+    </goal>
+  </context>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 3: CURRENT STATE                                                -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <current_state>
+    <directory_structure>
+      <![CDATA[
+src/
+├── lib/
+│   ├── game/
+│   │   ├── turn-manager.ts         # EXISTS - Turn management
+│   │   ├── phase-controller.ts     # EXISTS - Phase progression
+│   │   └── deck-service.ts         # EXISTS - Card drawing
+│   ├── battle-service.ts           # EXISTS - Battle logic
+│   └── ai/                         # TO CREATE - AI systems
+│       ├── ai-opponent.ts          # NEW - Main AI controller
+│       ├── decision-maker.ts       # NEW - Strategic decisions
+│       ├── card-evaluator.ts       # NEW - Card value assessment
+│       └── problem-solver.ts       # NEW - Problem answer simulation
+├── app/api/
+│   ├── game/                       # EXISTS - Game flow endpoints
+│   └── ai/                         # TO CREATE - AI endpoints
+│       └── take-turn/route.ts      # NEW - Trigger AI turn
+└── types/
+    └── ai.ts                       # TO CREATE - AI types
+      ]]>
+    </directory_structure>
+
+    <key_files>
+      <file path="src/lib/game/turn-manager.ts">
+        Turn Manager complete. AI will use TurnManager.executeAction() to play cards and attack.
+      </file>
+      <file path="src/lib/battle-service.ts">
+        Battle logic complete (generateBattleProblem, resolveBattle).
+        AI will use generateAIAnswer() helper for problem solving simulation.
+      </file>
+      <file path="src/app/api/battle/resolve/route.ts">
+        Already has generateAIAnswer() function for difficulty-based accuracy.
+        AI will leverage this for problem solving.
+      </file>
+    </key_files>
+
+    <current_implementation>
+      Currently:
+      ✅ Turn Manager handles turn progression and phase transitions
+      ✅ Battle System handles problem generation and damage calculation
+      ✅ generateAIAnswer() exists but is simple (random based on difficulty)
+
+      Missing:
+      ❌ Strategic decision making (which card to play, which target to attack)
+      ❌ AI turn automation (triggering AI actions when it's AI's turn)
+      ❌ Card value assessment (evaluating hand for best plays)
+      ❌ Threat evaluation (identifying dangerous player creatures)
+      ❌ Mana curve optimization (playing efficiently)
+    </current_implementation>
+  </current_state>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 4: REQUIREMENTS                                                 -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <requirements>
+    <technical>
+      <requirement priority="critical">
+        AI decisions must be deterministic given same game state + random seed
+        (for debugging and replay purposes)
+      </requirement>
+      <requirement priority="critical">
+        AI actions must go through Turn Manager (no bypassing validation)
+      </requirement>
+      <requirement priority="high">
+        AI must simulate thinking delays (1-2 seconds) to feel human-like
+      </requirement>
+      <requirement priority="high">
+        AI should make suboptimal plays ~30% of the time (vencible)
+      </requirement>
+      <requirement priority="medium">
+        AI should have configurable difficulty levels (Easy, Normal, Hard)
+      </requirement>
+      <requirement priority="low">
+        AI should "learn" from player patterns (future enhancement)
+      </requirement>
+    </technical>
+
+    <functional>
+      <requirement>AI plays cards "on curve" (uses most available mana)</requirement>
+      <requirement>AI prioritizes removing threatening player creatures</requirement>
+      <requirement>AI attacks player directly if board is clear</requirement>
+      <requirement>AI answers problems with accuracy based on difficulty:
+        - Easy: 30-50% accuracy
+        - Normal: 50-70% accuracy
+        - Hard: 70-90% accuracy
+      </requirement>
+      <requirement>AI doesn't play cards it can't afford (mana validation)</requirement>
+      <requirement>AI ends turn when no more useful actions available</requirement>
+      <requirement>AI respects phase restrictions (only attacks in Combat Phase)</requirement>
+    </functional>
+
+    <balance_requirements>
+      <requirement>Win rate against beginner players: ~40%</requirement>
+      <requirement>Win rate against experienced players: ~60%</requirement>
+      <requirement>Average game length: 8-12 turns</requirement>
+      <requirement>Player should win by learning, not luck</requirement>
+    </balance_requirements>
+  </requirements>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 5: AI STRATEGY DESIGN                                           -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <ai_strategy>
+    <decision_framework>
+      <title>Priority-Based Decision Making</title>
+      <description>
+        AI uses a priority system to decide actions each turn.
+        Higher priority actions are considered first.
+      </description>
+
+      <priority_levels>
+        <priority level="1" name="Lethal Check">
+          <description>Check if AI can win this turn</description>
+          <actions>
+            - Calculate total damage available (creatures + spells)
+            - If total damage >= player HP, execute lethal sequence
+            - Play all damage spells, attack with all creatures
+          </actions>
+        </priority>
+
+        <priority level="2" name="Survival Check">
+          <description>Check if player has lethal next turn, defend if so</description>
+          <actions>
+            - Estimate player's potential damage next turn
+            - If player has lethal, prioritize defensive plays:
+              * Play taunts/blockers
+              * Play healing spells
+              * Remove player's strongest creatures
+          </actions>
+        </priority>
+
+        <priority level="3" name="Tempo Play">
+          <description>Play cards efficiently to gain board control</description>
+          <actions>
+            - Evaluate cards in hand by mana efficiency
+            - Play cards "on curve" (use all mana if possible)
+            - Prefer creatures over spells in early game (turns 1-4)
+            - Prefer spells over creatures if board is lost (player has 3+ more creatures)
+          </actions>
+        </priority>
+
+        <priority level="4" name="Combat">
+          <description>Attack player or creatures strategically</description>
+          <actions>
+            - If player has no creatures: Attack face (player HP) with all creatures
+            - If player has small creatures (power ≤ 3): Attack face, ignore them
+            - If player has large creatures (power ≥ 5): Trade favorably (kill without dying)
+            - If uncertain: Attack face with 70% of creatures, hold 30% for defense
+          </actions>
+        </priority>
+
+        <priority level="5" name="End Turn">
+          <description>No more useful actions, end turn</description>
+          <actions>
+            - If no mana left OR no playable cards: End turn
+            - If in Combat Phase and all creatures attacked: Advance to End Phase
+          </actions>
+        </priority>
+      </priority_levels>
+    </decision_framework>
+
+    <card_evaluation>
+      <title>Card Value Assessment</title>
+      <description>
+        AI assigns a "value score" to each card based on current game state.
+        Higher value = more desirable to play.
+      </description>
+
+      <scoring_formula>
+        <![CDATA[
+Card Value = Base Value + Situation Bonus - Cost Penalty
+
+Base Value (Creatures):
+  - (Power + Defense) * 2
+  - Example: 5/5 creature = (5 + 5) * 2 = 20
+
+Base Value (Spells):
+  - Damage spells: Damage * 3
+  - Heal spells: Heal amount * 2
+  - Buff spells: Buff amount * 2
+
+Situation Bonus:
+  - If card removes player's strongest creature: +10
+  - If card can win the game: +100
+  - If card is on-curve (cost = current mana): +5
+
+Cost Penalty:
+  - Cost * -1
+  - Example: 7-cost card = -7 to value
+        ]]>
+      </scoring_formula>
+
+      <example>
+        <scenario>
+          AI has 6 mana.
+          Hand:
+          - Fireball (4 mana, 6 damage spell)
+          - Dragon (6 mana, 8/6 creature)
+          - Heal (3 mana, heal 5 HP)
+
+          Player has:
+          - 1 creature with 10/10 on board
+          - 15 HP remaining
+        </scenario>
+
+        <evaluation>
+          Fireball:
+            Base = 6 * 3 = 18
+            Situation = 0 (doesn't kill 10/10 creature)
+            Cost = -4
+            TOTAL = 14
+
+          Dragon:
+            Base = (8 + 6) * 2 = 28
+            Situation = +5 (on curve, 6 mana)
+            Cost = -6
+            TOTAL = 27
+
+          Heal:
+            Base = 5 * 2 = 10
+            Situation = 0
+            Cost = -3
+            TOTAL = 7
+
+          DECISION: Play Dragon (highest value = 27)
+        </evaluation>
+      </example>
+    </card_evaluation>
+
+    <problem_solving_simulation>
+      <title>Difficulty-Based Answer Generation</title>
+      <description>
+        AI simulates problem solving with accuracy based on difficulty.
+        Not true problem solving, but probability-based correct/incorrect answers.
+      </description>
+
+      <accuracy_formula>
+        <![CDATA[
+AI Accuracy = max(0.3, 1 - (problem.difficulty / 15))
+
+Examples:
+- Difficulty 1:  1 - (1/15)  = 0.93  (93% accuracy)
+- Difficulty 5:  1 - (5/15)  = 0.67  (67% accuracy)
+- Difficulty 10: 1 - (10/15) = 0.33  (33% accuracy)
+- Difficulty 15: max(0.3, 0) = 0.30  (30% minimum)
+        ]]>
+      </accuracy_formula>
+
+      <implementation>
+        <code language="typescript">
+          <![CDATA[
+function simulateAIAnswer(problem: BattleProblem, aiDifficulty: 'easy' | 'normal' | 'hard'): string {
+  // Adjust base accuracy by AI difficulty setting
+  const difficultyModifier = {
+    'easy': -0.2,     // -20% accuracy (30% → 10% on hard problems)
+    'normal': 0,      // No modifier (baseline)
+    'hard': +0.2,     // +20% accuracy (30% → 50% on hard problems)
+  }[aiDifficulty];
+
+  const baseAccuracy = Math.max(0.3, 1 - problem.difficulty / 15);
+  const finalAccuracy = Math.max(0.1, Math.min(0.95, baseAccuracy + difficultyModifier));
+
+  const answersCorrectly = Math.random() < finalAccuracy;
+
+  if (answersCorrectly) {
+    return problem.answer;
+  } else {
+    // Generate plausible wrong answer
+    return generateWrongAnswer(problem);
+  }
+}
+
+function generateWrongAnswer(problem: BattleProblem): string {
+  // Simple heuristic: modify correct answer slightly
+  const correct = problem.answer;
+
+  // If numeric, add/subtract random amount
+  if (/^\d+$/.test(correct)) {
+    const num = parseInt(correct);
+    const offset = Math.floor(Math.random() * 10) - 5; // -5 to +5
+    return String(num + offset);
+  }
+
+  // Otherwise, return generic wrong answer
+  return 'Wrong answer';
+}
+          ]]>
+        </code>
+      </implementation>
+    </problem_solving_simulation>
+
+    <thinking_simulation>
+      <title>Human-Like Delays</title>
+      <description>
+        Add delays between AI actions to simulate "thinking".
+        Makes AI feel more human, less robotic.
+      </description>
+
+      <delays>
+        <delay action="start_turn">500-1000ms</delay>
+        <delay action="choose_card">1000-2000ms</delay>
+        <delay action="choose_target">800-1500ms</delay>
+        <delay action="answer_problem">3000-5000ms</delay>
+        <delay action="end_turn">500-800ms</delay>
+      </delays>
+
+      <implementation>
+        <code language="typescript">
+          <![CDATA[
+async function thinkingDelay(action: string): Promise<void> {
+  const delays = {
+    start_turn: [500, 1000],
+    choose_card: [1000, 2000],
+    choose_target: [800, 1500],
+    answer_problem: [3000, 5000],
+    end_turn: [500, 800],
+  };
+
+  const [min, max] = delays[action] || [500, 1000];
+  const delay = Math.random() * (max - min) + min;
+
+  await new Promise(resolve => setTimeout(resolve, delay));
+}
+
+// Usage:
+await thinkingDelay('choose_card');
+const card = selectBestCard(hand, gameState);
+await thinkingDelay('answer_problem');
+const answer = simulateAIAnswer(problem, difficulty);
+          ]]>
+        </code>
+      </implementation>
+    </thinking_simulation>
+  </ai_strategy>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 6: INSTRUCTIONS (OBLIGATORIO)                                   -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <instructions>
+    <step number="1">
+      <title>Create AI TypeScript Types</title>
+      <action>
+        Create src/types/ai.ts with AI-specific types:
+
+        ```typescript
+        export type AIDifficulty = 'easy' | 'normal' | 'hard';
+
+        export interface AIState {
+          gameId: string;
+          difficulty: AIDifficulty;
+          personality: 'aggressive' | 'defensive' | 'balanced';
+          thinkingDelay: boolean; // Enable/disable thinking delays
+        }
+
+        export interface CardEvaluation {
+          cardId: string;
+          value: number;
+          reasoning: string; // For debugging
+        }
+
+        export interface AIDecision {
+          type: 'play_card' | 'attack' | 'end_turn';
+          cardId?: string;
+          targetId?: string;
+          reasoning: string;
+        }
+        ```
+      </action>
+      <validation>
+        <execution_success>
+          ✅ npx tsc --noEmit passes
+          ✅ All AI types exported
+        </execution_success>
+      </validation>
+    </step>
+
+    <step number="2">
+      <title>Implement Card Evaluator</title>
+      <action>
+        Create src/lib/ai/card-evaluator.ts:
+
+        Evaluates cards in AI's hand and assigns value scores based on game state.
+
+        Key functions:
+        - evaluateCard(card, gameState): Returns CardEvaluation
+        - selectBestCard(hand, gameState): Returns card with highest value
+        - getPlayableCards(hand, mana): Filters cards by mana cost
+
+        Use scoring formula from ai_strategy section above.
+      </action>
+      <validation>
+        <execution_success>
+          ✅ Can evaluate 10 different cards correctly
+          ✅ Prioritizes high-value cards
+          ✅ Filters by mana cost correctly
+        </execution_success>
+      </validation>
+    </step>
+
+    <step number="3">
+      <title>Implement Problem Solver</title>
+      <action>
+        Create src/lib/ai/problem-solver.ts:
+
+        Simulates AI answering problems with difficulty-based accuracy.
+
+        Key functions:
+        - simulateAIAnswer(problem, difficulty): Returns answer string
+        - generateWrongAnswer(problem): Returns plausible wrong answer
+        - calculateAccuracy(difficulty, aiDifficulty): Returns accuracy percentage
+
+        Use accuracy formula and implementation from ai_strategy section.
+      </action>
+      <validation>
+        <execution_success>
+          ✅ Accuracy matches expected formula
+          ✅ Easy difficulty: 30-50% accuracy
+          ✅ Normal difficulty: 50-70% accuracy
+          ✅ Hard difficulty: 70-90% accuracy
+        </execution_success>
+      </validation>
+    </step>
+
+    <step number="4">
+      <title>Implement Decision Maker</title>
+      <action>
+        Create src/lib/ai/decision-maker.ts:
+
+        Core AI logic using priority-based decision framework.
+
+        Key functions:
+        - makeDecision(gameState, aiState): Returns AIDecision
+        - checkLethal(gameState): Returns boolean + lethal actions
+        - checkSurvival(gameState): Returns boolean + defensive actions
+        - selectCombatTargets(gameState): Returns array of attacks
+
+        Implement priority levels 1-5 from ai_strategy section.
+      </action>
+      <validation>
+        <execution_success>
+          ✅ Detects lethal correctly
+          ✅ Prioritizes survival when threatened
+          ✅ Plays on curve in normal situations
+          ✅ Attacks strategically
+        </execution_success>
+      </validation>
+    </step>
+
+    <step number="5">
+      <title>Implement AI Opponent Controller</title>
+      <action>
+        Create src/lib/ai/ai-opponent.ts:
+
+        Main AI controller that orchestrates the AI turn.
+
+        ```typescript
+        export class AIOpponent {
+          private gameId: string;
+          private difficulty: AIDifficulty;
+          private thinkingDelay: boolean;
+
+          constructor(gameId: string, difficulty: AIDifficulty = 'normal') {
+            this.gameId = gameId;
+            this.difficulty = difficulty;
+            this.thinkingDelay = true;
+          }
+
+          async takeTurn(): Promise<void> {
+            // 1. Load game state
+            // 2. Main Phase: Play cards
+            // 3. Combat Phase: Attack
+            // 4. End turn
+          }
+
+          private async playCards(gameState): Promise<void> {
+            // While has mana and playable cards
+            // 1. Evaluate all cards in hand
+            // 2. Select best card
+            // 3. Execute play action via Turn Manager
+            // 4. If problem generated, answer it
+          }
+
+          private async executeCombat(gameState): Promise<void> {
+            // 1. Select targets for each creature
+            // 2. Execute attacks via Turn Manager
+            // 3. Answer problems for each attack
+          }
+        }
+        ```
+
+        Integrate:
+        - TurnManager for executing actions
+        - DecisionMaker for strategic choices
+        - CardEvaluator for card selection
+        - ProblemSolver for answering problems
+        - Thinking delays between actions
+      </action>
+      <validation>
+        <execution_success>
+          ✅ AI completes full turn successfully
+          ✅ Plays cards in Main Phase only
+          ✅ Attacks in Combat Phase only
+          ✅ Ends turn properly
+          ✅ Actions validate through Turn Manager
+        </execution_success>
+      </validation>
+    </step>
+
+    <step number="6">
+      <title>Create AI Turn Trigger Endpoint</title>
+      <action>
+        Create POST /api/ai/take-turn:
+
+        ```typescript
+        export async function POST(req: NextRequest) {
+          const user = await stackServerApp.getUser();
+          if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+          const { gameId, difficulty = 'normal' } = await req.json();
+
+          // Verify it's AI's turn
+          const turnManager = new TurnManager(gameId);
+          const state = turnManager.getState();
+
+          if (state.activePlayer !== 'opponent') {
+            return NextResponse.json({ error: 'Not AI\'s turn' }, { status: 400 });
+          }
+
+          // Execute AI turn
+          const aiOpponent = new AIOpponent(gameId, difficulty);
+          await aiOpponent.takeTurn();
+
+          // Return updated game state
+          return NextResponse.json({
+            success: true,
+            state: turnManager.getState(),
+          });
+        }
+        ```
+      </action>
+      <validation>
+        <execution_success>
+          ✅ Endpoint returns 200 on success
+          ✅ Only executes when it's AI's turn
+          ✅ Returns updated game state
+          ✅ Handles errors gracefully
+        </execution_success>
+      </validation>
+    </step>
+
+    <step number="7">
+      <title>Integrate AI with Game Loop</title>
+      <action>
+        Update game flow to automatically trigger AI turn:
+
+        Option A: Frontend polling
+        ```typescript
+        // In game UI component
+        useEffect(() => {
+          if (gameState.activePlayer === 'opponent') {
+            // Trigger AI turn after small delay
+            setTimeout(async () => {
+              await fetch('/api/ai/take-turn', {
+                method: 'POST',
+                body: JSON.stringify({ gameId: game.id }),
+              });
+              // Refresh game state
+            }, 1000);
+          }
+        }, [gameState.activePlayer]);
+        ```
+
+        Option B: Server-side webhook (more complex)
+        - Turn Manager triggers webhook when turn passes to AI
+        - Webhook calls AI turn endpoint
+        - Updates game state in database
+        - Notifies frontend via WebSocket/polling
+      </action>
+      <validation>
+        <execution_success>
+          ✅ AI turn triggers automatically
+          ✅ UI updates after AI finishes turn
+          ✅ Player can see AI actions (cards played, attacks)
+        </execution_success>
+      </validation>
+    </step>
+
+    <step number="8">
+      <title>Testing & Balancing</title>
+      <action>
+        Create test suite: scripts/test-ai-opponent.ts
+
+        Tests:
+        1. Card Evaluation Test
+           - Test scoring formula accuracy
+           - Verify best card selection logic
+
+        2. Decision Making Test
+           - Test lethal detection
+           - Test survival priority
+           - Test on-curve play preference
+
+        3. Problem Solving Test
+           - Test accuracy formula (1000 samples per difficulty)
+           - Verify difficulty modifiers work
+
+        4. Full Game Simulation
+           - Simulate 100 games AI vs AI
+           - Track win rates, average game length
+           - Verify balance (should be ~50/50)
+
+        Run:
+        ```bash
+        npx tsx scripts/test-ai-opponent.ts
+        ```
+
+        Expected results:
+        - Easy AI: ~40% win rate against Normal
+        - Normal AI: ~50% win rate against Normal
+        - Hard AI: ~60% win rate against Normal
+      </action>
+      <validation>
+        <execution_success>
+          ✅ All unit tests pass
+          ✅ AI vs AI games complete successfully
+          ✅ Win rates within expected ranges
+          ✅ No infinite loops or crashes
+        </execution_success>
+      </validation>
+    </step>
+
+    <step number="9">
+      <title>Git Commit</title>
+      <action>
+        Commit with descriptive message:
+
+        ```bash
+        git add .
+        git commit -m "feat: implement AI opponent 'The Dark Quizmaster'
+
+        AI DECISION MAKING:
+        - Priority-based decision framework (5 levels)
+        - Card value evaluation with situation bonuses
+        - Strategic card selection (on-curve play, tempo optimization)
+        - Combat targeting (lethal check, survival priority, face damage)
+        - Threat assessment and defensive plays
+
+        PROBLEM SOLVING SIMULATION:
+        - Difficulty-based accuracy (30-90% range)
+        - AI difficulty modifiers (Easy/Normal/Hard)
+        - Plausible wrong answer generation
+        - Formula: accuracy = max(0.3, 1 - difficulty/15)
+
+        IMPLEMENTATION:
+        - Created src/lib/ai/ai-opponent.ts (main controller)
+        - Created src/lib/ai/decision-maker.ts (strategic decisions)
+        - Created src/lib/ai/card-evaluator.ts (card value scoring)
+        - Created src/lib/ai/problem-solver.ts (answer simulation)
+        - Created src/types/ai.ts (AI types)
+        - Created API endpoint /api/ai/take-turn
+        - Integrated with Turn Manager and Battle System
+
+        FEATURES:
+        - Human-like thinking delays (0.5-5 seconds per action)
+        - Deterministic decisions (same state = same actions)
+        - Configurable difficulty (Easy/Normal/Hard)
+        - Full turn execution (card play → combat → end turn)
+
+        TESTING:
+        ✅ Card evaluation scoring
+        ✅ Decision making priorities
+        ✅ Problem solving accuracy
+        ✅ Full game simulation (AI vs AI)
+        ✅ Win rate balance (~50% against self)
+
+        🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+        Co-Authored-By: Claude <noreply@anthropic.com>"
+        ```
+      </action>
+    </step>
+  </instructions>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 7: VALIDATION (OBLIGATORIO)                                     -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <validation>
+    <execution_checklist>
+      <item>✅ AI takes turn automatically when activePlayer = 'opponent'</item>
+      <item>✅ AI plays cards intelligently (on curve, high value)</item>
+      <item>✅ AI attacks strategically (lethal > survival > tempo > face)</item>
+      <item>✅ AI respects phase restrictions (cards in Main, attacks in Combat)</item>
+      <item>✅ AI respects mana limits (doesn't overspend)</item>
+      <item>✅ AI answers problems with difficulty-based accuracy</item>
+      <item>✅ AI simulates thinking delays (feels human-like)</item>
+      <item>✅ AI win rate against Normal difficulty ~50%</item>
+      <item>✅ Easy AI loses ~60% of games</item>
+      <item>✅ Hard AI wins ~60% of games</item>
+      <item>✅ No infinite loops or crashes</item>
+      <item>✅ TypeScript compilation succeeds</item>
+    </execution_checklist>
+
+    <smoke_tests>
+      <test>
+        <name>AI Completes Full Turn</name>
+        <command>Trigger AI turn via API</command>
+        <expected>AI plays cards, attacks, ends turn successfully</expected>
+      </test>
+      <test>
+        <name>AI Detects Lethal</name>
+        <command>Set up board where AI has lethal</command>
+        <expected>AI goes for face damage, wins game</expected>
+      </test>
+      <test>
+        <name>AI Plays Defensively</name>
+        <command>Set up board where player has lethal next turn</command>
+        <expected>AI plays defensive cards, removes threats</expected>
+      </test>
+      <test>
+        <name>Difficulty Scaling</name>
+        <command>Play 10 games against Easy, 10 against Hard</command>
+        <expected>Easy AI easier to beat than Hard AI</expected>
+      </test>
+    </smoke_tests>
+  </validation>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 8: OUTPUT FORMAT                                                -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <output_format>
+    <structure>
+      <section name="implementation_summary">
+        Summary:
+        - Files created (ai-opponent.ts, decision-maker.ts, etc.)
+        - API endpoint added (/api/ai/take-turn)
+        - Integration with Turn Manager and Battle System
+      </section>
+
+      <section name="test_results">
+        Results from test-ai-opponent.ts:
+        - Card evaluation tests ✅
+        - Decision making tests ✅
+        - Problem solving accuracy tests ✅
+        - Full game simulation results (win rates)
+      </section>
+
+      <section name="ai_behavior_notes">
+        Observations:
+        - What strategies does AI use most often?
+        - Common mistakes AI makes (intentional for balance)
+        - Player feedback: Is AI too easy/hard?
+      </section>
+
+      <section name="next_steps">
+        Recommendations:
+        - Prompt #15: Problem Solving UI improvements
+        - Phase 4: Battle UI implementation
+        - Future: AI personality variants (aggressive, defensive, etc.)
+        - Future: AI learns from player patterns
+      </section>
+    </structure>
+
+    <format>Markdown with code blocks and checklists</format>
+  </output_format>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 9: NOTES                                                        -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <notes>
+    <note type="important">
+      AI should NEVER bypass Turn Manager validation.
+      All actions must go through TurnManager.executeAction() to ensure
+      consistency with game rules and prevent cheating.
+    </note>
+
+    <note type="balance">
+      AI is intentionally imperfect. It makes suboptimal plays ~30% of the time:
+      - Plays off-curve cards occasionally
+      - Attacks suboptimal targets sometimes
+      - Holds cards when it should play them
+
+      This keeps the game fun and winnable for players.
+    </note>
+
+    <note type="future">
+      Future enhancements:
+      - AI personalities (Aggressive, Defensive, Balanced)
+      - AI "learns" from player patterns (reinforcement learning)
+      - Dynamic difficulty adjustment (gets harder if player winning streak)
+      - AI trash talk / emotes (flavor text during battles)
+      - Boss AI with special rules/cheats for campaign mode
+    </note>
+
+    <note type="performance">
+      Thinking delays can be disabled for testing/debugging:
+      ```typescript
+      const ai = new AIOpponent(gameId, 'normal');
+      ai.setThinkingDelay(false); // Instant decisions
+      ```
+
+      This speeds up testing dramatically.
+    </note>
+  </notes>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- SECCIÓN 10: NEXT STEPS                                                  -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <next_steps>
+    After completing this prompt, proceed to:
+    - **15_PROBLEM_SOLVING_UI_PROMPT.xml** - Enhance problem UI (modals, animations)
+    - **Phase 4 of Prompt #12** - Battle UI components (ProblemModal, BattleSequence, DualProblemView)
+    - Test full game loop with AI opponent
+    - Balance AI difficulty based on player feedback
+  </next_steps>
+</prompt>

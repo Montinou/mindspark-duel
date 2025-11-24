@@ -1,4 +1,9 @@
-'use server';
+/**
+ * Battle Service
+ *
+ * Core battle logic for Mindspark Duel
+ * These are pure utility functions (not Server Actions)
+ */
 
 import { Card } from '@/types/game';
 import { BattleProblem, DamageCalculation, ProblemSubmissionResult } from '@/types/battle';

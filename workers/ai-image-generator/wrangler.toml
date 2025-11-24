@@ -1,0 +1,11 @@
+name = "mindspark-ai-image-generator"
+main = "src/index.ts"
+compatibility_date = "2024-11-20"
+
+# Workers AI binding
+[ai]
+binding = "AI"
+
+# CORS configuration
+[env.production]
+vars = { ENVIRONMENT = "production" }

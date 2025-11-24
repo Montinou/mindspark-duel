@@ -228,3 +228,9 @@ dist
 
 .serena
 thoughts
+
+# Card generation logs
+*-batch*.log
+card-generation-log.txt
+flux-card-generation-log.txt
+workers-ai-*.log

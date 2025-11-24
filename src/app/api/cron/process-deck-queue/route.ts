@@ -3,6 +3,9 @@ import { decks, cards, userCards } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
+// Helper function to add delay between API calls
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 // This route would ideally be called by a Cron job or a background worker
 // For MVP, we can call it manually or let it run on demand
 export async function POST(req: Request) {
@@ -23,7 +26,7 @@ export async function POST(req: Request) {
       eq(userCards.userId, deck.userId),
       eq(cards.name, "Pending Card...")
     ))
-    .limit(5); // Process 5 at a time to avoid timeout
+    .limit(2); // Process 2 at a time to avoid rate limits
 
   if (pendingCards.length === 0) {
     // If no pending cards, mark deck as completed
@@ -100,6 +103,10 @@ export async function POST(req: Request) {
     }).where(eq(cards.id, card.id));
 
     console.log(`✅ Card ${card.id} processed successfully!`);
+
+    // Add delay between cards to respect rate limits (10 seconds)
+    console.log('⏱️  Waiting 10 seconds before next card...');
+    await sleep(10000);
   }
 
   // 4. Check if there are more pending cards for this deck
@@ -112,7 +119,10 @@ export async function POST(req: Request) {
     .limit(1);
 
   if (remainingCards.length > 0) {
-    console.log('🔄 More cards pending, triggering next batch...');
+    console.log('🔄 More cards pending, waiting 15 seconds before triggering next batch...');
+    // Add delay before triggering next batch to avoid rate limits
+    await sleep(15000);
+
     try {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
       // Fire and forget - don't await

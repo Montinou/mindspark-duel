@@ -23,7 +23,7 @@ export function Sidebar({ className }: SidebarProps) {
   const links = [
     { href: '/', label: 'Battle Arena', icon: Swords },
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/collection', label: 'Collection', icon: Library },
+    { href: '/dashboard/collection', label: 'Collection', icon: Library },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 

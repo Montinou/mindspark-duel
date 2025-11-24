@@ -1,0 +1,382 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║           MIGRACIÓN COMPLETA A CLOUDFLARE WORKERS AI                         ║
+║           Sistema de Generación de Mazos con Flux 1 Schnell                 ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+OBJETIVO:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Reemplazar completamente el sistema actual basado en Gemini API (limitado a 200
+requests/día) por Cloudflare Workers AI usando:
+  - Flux 1 Schnell para generación de imágenes (4.80 neurons/imagen)
+  - Llama 3.1 8B Instruct para generación de texto (~100 neurons/texto)
+
+BENEFITS:
+  ✅ Sin rate limits diarios (10,000 Neurons/día gratuitos)
+  ✅ Sin fallbacks necesarios (sistema unificado)
+  ✅ Costo predecible: 60 cartas = 12,288 neurons = $0.14 si excede free tier
+  ✅ Latencia reducida (Workers edge deployment)
+
+ESTADO ACTUAL:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ✅ Image Worker: Deployed y funcional (Flux 1 Schnell)
+  ❌ Text Worker: No implementado (sigue usando Gemini API)
+  ❌ Problem Worker: No implementado
+  ⏳ 60 cartas pendientes esperando procesamiento
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-->
+
+<prompt>
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- METADATA                                                                 -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <metadata>
+    <title>Migración Completa a Cloudflare Workers AI - Sistema de Generación de Mazos</title>
+    <phase>Migration & Optimization</phase>
+    <difficulty>high</difficulty>
+    <estimated_time>2.5 hours</estimated_time>
+    <version>2.0</version>
+    <last_updated>2025-01-24</last_updated>
+
+    <prerequisites>
+      <prerequisite>Wrangler CLI instalado y configurado</prerequisite>
+      <prerequisite>Workers AI Image Generator ya deployed (https://mindspark-ai-image-generator.agusmontoya.workers.dev)</prerequisite>
+      <prerequisite>Cloudflare account con AI binding activo</prerequisite>
+      <prerequisite>Node.js 18+ con bun runtime</prerequisite>
+      <prerequisite>Access a Neon PostgreSQL database</prerequisite>
+    </prerequisites>
+
+    <dependencies>
+      <dependency>@cloudflare/workers-types</dependency>
+      <dependency>wrangler</dependency>
+      <dependency>Node.js 18+</dependency>
+      <dependency>bun (package manager)</dependency>
+    </dependencies>
+  </metadata>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- THINKING CONFIGURATION                                                   -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <thinking_configuration>
+    <claude_extended_thinking>
+      <enabled>true</enabled>
+      <reasoning>
+        Esta es una migración arquitectónica crítica que requiere:
+        1. Análisis de múltiples servicios Workers AI (Llama 3.1, Flux Schnell)
+        2. Evaluación de trade-offs entre performance, costo y reliability
+        3. Diseño de estrategia de migración sin downtime
+        4. Análisis de compatibilidad con sistema actual (Drizzle ORM, Stack Auth, R2)
+        5. Planificación de rollback en caso de fallos
+
+        Extended Thinking permitirá comparar alternativas de implementación,
+        prever casos edge (NSFW filter, rate limits internos de Workers),
+        y diseñar una arquitectura resiliente sin fallbacks complejos.
+      </reasoning>
+      <budget_tokens>20000</budget_tokens>
+      <expected_thinking_depth>
+        - Comparación de modelos Workers AI (Llama 3.1 8B vs 70B vs alternativas)
+        - Análisis de costo-beneficio (free tier vs paid usage)
+        - Evaluación de impactos en sistema downstream (R2 upload, DB writes)
+        - Diseño de estrategia de testing incremental
+        - Identificación de riesgos y mitigaciones
+      </expected_thinking_depth>
+    </claude_extended_thinking>
+
+    <gpt5_reasoning>
+      <chain_of_thought>
+        Para cada Worker creado:
+        1. Analizar schema de request/response esperado
+        2. Evaluar necesidad de retry logic vs fail-fast
+        3. Determinar logging requirements para debugging
+        4. Verificar CORS configuration para Next.js integration
+        5. Justificar configuración de AI model (num_steps, temperature, etc.)
+      </chain_of_thought>
+
+      <escape_hatches>
+        <hatch>Si Llama 3.1 8B produce texto de baja calidad, escalar a Llama 3.1 70B (más neurons) y documentar cambio</hatch>
+        <hatch>Si Workers AI tiene downtime, mantener Gemini API key configurada pero comentada como backup de emergencia</hatch>
+        <hatch>Si NSFW filter bloquea prompts válidos frecuentemente, implementar prompt sanitization layer</hatch>
+        <hatch>Si 60 cartas pendientes fallan, procesar en batches de 10 con delays para evitar throttling interno</hatch>
+      </escape_hatches>
+
+      <precision_requirements>
+        - Response format debe coincidir EXACTAMENTE con interfaces TypeScript existentes
+        - Environment variables deben usar EXACT naming (R2_ACCOUNT_ID, etc.)
+        - Worker URLs deben usar HTTPS y dominios .workers.dev reales
+        - Validation debe verificar que imágenes suban a R2 antes de marcar success
+      </precision_requirements>
+    </gpt5_reasoning>
+
+    <reasoning_checkpoints>
+      <checkpoint step="1">Comparar Llama 3.1 8B vs 70B para card text generation (costo vs calidad)</checkpoint>
+      <checkpoint step="3">Evaluar si problem generation necesita Worker separado o puede inline en card-generator</checkpoint>
+      <checkpoint step="5">Analizar strategy para procesar 60 cartas: secuencial vs parallel con concurrency control</checkpoint>
+    </reasoning_checkpoints>
+
+    <thinking_output_format>
+      Para cada decisión arquitectónica:
+      - Alternativas consideradas (bullet list)
+      - Pros/Contras de cada una
+      - Costo estimado en Neurons (si aplica)
+      - Score de compatibilidad con sistema actual (1-10)
+      - Recomendación final con justificación técnica
+    </thinking_output_format>
+  </thinking_configuration>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- CONTEXT                                                                  -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <context>
+    <project_info>
+      <name>MindSpark Duel</name>
+      <current_location>/Users/agustinmontoya/Projectos/MVPs/juego-cartas-educativo/mindspark-duel</current_location>
+      <framework>Next.js 15.1.6 with App Router</framework>
+      <status>MVP en desarrollo - Sistema de generación bloqueado por Gemini rate limits</status>
+    </project_info>
+
+    <tech_stack>
+      <frontend>Next.js 15 + React 19 + TypeScript</frontend>
+      <backend>Next.js Server Actions + Cloudflare Workers AI</backend>
+      <database>Neon PostgreSQL con Drizzle ORM</database>
+      <storage>Cloudflare R2 (S3-compatible)</storage>
+      <auth>Stack Auth (no Supabase)</auth>
+      <ai>Gemini API (ACTUAL) → Cloudflare Workers AI (TARGET)</ai>
+    </tech_stack>
+
+    <objective>
+      <primary>
+        Migrar completamente el sistema de generación de mazos desde Gemini API
+        (bloqueado por 200 RPD limit) a Cloudflare Workers AI, eliminando todos
+        los fallbacks y consolidando en una arquitectura serverless unificada.
+
+        Esto desbloqueará la generación de 60 cartas pendientes y permitirá
+        escalamiento futuro sin preocupaciones de rate limits diarios.
+      </primary>
+
+      <success_criteria>
+        <criterion>✅ 3 Workers AI deployed y funcionales (text, image, problem generation)</criterion>
+        <criterion>✅ card-generator.ts y deck-generator.ts usan exclusivamente Workers AI</criterion>
+        <criterion>✅ 60 cartas pendientes procesadas exitosamente con imágenes en R2</criterion>
+        <criterion>✅ Build TypeScript pasa sin errores (bun run build)</criterion>
+        <criterion>✅ Costo total de migración dentro de free tier (10,000 Neurons)</criterion>
+        <criterion>✅ Gemini API removido completamente del codebase (no fallbacks)</criterion>
+        <criterion>✅ Tests de integración validados: generar 1 carta nueva end-to-end</criterion>
+        <criterion>✅ Documentación actualizada con nueva arquitectura Workers AI</criterion>
+      </success_criteria>
+    </objective>
+  </context>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- CURRENT STATE                                                            -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <current_state>
+    <directory_structure>
+      <![CDATA[
+mindspark-duel/
+├── workers/
+│   └── ai-image-generator/         ✅ DEPLOYED
+│       ├── src/index.ts             (Flux 1 Schnell)
+│       ├── wrangler.toml
+│       └── package.json
+│
+├── src/
+│   └── lib/
+│       └── ai/
+│           ├── card-generator.ts    ⚠️  HYBRID (Gemini text + Workers image)
+│           ├── deck-generator.ts    ❌ Pure Gemini
+│           └── problem-generator.ts ❌ Pure Gemini
+│
+├── scripts/
+│   ├── process-all-pending-slow.ts ⚠️  Uses card-generator (hybrid)
+│   └── seed-achievements.ts         (No changes needed)
+│
+└── db/
+    └── schema.ts                    (No changes needed)
+      ]]>
+    </directory_structure>
+
+    <key_files>
+      <file path="workers/ai-image-generator/src/index.ts">
+        Worker deployed usando Flux 1 Schnell (@cf/black-forest-labs/flux-1-schnell).
+        Retorna base64 image via JSON response.
+        FUNCIONAL y PROBADO (715KB image generada).
+      </file>
+
+      <file path="src/lib/ai/card-generator.ts">
+        HYBRID state:
+        - generateImageWithGemini() → USA Workers AI (Flux Schnell) ✅
+        - generateCard() → USA Gemini API para text generation ❌
+
+        Necesita migración de generateCard() a Workers AI (Llama 3.1).
+      </file>
+
+      <file path="src/lib/ai/deck-generator.ts">
+        Pure Gemini API - genera nombres de mazos y temas.
+        Bajo volumen (3 decks procesados), no crítico para rate limits.
+        Migrar después de card-generator.
+      </file>
+
+      <file path="src/lib/ai/problem-generator.ts">
+        Pure Gemini API - genera problemas educativos.
+        Usado por card-generator.ts.
+        DEBE migrarse antes de procesar 60 cartas pendientes.
+      </file>
+    </key_files>
+
+    <current_implementation>
+      El sistema actual funciona así:
+
+      1. USER: Crea deck vía UI → deck-generator.ts (Gemini) genera nombre/tema
+      2. SYSTEM: Crea 20 cartas con status='generating'
+      3. FOR EACH CARD:
+         a. card-generator.ts llama Gemini API para card data (name, stats, imagePrompt)
+         b. problem-generator.ts llama Gemini API para educational problem
+         c. generateImageWithGemini() llama Workers AI (Flux Schnell) ✅
+         d. uploadImage() sube a Cloudflare R2
+         e. DB update con imageUrl + card data
+
+      PROBLEMA: Pasos 3a y 3b hitting Gemini 200 RPD limit → 60 cartas stuck.
+
+      SOLUCIÓN: Migrar 3a y 3b a Workers AI → No rate limits.
+    </current_implementation>
+  </current_state>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- REQUIREMENTS                                                             -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <requirements>
+    <technical>
+      <requirement priority="critical">NO FALLBACKS - Usuario explícitamente rechazó fallbacks: "si, no quiero mas fucking fallbacks"</requirement>
+      <requirement priority="critical">TypeScript interfaces existentes NO deben cambiar (Card, Deck, Problem types)</requirement>
+      <requirement priority="critical">R2 upload flow debe mantenerse idéntico (uploadImage() sin cambios)</requirement>
+      <requirement priority="high">Workers deben retornar JSON con estructura EXACTA esperada por Next.js</requirement>
+      <requirement priority="high">CORS headers configurados para permitir requests desde localhost:3000 y producción</requirement>
+      <requirement priority="medium">Logging detallado en Workers para debugging (console.log visible en wrangler tail)</requirement>
+      <requirement priority="medium">Environment variables organizadas (R2_*, CLOUDFLARE_*)</requirement>
+      <requirement priority="low">Considerar batch processing si Workers AI tiene internal throttling</requirement>
+    </technical>
+
+    <functional>
+      <requirement>Generar card data (name, description, stats, element, imagePrompt) usando Llama 3.1</requirement>
+      <requirement>Generar educational problems (question, answer, category) usando Llama 3.1</requirement>
+      <requirement>Procesar 60 cartas pendientes sin manual intervention</requirement>
+      <requirement>Validar que cartas generadas tienen calidad similar a Gemini output</requirement>
+    </functional>
+
+    <non_functional>
+      <requirement>Response time total por carta &lt; 30 segundos (Gemini era ~10s/carta)</requirement>
+      <requirement>Costo total dentro de free tier 10,000 Neurons si posible</requirement>
+      <requirement>Zero downtime durante migración (deploy incremental)</requirement>
+    </non_functional>
+  </requirements>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- CONSTRAINTS                                                              -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <constraints>
+    <constraint type="backwards_compatibility">
+      Database schema NO puede cambiar - 60 cartas pendientes ya existen con
+      status='generating'. Script debe trabajar con schema actual.
+    </constraint>
+
+    <constraint type="budget">
+      Priorizar free tier (10,000 Neurons/día). 60 cartas estimadas en 12,288
+      Neurons = $0.14 si excede. Acceptable pero documentar costo.
+    </constraint>
+
+    <constraint type="api_limits">
+      Workers AI tiene límites internos no documentados. Implementar retry logic
+      simple (max 3 retries con exponential backoff) para Workers requests.
+    </constraint>
+
+    <constraint type="user_mandate">
+      "si, no quiero mas fucking fallbacks" - Usuario rechazó explícitamente
+      fallback logic. Sistema debe fallar rápido y claro si Workers AI no responde.
+    </constraint>
+  </constraints>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- INSTRUCTIONS (continuará en siguiente mensaje debido a límite...)        -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <instructions>
+    <step number="1">
+      <title>Crear Worker para Text Generation (Card Data) con Llama 3.1 8B</title>
+      <action>Implementar Workers AI text generator completo con deploy y testing</action>
+      <expected_output>Worker deployed y funcional retornando card data JSON válido</expected_output>
+    </step>
+
+    <step number="2">
+      <title>Crear Worker para Problem Generation con Llama 3.1 8B</title>
+      <action>Implementar Workers AI problem generator con deploy y testing</action>
+      <expected_output>Worker deployed retornando educational problems en español</expected_output>
+    </step>
+
+    <step number="3">
+      <title>Migrar card-generator.ts para usar Workers AI exclusivamente</title>
+      <action>Refactorizar código para remover Gemini y usar Workers AI</action>
+      <expected_output>Build TypeScript exitoso sin errores</expected_output>
+    </step>
+
+    <step number="4">
+      <title>Test End-to-End: Generar 1 Carta Nueva con Workers AI Completo</title>
+      <action>Ejecutar test script validando full pipeline</action>
+      <expected_output>Carta generada con imagen en R2 accesible</expected_output>
+    </step>
+
+    <step number="5">
+      <title>Procesar 60 Cartas Pendientes con Workers AI (Batch Processing)</title>
+      <action>Ejecutar batch processing con concurrency control</action>
+      <expected_output>60 cartas procesadas con success rate &gt; 90%</expected_output>
+    </step>
+
+    <step number="6">
+      <title>Cleanup: Remover Gemini API y Actualizar Documentación</title>
+      <action>Limpiar código legacy y documentar nueva arquitectura</action>
+      <expected_output>Codebase sin referencias a Gemini, docs actualizados</expected_output>
+    </step>
+  </instructions>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- VALIDATION                                                               -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <validation>
+    <execution_checklist>
+      <item>✅ 3 Workers AI deployed y funcionales (text, image, problem generation)</item>
+      <item>✅ card-generator.ts migrado completamente sin referencias a Gemini API</item>
+      <item>✅ Build TypeScript exitoso sin errores (bun run build exit code 0)</item>
+      <item>✅ Test end-to-end genera 1 carta nueva con imagen en R2 accesible</item>
+      <item>✅ 60 cartas pendientes procesadas con &gt;90% success rate</item>
+      <item>✅ Costo total dentro de presupuesto (12,288 Neurons documentado)</item>
+      <item>✅ .env.example actualizado con Workers URLs, Gemini key deprecated</item>
+      <item>✅ Documentation actualizada (README.md, WORKERS_AI_ARCHITECTURE.md)</item>
+      <item>✅ No fallbacks implementados (user requirement)</item>
+      <item>✅ All decks marcados como 'completed' en database</item>
+    </execution_checklist>
+  </validation>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- OUTPUT FORMAT                                                            -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <output_format>
+    <format>
+      Markdown con:
+      - Clear section headers (##)
+      - Code blocks para commands/outputs
+      - Tables para Workers list y cost analysis
+      - Emoji indicators para visual scanning (✅❌📊💰⏱️)
+    </format>
+  </output_format>
+</prompt>

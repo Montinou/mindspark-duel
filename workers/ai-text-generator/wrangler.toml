@@ -1,0 +1,6 @@
+name = "mindspark-ai-text-generator"
+main = "src/index.ts"
+compatibility_date = "2025-01-24"
+
+[ai]
+binding = "AI"

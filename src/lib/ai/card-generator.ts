@@ -5,12 +5,10 @@ import { uploadImage } from '../storage';
 import { db } from '@/db';
 import { cards } from '@/db/schema';
 
-const GEMINI_API_KEY = process.env.GEMINIAI_API_KEY;
-// Use gemini-2.0-flash-exp for image generation capabilities
-const TEXT_MODEL = "gemini-2.0-flash-exp"; 
-const IMAGE_MODEL = "gemini-2.0-flash-exp";
-
-const BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
+// Workers AI endpoints
+const WORKERS_TEXT_URL = process.env.WORKERS_AI_TEXT_URL || 'https://mindspark-ai-text-generator.agusmontoya.workers.dev';
+const WORKERS_IMAGE_URL = process.env.WORKERS_AI_IMAGE_URL || 'https://mindspark-ai-image-generator.agusmontoya.workers.dev';
+const WORKERS_PROBLEM_URL = process.env.WORKERS_AI_PROBLEM_URL || 'https://mindspark-ai-problem-generator.agusmontoya.workers.dev';
 
 export interface GenerateCardOptions {
   topic?: string;
@@ -20,130 +18,152 @@ export interface GenerateCardOptions {
   userId?: string;
 }
 
-export async function generateImageWithGemini(prompt: string): Promise<string> {
-  if (!GEMINI_API_KEY) {
-    throw new Error("❌ CRITICAL: GEMINIAI_API_KEY is not set");
-  }
+interface CardDataResponse {
+  name: string;
+  description: string;
+  cost: number;
+  power: number;
+  defense: number;
+  element: "Fire" | "Water" | "Earth" | "Air";
+  problemCategory: "Math" | "Logic" | "Science";
+  imagePrompt: string;
+}
 
-  console.log('🖼️  Generating image with Imagen 3 via Gemini API...');
+interface ProblemResponse {
+  question: string;
+  answer: string;
+  category: "Math" | "Logic" | "Science";
+}
+
+export async function generateImageWithWorkersAI(prompt: string): Promise<string> {
+  console.log('🖼️  Generating image with Cloudflare Workers AI (Flux 1 Schnell)...');
   console.log('📝 Prompt:', prompt.substring(0, 150) + '...');
 
-  // Use the correct Imagen 3 endpoint
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:generateImage?key=${GEMINI_API_KEY}`;
-
-  const response = await fetch(apiUrl, {
+  const response = await fetch(WORKERS_IMAGE_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      prompt: prompt,
-      number_of_images: 1,
-      aspect_ratio: "3:4", // Portrait orientation for cards
-      safety_filter_level: "block_only_high",
-      person_generation: "allow_adult"
-    })
+    body: JSON.stringify({ prompt })
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('❌ Imagen API Error Response:', errorText);
-    throw new Error(`Imagen API Error (${response.status}): ${errorText}`);
+    console.error('❌ Workers AI Image Error:', errorText);
+    throw new Error(`Workers AI Image Error (${response.status}): ${errorText}`);
   }
 
   const data = await response.json();
-  console.log('📦 Imagen API Response structure:', Object.keys(data));
 
-  // Extract the generated image
-  // The response structure: { generatedImages: [{ bytesBase64Encoded: "..." }] }
-  const imageData = data.generatedImages?.[0]?.bytesBase64Encoded;
-
-  if (!imageData) {
-    console.error('❌ Imagen API Full Response:', JSON.stringify(data, null, 2));
-    throw new Error("No image data found in Imagen response. Check response structure above.");
+  if (!data.success || !data.image) {
+    console.error('❌ Invalid response from Workers AI Image:', data);
+    throw new Error("No image data found in Workers AI response");
   }
 
+  console.log('✅ Image generated with Flux 1 Schnell');
+
   // Convert base64 to buffer
-  const buffer = Buffer.from(imageData, 'base64');
+  const buffer = Buffer.from(data.image, 'base64');
   const fileName = `cards/${crypto.randomUUID()}.png`;
 
   console.log('☁️  Uploading to Cloudflare R2:', fileName);
 
-  // Upload to Cloudflare R2 - NO FALLBACK
   const imageUrl = await uploadImage(buffer, fileName, 'image/png');
 
-  console.log('✅ SUCCESS: Image generated with Imagen 3 and uploaded to R2');
+  console.log('✅ Image uploaded to R2');
   console.log('🔗 URL:', imageUrl);
 
   return imageUrl;
 }
 
-export async function generateCard(options: GenerateCardOptions): Promise<Card> {
-  if (!GEMINI_API_KEY) {
-    throw new Error("GEMINIAI_API_KEY is not set");
-  }
+async function generateCardData(options: GenerateCardOptions): Promise<CardDataResponse> {
+  console.log('🤖 Generating card data with Workers AI (Llama 3.1)...');
 
-  const { topic, theme, difficulty = 5, element, userId } = options;
-  const themeText = theme || topic || "Fantasy";
-  const elementInstruction = element ? `The card MUST belong to the element: "${element}".` : "Choose a suitable element (Fire, Water, Earth, Air).";
+  const { topic, theme, difficulty = 5, element } = options;
 
-  const prompt = `
-    Create a unique, creative trading card for a game called "MindSpark Duel".
-    The card should be based on the theme/topic: "${themeText}".
-    ${elementInstruction}
-    The difficulty level for the educational problem is: ${difficulty} (1-10).
-
-    Return ONLY a valid JSON object with this structure:
-    {
-      "name": "Card Name",
-      "description": "Flavor text or effect description",
-      "cost": integer (1-10),
-      "power": integer (1-10),
-      "defense": integer (1-10),
-      "element": "Fire" | "Water" | "Earth" | "Air",
-      "problemCategory": "Math" | "Logic" | "Science",
-      "imagePrompt": "OPTIMIZED FULL ART PROMPT - [Detailed subject description matching card name]. Vertical portrait orientation, full-bleed borderless composition extending to all edges. Magic the Gathering full art card style. High-resolution digital painting with dramatic cinematic lighting, vibrant saturated colors, intricate details, sharp focus. The subject fills the frame dramatically with immersive environment surrounding it. Professional TCG artwork quality, masterpiece, highly detailed, rich textures. NO text, NO watermarks, NO borders, NO frames. Theme: ${themeText}"
-    }
-
-    CRITICAL INSTRUCTIONS:
-    - Stats must be balanced for cost (cost ≈ (power + defense) / 2)
-    - Name should be fantasy-themed but related to "${themeText}"
-    - Description (flavor text) must be evocative and match the visual
-    - Name and Description MUST be in SPANISH
-    - imagePrompt must describe a FULL-BLEED composition (art extends to all edges, NO reserved space)
-    - imagePrompt should include subject, environment, lighting, mood, and artistic style
-  `;
-
-  // 1. Generate Card Data
-  const apiUrl = `${BASE_URL}/${TEXT_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
-
-  const response = await fetch(apiUrl, {
+  const response = await fetch(WORKERS_TEXT_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      contents: [{
-        parts: [{ text: prompt }]
-      }]
+      topic,
+      theme,
+      difficulty,
+      element
     })
   });
 
   if (!response.ok) {
-    throw new Error(`Gemini API Error: ${response.statusText}`);
+    const errorText = await response.text();
+    console.error('❌ Workers AI Text Error:', errorText);
+    throw new Error(`Workers AI Text Error (${response.status}): ${errorText}`);
   }
 
   const data = await response.json();
-  const text = data.candidates[0].content.parts[0].text;
 
-  // Clean up markdown code blocks if present
-  const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
+  if (!data.success || !data.data) {
+    console.error('❌ Invalid response from Workers AI Text:', data);
+    throw new Error("No card data found in Workers AI response");
+  }
 
-  const cardData = JSON.parse(jsonString);
+  console.log('✅ Card data generated:', data.data.name);
 
-  // 2. Generate Image using Imagen 3 - NO FALLBACK, FAIL FAST
+  return data.data;
+}
+
+async function generateProblem(
+  category: "Math" | "Logic" | "Science",
+  difficulty: number,
+  theme?: string
+): Promise<ProblemResponse> {
+  console.log('🧮 Generating educational problem with Workers AI...');
+
+  const response = await fetch(WORKERS_PROBLEM_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      category,
+      difficulty,
+      theme
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('❌ Workers AI Problem Error:', errorText);
+    throw new Error(`Workers AI Problem Error (${response.status}): ${errorText}`);
+  }
+
+  const data = await response.json();
+
+  if (!data.success || !data.data) {
+    console.error('❌ Invalid response from Workers AI Problem:', data);
+    throw new Error("No problem data found in Workers AI response");
+  }
+
+  console.log('✅ Problem generated:', data.data.question.substring(0, 50) + '...');
+
+  return data.data;
+}
+
+export async function generateCard(options: GenerateCardOptions): Promise<Card> {
+  const { theme, userId } = options;
+
+  console.log('🎴 Starting card generation with Workers AI...');
+
+  // 1. Generate card data (name, stats, imagePrompt) - Workers AI
+  const cardData = await generateCardData(options);
+
+  // 2. Generate educational problem - Workers AI
+  const themeText = theme || options.topic || "Fantasy";
+  const problemData = await generateProblem(
+    cardData.problemCategory,
+    options.difficulty || 5,
+    themeText
+  );
+
+  // 3. Generate image - Workers AI (Flux Schnell)
   console.log('🎨 Starting image generation for card:', cardData.name);
-  const imageUrl = await generateImageWithGemini(cardData.imagePrompt);
+  const imageUrl = await generateImageWithWorkersAI(cardData.imagePrompt);
 
-  // 3. Save card to database
+  // 4. Save card to database
   console.log('💾 Saving card to database:', cardData.name);
   const [savedCard] = await db
     .insert(cards)
@@ -163,7 +183,7 @@ export async function generateCard(options: GenerateCardOptions): Promise<Card> 
 
   console.log('✅ Card successfully created:', savedCard.id);
 
-  // 4. Return card with database ID
+  // 5. Return card with database ID
   return {
     id: savedCard.id,
     name: savedCard.name,

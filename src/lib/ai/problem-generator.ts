@@ -104,48 +104,32 @@ Return ONLY a valid JSON object (no markdown, no code blocks) with this structur
   }
 
   // 2. Fallback to Direct Gemini API
-  if (GEMINI_API_KEY) {
-    try {
-      const DIRECT_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-      const response = await fetch(DIRECT_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Gemini API status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const content = data.candidates[0].content.parts[0].text;
-      return parseProblemResponse(content, difficulty, themeContext, card.id);
-    } catch (error) {
-      console.error('❌ Direct Gemini API failed:', error);
-    }
+  if (!GEMINI_API_KEY) {
+    throw new Error('❌ CRITICAL: Both AI_GATEWAY_API_KEY and GEMINIAI_API_KEY are missing');
   }
 
-  // 3. Fallback to Simple Math
-  console.warn('⚠️ All AI generation failed, using static fallback.');
-  const num1 = Math.floor(Math.random() * 10) + 1;
-  const num2 = Math.floor(Math.random() * 10) + 1;
-  const answer = num1 + num2;
+  console.log('🔄 Falling back to Direct Gemini API...');
+  const DIRECT_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`;
 
-  return {
-    question: `${card.name} tiene ${num1} cristales de ${card.element} y encuentra ${num2} más. ¿Cuántos tiene en total?`,
-    options: [
-      String(answer - 1),
-      String(answer),
-      String(answer + 1),
-      String(answer + 2),
-    ].sort(() => Math.random() - 0.5),
-    correctAnswer: String(answer),
-    difficulty,
-    themeContext,
-    cardId: card.id,
-  };
+  const response = await fetch(DIRECT_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }]
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('❌ Gemini API Error Response:', errorText);
+    throw new Error(`Gemini API failed (${response.status}): ${errorText}`);
+  }
+
+  const data = await response.json();
+  const content = data.candidates[0].content.parts[0].text;
+
+  console.log('✅ Problem generated via Direct Gemini API');
+  return parseProblemResponse(content, difficulty, themeContext, card.id);
 }
 
 function parseProblemResponse(text: string, difficulty: number, themeContext: string, cardId: string): Problem {

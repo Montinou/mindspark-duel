@@ -1,0 +1,694 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║                      PROMPT INVENTORY - MINDSPARK DUEL                       ║
+║                    Catalog of All XML Prompts in @docs/                      ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+PROPÓSITO:
+Este archivo mantiene un inventario completo y actualizado de todos los prompts
+XML en el proyecto, organizados por categoría y fase de ejecución.
+
+USO:
+- Consultar este archivo para saber qué prompts existen y dónde encontrarlos
+- Verificar el orden de ejecución antes de implementar nuevas features
+- Identificar gaps en la documentación
+- Mantener sincronizado con la estructura de carpetas en @docs/
+
+ÚLTIMA ACTUALIZACIÓN: 2025-11-24
+TOTAL DE PROMPTS: 13
+-->
+
+<prompt_inventory version="1.0">
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- METADATA                                                                 -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <metadata>
+    <project>Mindspark Duel</project>
+    <last_updated>2025-11-24</last_updated>
+    <total_prompts>13</total_prompts>
+    <total_categories>4</total_categories>
+    <documentation_structure>
+      <![CDATA[
+docs/
+├── planning/              # Planning & Design Documents
+│   └── 00_GAME_RULES.xml
+├── foundation/            # Core Implementation Prompts
+│   └── 01_LANDING_DASHBOARD_PROMPT.xml
+├── features/              # Feature-Specific Prompts
+│   ├── onboarding/
+│   │   ├── 02_ONBOARDING_UI_PROMPT.xml
+│   │   ├── 03_DECK_GENERATION_LOGIC_PROMPT.xml
+│   │   └── 04_IMAGE_GENERATION_R2_PROMPT.xml
+│   ├── gamification/
+│   │   └── 05_GAMIFICATION_MISSIONS_PROMPT.xml
+│   ├── store/
+│   │   └── 06_STORE_PACKS_PROMPT.xml
+│   └── gameplay/          # (Future gameplay prompts)
+├── AI_INSTRUCTIONS.xml    # Universal AI rules for this project
+├── PROMPT_TEMPLATE.xml    # Template for creating new prompts
+└── PROMPT_INVENTORY.xml   # This file
+      ]]>
+    </documentation_structure>
+  </metadata>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- CATEGORY: PLANNING & DESIGN                                             -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <category name="planning" path="@docs/planning/">
+    <description>
+      Planning documents that define game mechanics, rules, and architecture.
+      These are NOT implementation prompts but design references.
+    </description>
+
+    <prompt id="00" status="completed">
+      <file>00_GAME_RULES.xml</file>
+      <title>Mindspark Duel - Game Rules &amp; Mechanics</title>
+      <phase>Planning &amp; Definition</phase>
+      <difficulty>medium</difficulty>
+      <estimated_time>N/A</estimated_time>
+      <description>
+        Defines the core game mechanics: turn structure, card types, mana system,
+        combat resolution, and win conditions. This is the "constitution" of the game.
+      </description>
+      <dependencies>
+        <dependency>None (foundational document)</dependency>
+      </dependencies>
+      <last_updated>2025-11-21</last_updated>
+    </prompt>
+  </category>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- CATEGORY: FOUNDATION                                                    -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <category name="foundation" path="@docs/foundation/">
+    <description>
+      Core implementation prompts for the base functionality: landing page,
+      authentication, and main dashboard. Must be implemented before features.
+    </description>
+
+    <prompt id="01" status="completed">
+      <file>01_LANDING_DASHBOARD_PROMPT.xml</file>
+      <title>Implement Landing Page &amp; Collection Dashboard</title>
+      <phase>Foundation</phase>
+      <difficulty>medium</difficulty>
+      <estimated_time>120-150 minutes</estimated_time>
+      <description>
+        Creates the public landing page (/) and authenticated user dashboard (/dashboard).
+        Landing page explains the value proposition. Dashboard shows user's card collection
+        and stats.
+      </description>
+      <dependencies>
+        <dependency>Stack Auth integrated</dependency>
+        <dependency>Basic card components available</dependency>
+      </dependencies>
+      <key_deliverables>
+        <deliverable>Hero section with CTA</deliverable>
+        <deliverable>Features section explaining game loop</deliverable>
+        <deliverable>Collection view (grid of cards)</deliverable>
+        <deliverable>User stats display</deliverable>
+      </key_deliverables>
+      <last_updated>2025-11-21</last_updated>
+    </prompt>
+  </category>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- CATEGORY: FEATURES - ONBOARDING                                         -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <category name="onboarding" path="@docs/features/onboarding/">
+    <description>
+      User onboarding flow: theme selection, deck generation, and card image creation.
+      This is the first experience for new users after signing up.
+    </description>
+
+    <prompt id="02" status="completed">
+      <file>02_ONBOARDING_UI_PROMPT.xml</file>
+      <title>Implement Onboarding Theme Selection UI</title>
+      <phase>Onboarding &amp; Deck Creation</phase>
+      <difficulty>medium</difficulty>
+      <estimated_time>60-90 minutes</estimated_time>
+      <description>
+        Creates the theme selection screen where users choose between 3 starter themes
+        (e.g., Pyromancer, Technomancer, Naturalist). Shows "Deck Creation in Progress"
+        state while cards are being generated.
+      </description>
+      <dependencies>
+        <dependency>Stack Auth integrated</dependency>
+        <dependency>Basic Card components available</dependency>
+      </dependencies>
+      <key_deliverables>
+        <deliverable>Theme selection cards with representative art</deliverable>
+        <deliverable>Processing/loading state UI</deliverable>
+        <deliverable>Smooth transition to dashboard when complete</deliverable>
+      </key_deliverables>
+      <last_updated>2025-11-21</last_updated>
+    </prompt>
+
+    <prompt id="03" status="completed">
+      <file>03_DECK_GENERATION_LOGIC_PROMPT.xml</file>
+      <title>Implement Deck Generation Logic &amp; Queue</title>
+      <phase>Onboarding &amp; Deck Creation</phase>
+      <difficulty>high</difficulty>
+      <estimated_time>90-120 minutes</estimated_time>
+      <description>
+        Backend logic to generate a balanced starter deck of 20 cards. Implements
+        mana curve balancing, problem type distribution, and queue system to avoid
+        serverless timeouts. Uses AI to generate card content.
+      </description>
+      <dependencies>
+        <dependency>Onboarding UI implemented</dependency>
+        <dependency>Gemini AI service available</dependency>
+      </dependencies>
+      <key_deliverables>
+        <deliverable>Balanced mana curve (bell curve 3-4 mana)</deliverable>
+        <deliverable>Theme-biased problem type distribution</deliverable>
+        <deliverable>Queue system for async card generation</deliverable>
+        <deliverable>Error handling and retry logic</deliverable>
+      </key_deliverables>
+      <technical_complexity>
+        <item>Power distribution algorithm</item>
+        <item>Serverless-friendly queue pattern</item>
+        <item>AI prompt engineering for card generation</item>
+      </technical_complexity>
+      <last_updated>2025-11-21</last_updated>
+    </prompt>
+
+    <prompt id="04" status="completed">
+      <file>04_IMAGE_GENERATION_R2_PROMPT.xml</file>
+      <title>Implement Real Image Generation &amp; R2 Storage</title>
+      <phase>Onboarding &amp; Deck Creation</phase>
+      <difficulty>high</difficulty>
+      <estimated_time>90-120 minutes</estimated_time>
+      <description>
+        Replaces placeholder card images with real AI-generated art. Uses Gemini
+        (or Pollinations.ai) to generate images, uploads them to Cloudflare R2,
+        and updates the database with public URLs.
+      </description>
+      <dependencies>
+        <dependency>Deck generation queue implemented</dependency>
+        <dependency>R2 &amp; Gemini credentials configured</dependency>
+      </dependencies>
+      <key_deliverables>
+        <deliverable>AI image generation integration</deliverable>
+        <deliverable>R2 upload utility (reusable)</deliverable>
+        <deliverable>Database updates with public URLs</deliverable>
+        <deliverable>Error handling for failed generations</deliverable>
+      </key_deliverables>
+      <technical_complexity>
+        <item>Binary stream handling</item>
+        <item>R2 SDK integration</item>
+        <item>Prompt engineering for consistent art style</item>
+      </technical_complexity>
+      <last_updated>2025-11-21</last_updated>
+    </prompt>
+    <prompt id="08" status="in_progress">
+      <file>08_COMPLETE_GAMIFICATION_SYSTEM.xml</file>
+      <title>Complete Gamification System - Missions, Library, Achievements &amp; Profile</title>
+      <phase>Feature Implementation</phase>
+      <difficulty>high</difficulty>
+      <estimated_time>240-300 minutes</estimated_time>
+      <description>
+        Comprehensive implementation of the gamification layer:
+        1. Critical Fixes (Mission Claim, Dashboard Data)
+        2. Achievements System (Schema, Tracking, Seeding)
+        3. Badges &amp; Profile System (User Stats, Profile Page)
+        4. Mission Auto-Generation (Expiry, Logic)
+      </description>
+      <dependencies>
+        <dependency>Gamification (05) implemented</dependency>
+        <dependency>Store (06) implemented</dependency>
+      </dependencies>
+      <last_updated>2025-11-22</last_updated>
+    </prompt>
+  </category>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- CATEGORY: FEATURES - GAMIFICATION                                       -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <category name="gamification" path="@docs/features/gamification/">
+    <description>
+      Engagement and retention systems: mastery tracking, missions, and progression
+      rewards. Keeps players coming back with goals and unlockables.
+    </description>
+
+    <prompt id="05" status="completed">
+      <file>05_GAMIFICATION_MISSIONS_PROMPT.xml</file>
+      <title>Implement Gamification &amp; Missions System</title>
+      <phase>Engagement &amp; Progression</phase>
+      <difficulty>high</difficulty>
+      <estimated_time>150-180 minutes</estimated_time>
+      <description>
+        Implements a comprehensive gamification layer with two systems:
+        1. Mastery System: Long-term XP tracking per category (Pyromancer XP, Math XP)
+        2. Missions: Daily/Weekly tasks to earn "Sparks" (currency)
+
+        Tracks progress via database and hooks into game events.
+      </description>
+      <dependencies>
+        <dependency>Dashboard implemented</dependency>
+        <dependency>Game loop working</dependency>
+      </dependencies>
+      <key_deliverables>
+        <deliverable>Database schema for missions &amp; mastery</deliverable>
+        <deliverable>Mission progress tracking hooks</deliverable>
+        <deliverable>Rewards system (Sparks distribution)</deliverable>
+        <deliverable>UI for mission list and progress bars</deliverable>
+      </key_deliverables>
+      <technical_complexity>
+        <item>Event-driven architecture for progress tracking</item>
+        <item>Mission type system (Daily, Weekly, Achievement)</item>
+        <item>Flexible reward calculation</item>
+      </technical_complexity>
+      <last_updated>2025-11-21</last_updated>
+    </prompt>
+  </category>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- CATEGORY: FEATURES - STORE                                              -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <category name="store" path="@docs/features/store/">
+    <description>
+      Monetization and reward loop: pack purchasing, gacha mechanics, pity system,
+      and pack opening experience. The "Arcane Library" where users spend Sparks.
+    </description>
+
+    <prompt id="06" status="completed">
+      <file>06_STORE_PACKS_PROMPT.xml</file>
+      <title>Implement Store &amp; Pack Opening System</title>
+      <phase>Engagement &amp; Progression</phase>
+      <difficulty>high</difficulty>
+      <estimated_time>150-180 minutes</estimated_time>
+      <description>
+        The "Arcane Library" store where users spend Sparks to acquire Tomes (card packs).
+        Implements gacha mechanics with rarity weights, pity timer system for guaranteed
+        drops, and satisfying pack opening animations.
+
+        Three tome types: Elements, Logic, and Standard.
+      </description>
+      <dependencies>
+        <dependency>Gamification (Sparks) implemented</dependency>
+        <dependency>Card generation working</dependency>
+      </dependencies>
+      <key_deliverables>
+        <deliverable>Rarity distribution system (weighted probabilities)</deliverable>
+        <deliverable>Pity timer logic (guaranteed drops after X packs)</deliverable>
+        <deliverable>Pack opening UI with animations</deliverable>
+        <deliverable>Tome type bonuses (increased chance for specific cards)</deliverable>
+      </key_deliverables>
+      <technical_complexity>
+        <item>Gacha probability algorithm</item>
+        <item>Pity timer state management</item>
+        <item>Satisfying reveal animations (Framer Motion)</item>
+        <item>Duplicate handling and conversion</item>
+      </technical_complexity>
+      <rarity_distribution>
+        <rarity name="Common" percentage="60.0%"/>
+        <rarity name="Uncommon" percentage="30.0%"/>
+        <rarity name="Rare" percentage="8.0%"/>
+        <rarity name="Epic" percentage="1.9%"/>
+        <rarity name="Legendary" percentage="0.1%"/>
+      </rarity_distribution>
+      <last_updated>2025-11-21</last_updated>
+    </prompt>
+  </category>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- CATEGORY: FEATURES - GAMEPLAY                                           -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <category name="gameplay" path="@docs/features/gameplay/">
+    <description>
+      Core gameplay implementation: battle system, turn manager, AI opponent,
+      problem-solving mechanics, and combat resolution.
+    </description>
+
+    <prompt id="07" status="completed">
+      <file>07_CARD_VISUALS_PROMPT.xml</file>
+      <title>Improve Card Visuals &amp; Battlefield Layout</title>
+      <phase>Gameplay Polish</phase>
+      <difficulty>easy</difficulty>
+      <estimated_time>15-20 minutes</estimated_time>
+      <description>
+        Improves the visual representation of cards in the player's hand when they are
+        unplayable due to insufficient mana. Replaces transparency with grayscale+brightness.
+        Implements responsive battlefield layout with no scrolling and hover effects on elements.
+      </description>
+      <dependencies>
+        <dependency>Basic Card components implemented</dependency>
+      </dependencies>
+      <last_updated>2025-11-22</last_updated>
+      <completion_notes>
+        - Cards now use grayscale + brightness-75 instead of opacity-60
+        - Tapped cards use brightness-90 instead of opacity-70
+        - Battlefield container changed to h-screen with overflow-hidden (no scrolling)
+        - Added hover effects to: enemy avatar, player avatar, mana display, phase indicator, enemy card backs
+        - All interactive elements now expand on hover with smooth transitions
+      </completion_notes>
+      </completion_notes>
+    </prompt>
+
+    <prompt id="10" status="completed">
+      <file>10_FULL_ART_CARDS_PROMPT.xml</file>
+      <title>Implement Full Art Card Design &amp; Visuals</title>
+      <phase>Gameplay Polish</phase>
+      <difficulty>medium</difficulty>
+      <estimated_time>90-120 minutes</estimated_time>
+      <description>
+        Redesign the card component to feature "Full Art" visuals, where the artwork extends to the edges of the card.
+        Includes overlay information design and responsive proportions.
+      </description>
+      <dependencies>
+        <dependency>Card components implemented</dependency>
+      </dependencies>
+      <key_deliverables>
+        <deliverable>Full Art card layout with absolute positioned background image</deliverable>
+        <deliverable>Element-themed color system (Fire/Water/Earth/Air)</deliverable>
+        <deliverable>Glassmorphism text box with backdrop-blur</deliverable>
+        <deliverable>Gradient name bar overlay</deliverable>
+        <deliverable>Workers AI (Flux 1 Schnell) image generation integration</deliverable>
+      </key_deliverables>
+      <technical_complexity>
+        <item>Migration from Gemini API to Cloudflare Workers AI</item>
+        <item>Full-bleed composition with readable text overlays</item>
+        <item>Element-based dynamic theming system</item>
+        <item>Shimmer and glow hover effects with Framer Motion</item>
+      </technical_complexity>
+      <last_updated>2025-11-24</last_updated>
+      <completion_notes>
+        ✅ COMPLETED (2025-11-24):
+        - Updated prompt documentation to reflect Workers AI (Flux 1 Schnell) migration
+        - Completely rewrote Card.tsx (159 lines) with Full Art design:
+          * Image fills entire background (absolute inset-0, object-cover)
+          * Element-themed colors via getElementColors() helper
+          * Glassmorphism text box at bottom (backdrop-blur-md bg-black/60)
+          * Gradient name bar overlay at top (from-black/80 to-transparent)
+          * Shimmer effect on hover with Framer Motion
+          * Element-colored ring glow on hover
+        - Migrated batch-card-generator.ts to Workers AI:
+          * Replaced Gemini API image generation (lines 168-203)
+          * Now uses generateImageWithWorkersAI() from card-generator.ts
+          * Parallel batch generation with Flux 1 Schnell (~2-3s per image)
+        - All images now generated via https://mindspark-ai-image-generator.agusmontoya.workers.dev
+        - Optimized prompts for full-bleed composition (no reserved space at bottom)
+      </completion_notes>
+    </prompt>
+
+    <prompt id="11" status="completed">
+      <file>11_USER_PROFILE_SYSTEM_PROMPT.xml</file>
+      <title>Implement User Profile System for Personalized Problems</title>
+      <phase>Gameplay - Personalization</phase>
+      <difficulty>medium</difficulty>
+      <estimated_time>90-120 minutes</estimated_time>
+      <description>
+        Create user profile system that stores demographic and preference data (age, education level, interests)
+        to personalize AI-generated educational problems. Profiles are passed as context to Workers AI
+        to generate age-appropriate problems with relevant themes.
+      </description>
+      <dependencies>
+        <dependency>Stack Auth implemented</dependency>
+        <dependency>NeonDB schema (src/db/schema.ts)</dependency>
+        <dependency>Shadcn/ui components</dependency>
+        <dependency>Workers AI ai-problem-generator available</dependency>
+      </dependencies>
+      <key_deliverables>
+        <deliverable>User profile fields in database schema (age, educationLevel, interests)</deliverable>
+        <deliverable>API endpoint /api/user/profile (GET/PUT with validation)</deliverable>
+        <deliverable>Profile form in Settings page with shadcn/ui</deliverable>
+        <deliverable>Integration with ai-problem-generator Worker</deliverable>
+      </key_deliverables>
+      <technical_complexity>
+        <item>Schema design (columns vs separate table)</item>
+        <item>Privacy considerations (COPPA compliance for age &lt; 13)</item>
+        <item>Zod validation for profile data</item>
+        <item>Worker integration without latency increase</item>
+      </technical_complexity>
+      <last_updated>2025-11-24</last_updated>
+      <prerequisite_for>12_BATTLE_PROBLEMS_IMPLEMENTATION_PROMPT.xml</prerequisite_for>
+      <completion_notes>
+        ✅ COMPLETED (2025-11-24):
+        - Database schema updated with 4 profile fields (age, educationLevel, interests, preferredDifficulty)
+        - Drizzle migration generated and applied successfully to NeonDB
+        - Created src/types/profile.ts with TypeScript types, Zod schemas, and helper functions
+        - API endpoint /api/user/profile implemented (GET/PUT with Stack Auth authentication)
+        - ProfileForm component created with react-hook-form and Zod validation
+        - Settings page (/settings) created with profile form and privacy notice
+        - Workers AI ai-problem-generator updated to accept and use user profile (userAge, userEducationLevel, userInterests)
+        - Worker deployed with personalization support
+        - All TypeScript compilation errors fixed
+        - System ready for personalized problem generation in battles
+      </completion_notes>
+    </prompt>
+
+    <prompt id="12" status="planned">
+      <file>12_BATTLE_PROBLEMS_IMPLEMENTATION_PROMPT.xml</file>
+      <title>Battle System with Dynamic Personalized Problems</title>
+      <phase>Gameplay - Battle System</phase>
+      <difficulty>high</difficulty>
+      <estimated_time>360-480 minutes (6-8 hours, 5 phases)</estimated_time>
+      <description>
+        Comprehensive battle system where BOTH players solve AI-generated problems when cards are played.
+        Problems are dynamically generated using Workers AI, personalized by user profile (age, interests),
+        and themed according to the card being played.
+
+        5 Implementation Phases:
+        1. Card Metadata (tags, thematic context)
+        2. Dynamic Problem Generation API
+        3. Battle Logic (dual problems, damage calculation)
+        4. Battle UI (problem modals, animations)
+        5. Testing &amp; Balancing
+      </description>
+      <dependencies>
+        <dependency>User Profile System (11_USER_PROFILE_SYSTEM_PROMPT.xml) REQUIRED</dependency>
+        <dependency>Workers AI ai-problem-generator deployed</dependency>
+        <dependency>Workers AI ai-text-generator (for card tags)</dependency>
+        <dependency>Game session system exists</dependency>
+      </dependencies>
+      <key_deliverables>
+        <deliverable>Cards with thematic tags for contextual problems</deliverable>
+        <deliverable>API endpoint /api/problems/generate (card context + user profile)</deliverable>
+        <deliverable>Battle service with initiateBattle() and resolveBattle()</deliverable>
+        <deliverable>API endpoints /api/battle/initiate and /api/battle/resolve</deliverable>
+        <deliverable>UI components: ProblemModal, BattleSequence, DualProblemView</deliverable>
+        <deliverable>Damage calculation with correctness modifiers</deliverable>
+      </key_deliverables>
+      <technical_complexity>
+        <item>Dual problem generation (different but same difficulty)</item>
+        <item>Real-time synchronization (both players answering simultaneously)</item>
+        <item>Complex damage calculation with multiple modifiers</item>
+        <item>Timeout handling (30 seconds per problem)</item>
+        <item>Worker AI integration with user profiles and card metadata</item>
+      </technical_complexity>
+      <technical_decisions>
+        <decision>Problems generated dynamically (no caching) for variety</decision>
+        <decision>Simultaneous problems for both players (more engaging)</decision>
+        <decision>Different problems but same theme/difficulty (prevent cheating)</decision>
+        <decision>30-second timeout per problem (maintains game pace)</decision>
+      </technical_decisions>
+      <roadmap>
+        <milestone>M1: Card metadata with tags (Day 1)</milestone>
+        <milestone>M2: Problem generation API (Day 2)</milestone>
+        <milestone>M3: Battle logic backend (Day 3-4)</milestone>
+        <milestone>M4: Battle UI components (Day 5-6)</milestone>
+        <milestone>M5: Testing and balancing (Day 7)</milestone>
+      </roadmap>
+      <last_updated>2025-11-24</last_updated>
+    </prompt>
+
+    <future_prompts>
+      <prompt>13_TURN_MANAGER_PROMPT.xml (Planned)</prompt>
+      <prompt>14_AI_OPPONENT_PROMPT.xml (Planned)</prompt>
+      <prompt>15_PROBLEM_SOLVING_UI_PROMPT.xml (Planned)</prompt>
+    </future_prompts>
+  </category>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- EXECUTION ORDER & DEPENDENCIES                                          -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <execution_order>
+    <description>
+      Recommended order for implementing prompts. Some can be parallelized if
+      dependencies are met, but follow this sequence for linear development.
+    </description>
+
+    <phase number="0" name="Planning">
+      <prompt_ref id="00">00_GAME_RULES.xml</prompt_ref>
+      <note>Review game mechanics before implementing any features</note>
+    </phase>
+
+    <phase number="1" name="Foundation">
+      <prompt_ref id="01">01_LANDING_DASHBOARD_PROMPT.xml</prompt_ref>
+      <note>Core pages and navigation must exist first</note>
+    </phase>
+
+    <phase number="2" name="Onboarding Flow">
+      <prompt_ref id="02">02_ONBOARDING_UI_PROMPT.xml</prompt_ref>
+      <prompt_ref id="03">03_DECK_GENERATION_LOGIC_PROMPT.xml</prompt_ref>
+      <prompt_ref id="04">04_IMAGE_GENERATION_R2_PROMPT.xml</prompt_ref>
+      <prompt_ref id="09">09_ONBOARDING_FIX_PROMPT.xml</prompt_ref>
+      <note>These prompts form the onboarding pipeline and fixes</note>
+      <parallelization>
+        Prompts 02-04 must be sequential. 09 is a fix to be applied after 04.
+      </parallelization>
+    </phase>
+
+    <phase number="3" name="Engagement Systems">
+      <prompt_ref id="05">05_GAMIFICATION_MISSIONS_PROMPT.xml</prompt_ref>
+      <prompt_ref id="06">06_STORE_PACKS_PROMPT.xml</prompt_ref>
+      <prompt_ref id="08">08_COMPLETE_GAMIFICATION_SYSTEM.xml</prompt_ref>
+      <note>Gamification must come before Store. 08 completes the system.</note>
+    </phase>
+
+    <phase number="4" name="Gameplay Polish">
+      <prompt_ref id="07">07_CARD_VISUALS_PROMPT.xml</prompt_ref>
+      <prompt_ref id="10">10_FULL_ART_CARDS_PROMPT.xml</prompt_ref>
+    </phase>
+
+    <phase number="5" name="Gameplay Personalization">
+      <prompt_ref id="11">11_USER_PROFILE_SYSTEM_PROMPT.xml</prompt_ref>
+      <note>User profiles are PREREQUISITE for personalized battle problems</note>
+    </phase>
+
+    <phase number="6" name="Battle System">
+      <prompt_ref id="12">12_BATTLE_PROBLEMS_IMPLEMENTATION_PROMPT.xml</prompt_ref>
+      <note>Comprehensive battle system with dynamic problems (5 phases, 6-8 hours)</note>
+      <note>REQUIRES prompt 11 (User Profile System) to be completed first</note>
+    </phase>
+
+    <phase number="7" name="Advanced Gameplay">
+      <prompt_ref id="13">13_TURN_MANAGER_PROMPT.xml (Planned)</prompt_ref>
+      <prompt_ref id="14">14_AI_OPPONENT_PROMPT.xml (Planned)</prompt_ref>
+      <prompt_ref id="15">15_PROBLEM_SOLVING_UI_PROMPT.xml (Planned)</prompt_ref>
+      <note>Advanced game mechanics - turn management, AI opponent, problem UI enhancements</note>
+    </phase>
+  </execution_order>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- STATISTICS                                                              -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <statistics>
+    <total_prompts>13</total_prompts>
+    <completed_prompts>9</completed_prompts>
+    <planned_prompts>4</planned_prompts>
+
+    <by_difficulty>
+      <difficulty level="easy">1</difficulty>
+      <difficulty level="medium">7</difficulty>
+      <difficulty level="high">5</difficulty>
+    </by_difficulty>
+
+    <by_status>
+      <status name="completed">9</status>
+      <status name="in_progress">0</status>
+      <status name="planned">4</status>
+    </by_status>
+
+    <total_estimated_time>
+      <completed>960-1230 minutes (~16-20.5 hours)</completed>
+      <planned>555-740 minutes (~9.25-12.3 hours)</planned>
+    </total_estimated_time>
+
+    <by_category>
+      <category name="planning">1</category>
+      <category name="foundation">1</category>
+      <category name="onboarding">5</category>
+      <category name="gamification">1</category>
+      <category name="store">1</category>
+      <category name="gameplay">4 (3 future)</category>
+    </by_category>
+  </statistics>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- MAINTENANCE NOTES                                                       -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <maintenance>
+    <updating_inventory>
+      <instruction>
+        When creating a new prompt, immediately add it to this inventory:
+        1. Add entry in the appropriate category section
+        2. Update execution_order if it has dependencies
+        3. Update statistics section
+        4. Increment metadata/total_prompts
+        5. Update last_updated date
+      </instruction>
+    </updating_inventory>
+
+    <naming_convention>
+      <rule>Prompts are prefixed with 2-digit numbers indicating execution order</rule>
+      <rule>Numbers increment by 1 (00, 01, 02, etc.)</rule>
+      <rule>Suffix is always _PROMPT.xml except for planning docs</rule>
+      <example>03_DECK_GENERATION_LOGIC_PROMPT.xml</example>
+    </naming_convention>
+
+    <validation>
+      <check>All prompts referenced here must exist in @docs/</check>
+      <check>All prompts in @docs/ must be listed in this inventory</check>
+      <check>Statistics must match actual count of prompts</check>
+      <check>Execution order must respect stated dependencies</check>
+    </validation>
+  </maintenance>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- QUICK REFERENCE                                                         -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <quick_reference>
+    <description>
+      Common queries about the prompt system:
+    </description>
+
+    <faq>
+      <question>What prompt should I start with?</question>
+      <answer>
+        Start with 00_GAME_RULES.xml to understand mechanics, then follow
+        execution_order: 01 → 02 → 03 → 04 → 05 → 06.
+      </answer>
+    </faq>
+
+    <faq>
+      <question>Can I skip the onboarding prompts?</question>
+      <answer>
+        No. Onboarding (02-04) creates the foundation for user acquisition.
+        Without it, users can't get starter decks.
+      </answer>
+    </faq>
+
+    <faq>
+      <question>Which prompts can be done in parallel?</question>
+      <answer>
+        05 (Gamification) and 06 (Store) CAN'T be parallelized (Store needs Sparks
+        from Gamification). Within onboarding, 02 UI can start while 03 backend
+        is in progress, but both must finish before 04.
+      </answer>
+    </faq>
+
+    <faq>
+      <question>How do I add a new prompt?</question>
+      <answer>
+        1. Copy @docs/PROMPT_TEMPLATE.xml
+        2. Fill in the template with specific instructions
+        3. Save in appropriate thematic folder with next number (e.g., 07_)
+        4. Update this PROMPT_INVENTORY.xml
+        5. Commit both files together
+      </answer>
+    </faq>
+
+    <faq>
+      <question>What if a prompt fails or needs revision?</question>
+      <answer>
+        Create a new version: e.g., 03_v2_DECK_GENERATION_LOGIC_PROMPT.xml
+        Update the inventory to mark old version as "deprecated" and reference new one.
+      </answer>
+    </faq>
+  </quick_reference>
+</prompt_inventory>

@@ -6,6 +6,10 @@ export interface ProblemGenerationRequest {
   category: "Math" | "Logic" | "Science";
   difficulty: number;
   theme?: string;
+  // User profile for personalization
+  userAge?: number;
+  userEducationLevel?: "elementary" | "middle" | "high" | "college" | "other";
+  userInterests?: string[];
 }
 
 export interface ProblemResponse {
@@ -35,7 +39,7 @@ export default {
 
     try {
       const body = await request.json() as ProblemGenerationRequest;
-      const { category, difficulty, theme } = body;
+      const { category, difficulty, theme, userAge, userEducationLevel, userInterests } = body;
 
       if (!category || !difficulty) {
         return new Response(
@@ -44,25 +48,60 @@ export default {
         );
       }
 
+      // Build user context for personalization
+      let userContext = '';
+      if (userAge || userEducationLevel) {
+        userContext = '\n\nCONTEXTO DEL USUARIO:';
+        if (userAge) {
+          userContext += `\n- El usuario tiene ${userAge} años`;
+        }
+        if (userEducationLevel) {
+          const levelDescriptions: Record<string, string> = {
+            elementary: 'primaria (vocabulario simple y conceptos básicos)',
+            middle: 'secundaria (vocabulario intermedio)',
+            high: 'preparatoria (vocabulario técnico apropiado)',
+            college: 'universidad (terminología técnica avanzada)'
+          };
+          userContext += `\n- Nivel educativo: ${levelDescriptions[userEducationLevel] || userEducationLevel}`;
+        }
+        if (userInterests && userInterests.length > 0) {
+          userContext += `\n- Intereses: ${userInterests.join(', ')}`;
+          userContext += '\n- IMPORTANTE: Si es posible, conecta el problema con estos intereses de manera natural y relevante';
+        }
+        userContext += '\n';
+      }
+
       const themeContext = theme ? ` relacionado con el tema "${theme}"` : '';
 
-      const prompt = `Generate an educational problem for category ${category} with difficulty ${difficulty} (scale 1-10)${themeContext}.
+      const prompt = `Genera un problema educativo para la categoría ${category} con dificultad ${difficulty} (escala 1-10)${themeContext}.${userContext}
 
-Return ONLY valid JSON (no markdown, no extra text):
+INSTRUCCIONES ESTRICTAS:
+1. Debes responder ÚNICAMENTE con JSON válido
+2. NO incluyas markdown, código, explicaciones ni texto extra
+3. NO uses comillas dentro de los valores de texto
+4. RESPETA EXACTAMENTE esta estructura:
+
 {
-  "question": "The problem question in Spanish",
-  "answer": "The correct answer (can be numeric or text)",
+  "question": "La pregunta del problema en español",
+  "answer": "La respuesta correcta",
   "category": "${category}"
 }
 
-CRITICAL Rules:
-- question: MUST be in SPANISH, clear and well-formatted
-- answer: Must be verifiable and correct
-- category: MUST be EXACTLY "${category}" (English only!)
-- For Math: include exact calculations
-- For Logic: include valid logical reasoning
-- For Science: include correct scientific concepts
-- Difficulty ${difficulty}: ${difficulty <= 3 ? 'basic' : difficulty <= 7 ? 'intermediate' : 'advanced'}`;
+REGLAS OBLIGATORIAS:
+- question: En ESPAÑOL, clara y bien formulada, sin comillas internas
+- answer: Verificable y correcta, puede ser numérica o texto, sin comillas internas
+- category: DEBE ser EXACTAMENTE "${category}"
+- Para Math: incluye cálculos exactos y números específicos
+- Para Logic: incluye razonamiento lógico válido
+- Para Science: incluye conceptos científicos correctos
+- Dificultad ${difficulty}: ${difficulty <= 3 ? 'básica, conceptos simples' : difficulty <= 7 ? 'intermedia, requiere análisis' : 'avanzada, requiere razonamiento complejo'}
+
+EJEMPLO VÁLIDO:
+{
+  "question": "Si un tren viaja a 80 km/h durante 2 horas, cuantos kilometros recorre?",
+  "answer": "160 kilometros",
+  "category": "Math"
+}`;
 
       console.log('🧮 Generating educational problem...');
       console.log('📚 Category:', category, '| Difficulty:', difficulty);
@@ -73,7 +112,7 @@ CRITICAL Rules:
           messages: [
             {
               role: 'system',
-              content: 'You are an expert teacher who generates educational problems. You respond with perfectly valid JSON without any markdown formatting.'
+              content: 'Eres un profesor experto que genera problemas educativos. Respondes con JSON perfectamente válido sin formato markdown ni texto adicional. Siempre respetas la estructura exacta solicitada.'
             },
             {
               role: 'user',

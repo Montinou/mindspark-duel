@@ -14,6 +14,13 @@ export const users = pgTable('users', {
   sparks: integer('sparks').default(0).notNull(),
   pityCounter: integer('pity_counter').default(0).notNull(),
   hasCompletedOnboarding: boolean('has_completed_onboarding').default(false).notNull(),
+
+  // User profile fields for personalized problem generation
+  age: integer('age'), // Optional, 5-99 years
+  educationLevel: text('education_level'), // 'elementary', 'middle', 'high', 'college', 'other'
+  interests: json('interests').$type<string[]>(), // Array of interest categories, max 5
+  preferredDifficulty: integer('preferred_difficulty').default(5), // 1-10, default 5
+
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

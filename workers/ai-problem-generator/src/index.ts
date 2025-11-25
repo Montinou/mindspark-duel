@@ -18,7 +18,8 @@ export interface ProblemGenerationRequest {
 
 export interface ProblemResponse {
   question: string;
-  answer: string;
+  options: string[];
+  correctAnswer: string;
   category: "Math" | "Logic" | "Science";
 }
 
@@ -100,7 +101,7 @@ export default {
 
       const themeContext = theme ? ` relacionado con el tema "${theme}"` : '';
 
-      const prompt = `Genera un problema educativo para la categoría ${category} con dificultad ${difficulty} (escala 1-10)${themeContext}.${userContext}${cardContext}
+      const prompt = `Genera un problema educativo de OPCIÓN MÚLTIPLE para la categoría ${category} con dificultad ${difficulty} (escala 1-10)${themeContext}.${userContext}${cardContext}
 
 INSTRUCCIONES ESTRICTAS:
 1. Debes responder ÚNICAMENTE con JSON válido
@@ -110,23 +111,23 @@ INSTRUCCIONES ESTRICTAS:
 
 {
   "question": "La pregunta del problema en español",
-  "answer": "La respuesta correcta",
+  "options": ["Opción A", "Opción B", "Opción C", "Opción D"],
+  "correctAnswer": "El texto EXACTO de la opción correcta",
   "category": "${category}"
 }
 
 REGLAS OBLIGATORIAS:
-- question: En ESPAÑOL, clara y bien formulada, sin comillas internas
-- answer: Verificable y correcta, puede ser numérica o texto, sin comillas internas
+- question: En ESPAÑOL, clara y bien formulada.
+- options: Array de 4 strings únicos. Una correcta, tres distractores plausibles.
+- correctAnswer: DEBE ser idéntico a uno de los strings en 'options'.
 - category: DEBE ser EXACTAMENTE "${category}"
-- Para Math: incluye cálculos exactos y números específicos
-- Para Logic: incluye razonamiento lógico válido
-- Para Science: incluye conceptos científicos correctos
-- Dificultad ${difficulty}: ${difficulty <= 3 ? 'básica, conceptos simples' : difficulty <= 7 ? 'intermedia, requiere análisis' : 'avanzada, requiere razonamiento complejo'}
+- Dificultad ${difficulty}: Ajusta la complejidad del problema.
 
 EJEMPLO VÁLIDO:
 {
-  "question": "Si un tren viaja a 80 km/h durante 2 horas, cuantos kilometros recorre?",
-  "answer": "160 kilometros",
+  "question": "Si un tren viaja a 80 km/h durante 2 horas, ¿cuántos kilómetros recorre?",
+  "options": ["100 km", "120 km", "160 km", "200 km"],
+  "correctAnswer": "160 km",
   "category": "Math"
 }`;
 
@@ -174,7 +175,7 @@ EJEMPLO VÁLIDO:
 
       const problemData = JSON.parse(jsonString) as ProblemResponse;
 
-      if (!problemData.question || !problemData.answer) {
+      if (!problemData.question || !problemData.options || !problemData.correctAnswer) {
         throw new Error('Missing required fields in generated problem');
       }
 

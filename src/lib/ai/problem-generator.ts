@@ -72,77 +72,72 @@ Return ONLY a valid JSON object (no markdown, no code blocks) with this structur
 }
 `;
 
-  // 1. Try Vercel AI Gateway
-  if (AI_GATEWAY_API_KEY) {
-    try {
-      const response = await fetch(GATEWAY_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${AI_GATEWAY_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'gemini-2.5-flash',
-          messages: [
-            { role: 'system', content: 'You are a creative educational content generator. Output valid JSON only.' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.7,
-        })
-      });
+  // Use Cloudflare Worker for problem generation
+  const WORKER_URL = process.env.WORKERS_AI_PROBLEM_URL || 'https://mindspark-ai-problem-generator.agusmontoya.workers.dev';
 
-      if (!response.ok) {
-        throw new Error(`Gateway status: ${response.status}`);
-      }
+  try {
+    const response = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        category: card.problemCategory,
+        difficulty,
+        theme: card.theme,
+        cardName: card.name,
+        cardElement: card.element,
+        cardTags: card.tags
+      })
+    });
 
-      const data = await response.json();
-      const content = data.choices[0].message.content;
-      return parseProblemResponse(content, difficulty, themeContext, card.id);
-    } catch (error) {
-      console.warn('⚠️ Vercel AI Gateway failed, failing over to Direct Gemini API:', error);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Worker error (${response.status}): ${errorText}`);
     }
+
+    const data = await response.json();
+    
+    if (!data.success || !data.data) {
+      throw new Error('Invalid response from worker');
+    }
+
+    return {
+      question: data.data.question,
+      options: data.data.options,
+      correctAnswer: data.data.correctAnswer,
+      difficulty: difficulty,
+      themeContext,
+      cardId: card.id
+    };
+
+  } catch (error) {
+    console.error('❌ Problem Generator Worker failed:', error);
+    
+    // Fallback to simple math if worker fails
+    console.warn('⚠️ Falling back to simple math problem');
+    const num1 = Math.floor(Math.random() * 10) + 1;
+    const num2 = Math.floor(Math.random() * 10) + 1;
+    const answer = num1 + num2;
+    
+    return {
+      question: `¿Cuánto es ${num1} + ${num2}?`,
+      options: [`${answer}`, `${answer + 1}`, `${answer - 1}`, `${answer + 2}`],
+      correctAnswer: `${answer}`,
+      difficulty: 1,
+      themeContext: "Fallback Math",
+      cardId: card.id
+    };
   }
-
-  // 2. Fallback to Direct Gemini API
-  if (!GEMINI_API_KEY) {
-    throw new Error('❌ CRITICAL: Both AI_GATEWAY_API_KEY and GEMINIAI_API_KEY are missing');
-  }
-
-  console.log('🔄 Falling back to Direct Gemini API...');
-  const DIRECT_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`;
-
-  const response = await fetch(DIRECT_API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }]
-    })
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('❌ Gemini API Error Response:', errorText);
-    throw new Error(`Gemini API failed (${response.status}): ${errorText}`);
-  }
-
-  const data = await response.json();
-  const content = data.candidates[0].content.parts[0].text;
-
-  console.log('✅ Problem generated via Direct Gemini API');
-  return parseProblemResponse(content, difficulty, themeContext, card.id);
 }
 
 function parseProblemResponse(text: string, difficulty: number, themeContext: string, cardId: string): Problem {
-  const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
-  const problemData = JSON.parse(jsonString);
-
+  // Deprecated - kept for reference if needed
   return {
-    question: problemData.question,
-    options: problemData.options,
-    correctAnswer: problemData.correctAnswer,
-    difficulty: problemData.difficulty || difficulty,
+    question: "Deprecated",
+    options: [],
+    correctAnswer: "",
+    difficulty,
     themeContext,
-    cardId,
+    cardId
   };
 }
 

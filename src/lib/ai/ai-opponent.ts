@@ -9,7 +9,8 @@ import { loadTurnManagerFromDB, saveTurnManagerToDB } from '@/lib/game/game-stat
 import { makeDecision, selectCombatTargets } from './decision-maker';
 import { simulateAIAnswer } from './problem-solver';
 import { AIDifficulty, AIState } from '@/types/ai';
-import { generateBattleProblem } from '@/lib/battle-service';
+import { generateBattleProblem, calculateDamage } from '@/lib/battle-service';
+import { Card } from '@/types/game';
 
 /**
  * Thinking delay simulation - makes AI feel human-like
@@ -179,12 +180,12 @@ export class AIOpponent {
   }
 
   /**
-   * Combat Phase: Execute attacks
+   * Combat Phase: Execute attacks with full battle resolution
    */
   private async executeCombat(turnManager: any): Promise<void> {
     console.log('⚔️  AI Combat Phase: Attacking...');
 
-    const gameState = turnManager.getState();
+    let gameState = turnManager.getState();
 
     if (gameState.opponentBoard.length === 0) {
       console.log('🛑 No creatures to attack with');
@@ -193,20 +194,28 @@ export class AIOpponent {
 
     // Select all targets at once
     const targets = selectCombatTargets(gameState);
+    let totalDamageDealt = 0;
 
     for (const target of targets) {
       await thinkingDelay('choose_target', this.thinkingDelayEnabled);
 
-      console.log(`⚔️  AI attacking with ${target.attackerId} → ${target.targetId}: ${target.reasoning}`);
+      // Find attacker card
+      const attacker = gameState.opponentBoard.find((c: Card) => c.id === target.attackerId);
+      if (!attacker) {
+        console.log(`❌ Attacker ${target.attackerId} not found`);
+        continue;
+      }
 
-      // Execute attack action
+      console.log(`⚔️  AI attacking with ${attacker.name} → ${target.targetId}: ${target.reasoning}`);
+
+      // Execute attack action (marks attacker as tapped)
       const result = await turnManager.executeAction({
         type: 'attack',
         playerId: 'opponent',
         timestamp: new Date(),
         data: {
           attackerId: target.attackerId,
-          targetId: target.targetId === 'face' ? undefined : target.targetId,
+          targetId: target.targetId === 'face' ? 'face' : target.targetId,
         },
       });
 
@@ -215,22 +224,69 @@ export class AIOpponent {
         continue;
       }
 
-      // If a battle problem was generated, answer it
-      if (result.data?.problem) {
+      // Generate problem for the attack
+      try {
         await thinkingDelay('answer_problem', this.thinkingDelayEnabled);
 
-        const answer = simulateAIAnswer(result.data.problem, this.difficulty);
+        const problem = await generateBattleProblem(attacker, 'ai-opponent', 5);
+        console.log(`🧠 Problem: "${problem.question}"`);
 
-        console.log(`🧠 AI answering problem: "${result.data.problem.question}"`);
-        console.log(`🧠 AI answer: "${answer}" (Correct: ${result.data.problem.answer})`);
+        // AI answers the problem
+        const aiAnswer = simulateAIAnswer(problem, this.difficulty);
+        const isCorrect = aiAnswer.trim().toLowerCase() === problem.answer.trim().toLowerCase();
 
-        // Submit answer (this would typically go through another API call)
-        // For now, we'll just log it. In the full implementation,
-        // this would trigger the battle resolution.
+        console.log(`🧠 AI answer: "${aiAnswer}" (Correct: ${problem.answer}) - ${isCorrect ? '✅' : '❌'}`);
+
+        // Calculate damage based on attack type
+        if (target.targetId === 'face') {
+          // Direct attack to player - full power + accuracy bonus
+          const baseDamage = attacker.power;
+          const accuracyBonus = isCorrect ? Math.ceil(baseDamage * 0.5) : 0;
+          const damage = baseDamage + accuracyBonus;
+
+          // Apply damage to player
+          turnManager.applyDamage('player', damage);
+          totalDamageDealt += damage;
+
+          console.log(`💥 AI dealt ${damage} damage to player (Base: ${baseDamage}, Accuracy: +${accuracyBonus})`);
+        } else {
+          // Attack a creature
+          const defender = gameState.playerBoard.find((c: Card) => c.id === target.targetId);
+          if (defender) {
+            const damageCalc = calculateDamage(attacker, defender, isCorrect);
+
+            // For simplicity, we apply damage to player based on the battle
+            // In a full implementation, this would handle creature combat
+            console.log(`⚔️  Combat: ${attacker.name} vs ${defender.name}`);
+            console.log(`💥 Damage calculation: Base ${damageCalc.baseDamage}, Accuracy +${damageCalc.accuracyBonus}, Elemental +${damageCalc.elementalBonus} = ${damageCalc.totalDamage}`);
+
+            // Apply excess damage to player if attacker wins
+            if (damageCalc.totalDamage > defender.defense) {
+              const excessDamage = damageCalc.totalDamage - defender.defense;
+              turnManager.applyDamage('player', excessDamage);
+              totalDamageDealt += excessDamage;
+              console.log(`💥 Excess damage to player: ${excessDamage}`);
+            }
+          }
+        }
+
+        // Check if game is over
+        const gameOverCheck = turnManager.isGameOver();
+        if (gameOverCheck.gameOver) {
+          console.log(`🏆 Game Over! Winner: ${gameOverCheck.winner}`);
+          break;
+        }
+
+      } catch (error) {
+        console.error('❌ Error during battle resolution:', error);
+        // Continue with next attack even if this one fails
       }
+
+      // Refresh state for next attack
+      gameState = turnManager.getState();
     }
 
-    console.log(`✅ AI executed ${targets.length} attack(s)`);
+    console.log(`✅ AI executed ${targets.length} attack(s), dealt ${totalDamageDealt} total damage`);
   }
 }
 

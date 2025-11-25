@@ -129,4 +129,5 @@ export interface ActionResult {
   message?: string;
   updatedState?: TurnState;
   error?: string;
+  data?: Record<string, any>; // Action-specific return data
 }

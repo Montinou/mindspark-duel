@@ -408,8 +408,6 @@ export class TurnManager {
   /**
    * Execute an attack
    * Integrates with Battle System for dual problem resolution
-   *
-   * Note: Full battle integration will be added in step 6
    */
   private async attack(attackerId: string, targetId: string): Promise<ActionResult> {
     console.log(`⚔️  Attack: ${attackerId} → ${targetId}`);
@@ -428,7 +426,36 @@ export class TurnManager {
     return {
       success: true,
       message: 'Attack initiated (battle resolution pending)',
+      data: { attackerId, targetId, attacker },
     };
+  }
+
+  /**
+   * Apply damage to a player
+   * @param target - 'player' or 'opponent'
+   * @param damage - Amount of damage to apply
+   */
+  public applyDamage(target: 'player' | 'opponent', damage: number): void {
+    if (target === 'player') {
+      this.state.playerHealth = Math.max(0, this.state.playerHealth - damage);
+      console.log(`💔 Player takes ${damage} damage. Health: ${this.state.playerHealth}`);
+    } else {
+      this.state.opponentHealth = Math.max(0, this.state.opponentHealth - damage);
+      console.log(`💔 Opponent takes ${damage} damage. Health: ${this.state.opponentHealth}`);
+    }
+  }
+
+  /**
+   * Check if game is over (either player at 0 health)
+   */
+  public isGameOver(): { gameOver: boolean; winner?: 'player' | 'opponent' } {
+    if (this.state.playerHealth <= 0) {
+      return { gameOver: true, winner: 'opponent' };
+    }
+    if (this.state.opponentHealth <= 0) {
+      return { gameOver: true, winner: 'player' };
+    }
+    return { gameOver: false };
   }
 
   /**

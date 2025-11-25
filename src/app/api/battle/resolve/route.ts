@@ -166,8 +166,8 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * Generate AI answer for opponent (simplified - can be improved with ML)
- * For now, AI has a difficulty-based chance of getting the answer correct
+ * Generate AI answer for opponent with plausible wrong answers
+ * Uses difficulty-based accuracy calculation
  */
 function generateAIAnswer(problem: BattleProblem): string {
   // AI accuracy based on problem difficulty (higher difficulty = lower AI accuracy)
@@ -178,6 +178,38 @@ function generateAIAnswer(problem: BattleProblem): string {
     return problem.answer;
   } else {
     // Generate plausible wrong answer
-    return problem.answer + ' (incorrect)';
+    return generatePlausibleWrongAnswer(problem.answer);
   }
+}
+
+/**
+ * Generate a plausible wrong answer based on the correct answer format
+ */
+function generatePlausibleWrongAnswer(correct: string): string {
+  // If numeric answer, modify it slightly
+  if (/^\d+$/.test(correct)) {
+    const num = parseInt(correct);
+    const offset = Math.floor(Math.random() * 10) - 5; // -5 to +5
+    if (offset === 0) return String(num + 1); // Ensure it's different
+    const wrongNum = Math.max(0, num + offset);
+    return String(wrongNum);
+  }
+
+  // If decimal/float answer, modify slightly
+  if (/^\d+\.\d+$/.test(correct)) {
+    const num = parseFloat(correct);
+    const offset = (Math.random() * 2 - 1) * num * 0.2; // ±20% of value
+    const wrongNum = Math.max(0.01, num + offset);
+    return wrongNum.toFixed(2);
+  }
+
+  // For other types, return common wrong answers
+  const commonWrongAnswers = [
+    'No sé',
+    'Incorrecto',
+    'Unknown',
+    String(Math.floor(Math.random() * 100)),
+  ];
+
+  return commonWrongAnswers[Math.floor(Math.random() * commonWrongAnswers.length)];
 }

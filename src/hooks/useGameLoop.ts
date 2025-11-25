@@ -206,31 +206,112 @@ export const useGameLoop = (userDeck: Card[] = []) => {
 
   const endTurn = useCallback(async () => {
     setGameState(prev => ({ ...prev, currentPhase: 'end' }));
-    
-    // Enemy Turn Logic (Simulated)
-    // In a real implementation, this would be an async call to an AI agent or game server
-    
-    // Simulate thinking time with a cancellable promise or proper async flow if needed
-    // For now, we execute logic directly. UI should handle animations.
-    
+
+    // Start AI turn
+    console.log('🤖 Starting AI turn...');
+
+    // Simulate AI thinking
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
     setGameState(prev => {
-        // Enemy draws & plays (Simplified AI)
-        const enemy = prev.enemy;
-        const damage = enemy.mana >= 2 ? 2 : 0;
-        const newMana = enemy.mana >= 2 ? enemy.mana - 2 : enemy.mana;
-        
-        return {
-            ...prev,
-            turn: prev.turn + 1,
-            enemy: { ...enemy, mana: newMana },
-            player: { ...prev.player, health: prev.player.health - damage }
-        };
+      const enemy = prev.enemy;
+      const newMaxMana = Math.min(MAX_MANA, enemy.maxMana + 1);
+
+      // AI draws a card
+      let newHand = [...enemy.hand];
+      if (enemy.deck > 0 && deckCards.length > 0) {
+        const randomIndex = Math.floor(Math.random() * deckCards.length);
+        newHand.push({ ...deckCards[randomIndex] });
+      }
+
+      // Untap all creatures
+      const untappedBoard = enemy.board.map(c => ({ ...c, canAttack: true, isTapped: false }));
+
+      return {
+        ...prev,
+        enemy: {
+          ...enemy,
+          maxMana: newMaxMana,
+          mana: newMaxMana,
+          hand: newHand,
+          board: untappedBoard,
+          deck: enemy.deck - 1
+        }
+      };
     });
 
-    // Pass turn back to player
+    // AI Main Phase: Play cards
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    setGameState(prev => {
+      const enemy = prev.enemy;
+      let mana = enemy.mana;
+      let hand = [...enemy.hand];
+      let board = [...enemy.board];
+
+      // AI plays cards it can afford (simple greedy strategy)
+      const playableCards = hand
+        .filter(c => c.cost <= mana)
+        .sort((a, b) => b.power - a.power); // Prioritize high power
+
+      for (const card of playableCards) {
+        if (mana >= card.cost && board.length < 7) {
+          console.log(`🃏 AI plays: ${card.name}`);
+          mana -= card.cost;
+          hand = hand.filter(c => c.id !== card.id);
+          board.push({ ...card, canAttack: false, isTapped: false }); // Summoning sickness
+        }
+      }
+
+      return {
+        ...prev,
+        enemy: { ...enemy, mana, hand, board }
+      };
+    });
+
+    // AI Combat Phase: Attack with ready creatures
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    setGameState(prev => {
+      const enemy = prev.enemy;
+      let playerHealth = prev.player.health;
+
+      // Attack with all ready creatures
+      const newBoard = enemy.board.map(creature => {
+        if (creature.canAttack && !creature.isTapped) {
+          // Calculate damage (base power + 50% bonus if AI "answers correctly")
+          const aiAnsweredCorrectly = Math.random() < 0.6; // 60% accuracy
+          const baseDamage = creature.power;
+          const bonus = aiAnsweredCorrectly ? Math.ceil(baseDamage * 0.5) : 0;
+          const damage = baseDamage + bonus;
+
+          playerHealth -= damage;
+          console.log(`⚔️ AI attacks with ${creature.name} for ${damage} damage (${aiAnsweredCorrectly ? '✅ correct' : '❌ incorrect'})`);
+
+          return { ...creature, canAttack: false, isTapped: true };
+        }
+        return creature;
+      });
+
+      // Check for game over
+      const winner = playerHealth <= 0 ? 'enemy' as const : null;
+
+      return {
+        ...prev,
+        enemy: { ...enemy, board: newBoard },
+        player: { ...prev.player, health: Math.max(0, playerHealth) },
+        winner
+      };
+    });
+
+    // End AI turn, pass back to player
+    await new Promise(resolve => setTimeout(resolve, 500));
+    console.log('✅ AI turn complete');
+
+    setGameState(prev => ({ ...prev, turn: prev.turn + 1 }));
     startTurn('player');
 
-  }, []);
+  }, [deckCards]);
 
   // Initialize on mount
   useEffect(() => {

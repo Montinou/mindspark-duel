@@ -100,12 +100,7 @@ export function Sidebar({ className, collapsed = false }: SidebarProps & { colla
           "flex items-center gap-3 rounded-lg bg-zinc-900/50",
           collapsed ? "justify-center p-2" : "px-4 py-3"
         )}>
-          <UserButton />
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-zinc-500 truncate">Logged in</p>
-            </div>
-          )}
+          <UserButton collapsed={collapsed} />
         </div>
       </div>
     </div>

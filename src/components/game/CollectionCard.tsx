@@ -1,11 +1,11 @@
 'use client';
 
 import { Card as CardComponent } from "@/components/game/Card";
-
+import { Card } from "@/types/game";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 
 interface CollectionCardProps {
-  card: any;
+  card: Card;
 }
 
 export function CollectionCard({ card }: CollectionCardProps) {
@@ -47,12 +47,11 @@ export function CollectionCard({ card }: CollectionCardProps) {
           rotateY,
           transformStyle: "preserve-3d",
         }}
-        className="relative w-full h-full flex justify-center"
+        className="relative flex justify-center"
       >
         <CardComponent
           card={card}
           onClick={() => {}}
-          className="w-full h-auto aspect-[2.5/3.5] max-w-[280px] shadow-xl hover:shadow-2xl transition-shadow duration-300"
         />
       </motion.div>
     </motion.div>

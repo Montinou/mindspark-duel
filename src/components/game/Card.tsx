@@ -1,6 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 import { Card as CardType } from '@/types/game';
 import { Shield, Zap, Brain, Sword } from 'lucide-react';
 
@@ -50,11 +52,17 @@ const getElementColors = (element: string) => {
 
 export function Card({ card, onClick, disabled, isPlayable, className }: CardProps) {
   const elementColors = getElementColors(card.element);
+  const [imgError, setImgError] = useState(false);
 
   return (
     <motion.div
-      whileHover={!disabled ? { scale: 1.1, y: -20, zIndex: 100 } : {}}
-      whileTap={!disabled ? { scale: 0.95 } : {}}
+      whileHover={!disabled ? {
+        scale: 1.05,
+        y: -15,
+        zIndex: 100,
+        transition: { type: "spring", stiffness: 400, damping: 25 }
+      } : {}}
+      whileTap={!disabled ? { scale: 0.97 } : {}}
       className={`
         relative w-56 h-80 rounded-xl cursor-pointer transition-all duration-200 overflow-hidden
         ${disabled ? 'grayscale brightness-75 cursor-not-allowed' : `shadow-2xl hover:shadow-lg ${elementColors.glow}`}
@@ -71,11 +79,15 @@ export function Card({ card, onClick, disabled, isPlayable, className }: CardPro
     >
       {/* Full Art Background Image */}
       <div className="absolute inset-0 z-0">
-        {card.imageUrl ? (
-          <img
+        {card.imageUrl && !imgError ? (
+          <Image
             src={card.imageUrl}
             alt={card.name}
-            className="w-full h-full object-cover"
+            fill
+            className="object-cover"
+            sizes="224px"
+            onError={() => setImgError(true)}
+            priority={false}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-zinc-950 text-zinc-700">

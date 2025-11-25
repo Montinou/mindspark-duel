@@ -31,9 +31,18 @@ export default async function CollectionPage() {
             key={card.id}
             card={{
               ...card,
+              flavorText: card.flavorText ?? undefined,
+              effectDescription: card.effectDescription ?? undefined,
+              imageUrl: card.imageUrl ?? undefined,
+              imagePrompt: card.imagePrompt ?? undefined,
+              theme: card.theme ?? undefined,
+              tags: card.tags ?? undefined,
+              batchId: card.batchId ?? undefined,
+              batchOrder: card.batchOrder ?? undefined,
+              createdById: card.createdById ?? undefined,
               canAttack: false,
               isTapped: false
-            } as any}
+            }}
           />
         ))}
       </div>

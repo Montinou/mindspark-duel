@@ -13,14 +13,14 @@ interface HandProps {
 
 export function Hand({ cards, onPlayCard, currentMana, isMyTurn }: HandProps) {
   return (
-    <div className="relative h-64 flex justify-center items-end w-full max-w-5xl mx-auto perspective-1000">
+    <div className="relative h-80 flex justify-center items-end w-full max-w-6xl mx-auto perspective-1000">
       {cards.map((card, index) => {
         const totalCards = cards.length;
         const centerIndex = (totalCards - 1) / 2;
         const offset = index - centerIndex;
-        const rotate = offset * 5; // Degrees to rotate
-        const translateY = Math.abs(offset) * 10; // Curve effect
-        const translateX = offset * -40; // Overlap
+        const rotate = offset * 4; // Slightly less rotation
+        const translateY = Math.abs(offset) * 8; // Gentler curve
+        const translateX = offset * -25; // Less overlap for easier hover
 
         const isPlayable = isMyTurn && currentMana >= card.cost;
 
@@ -28,24 +28,24 @@ export function Hand({ cards, onPlayCard, currentMana, isMyTurn }: HandProps) {
           <motion.div
             key={card.id}
             initial={{ y: 100, opacity: 0 }}
-            animate={{ 
-              y: translateY, 
+            animate={{
+              y: translateY,
               x: translateX,
               rotate: rotate,
               opacity: 1,
               zIndex: index
             }}
-            whileHover={{ 
-              y: -80, 
-              zIndex: 100,
-              scale: 1.1,
+            whileHover={{
+              y: -50,
+              zIndex: 50,
+              scale: 1.08,
               rotate: 0,
-              transition: { duration: 0.2 }
+              transition: { type: "spring", stiffness: 300, damping: 20 }
             }}
-            className="absolute bottom-0 origin-bottom"
+            className="absolute bottom-0 origin-bottom cursor-pointer"
             style={{
                 left: '50%',
-                marginLeft: '-7rem' // Half card width approx
+                marginLeft: '-7rem'
             }}
           >
             <Card 

@@ -68,7 +68,7 @@ export function Battlefield({ userDeck }: BattlefieldProps) {
         <div className="w-full h-px bg-gradient-to-r from-transparent via-zinc-700 to-transparent my-4 opacity-50" />
 
         {/* Player Board */}
-        <div className="flex justify-center gap-4 min-h-[240px] w-full px-12 items-center">
+        <div className="flex justify-center gap-6 min-h-[280px] w-full px-12 items-center overflow-visible">
           <AnimatePresence>
             {gameState.player.board.map(card => (
               <motion.div 
@@ -102,7 +102,7 @@ export function Battlefield({ userDeck }: BattlefieldProps) {
       </div>
 
       {/* --- BOTTOM BAR: Player Hand & Controls --- */}
-      <div className="h-[350px] bg-gradient-to-t from-zinc-950 via-zinc-900/95 to-transparent relative z-30 flex flex-col justify-end pb-4">
+      <div className="h-[400px] bg-gradient-to-t from-zinc-950 via-zinc-900/95 to-transparent relative z-30 flex flex-col justify-end pb-4 overflow-visible">
         
         {/* Phase & End Turn Controls */}
         <div className="absolute top-12 right-8 flex flex-col gap-4 items-end z-40">

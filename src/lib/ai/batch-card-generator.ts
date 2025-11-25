@@ -38,88 +38,65 @@ export async function generateCardBatch(request: BatchGenerationRequest): Promis
   const count = request.count || 10;
   const difficulty = request.difficulty || 5;
 
-  // Optimized prompt for Full Art anime-style TCG cards (2025)
+  // Optimized prompt for Epic Fantasy TCG cards (2025)
   const prompt = `
-You are an expert trading card game designer specializing in premium full-art anime-style artwork.
+You are a legendary lorekeeper and master card designer for a high-fantasy trading card game called "MindSpark Duel".
 
-Generate a cohesive set of ${count} unique trading cards for "MindSpark Duel" with the following theme:
+Generate a cohesive set of ${count} unique trading cards with the following theme:
 **Theme**: ${request.theme}
 **Description**: ${request.themeDescription}
 
 LANGUAGE REQUIREMENT:
 - All text (Name, Flavor Text, Effect Description) MUST be in SPANISH.
 
-CRITICAL STYLE REQUIREMENTS (2025 OPTIMIZED):
-1. **Art Style**: Premium full-art anime style
-   - Studio Ghibli / Makoto Shinkai cinematic quality
-   - Oil painting aesthetic with rich textures and dramatic lighting
-   - Vibrant saturated colors, intricate details, sharp focus
-   - Character-focused when applicable, but immersive environments
-   - Professional TCG artwork quality (think MTG full art cards)
+CRITICAL STYLE REQUIREMENTS:
 
-2. **Full Art Composition** (CRITICAL - READ CAREFULLY):
-   - Vertical portrait orientation (5:7 ratio, approx 2.5" x 3.5")
-   - **FULL-BLEED borderless composition** - art extends to ALL EDGES
-   - **DO NOT leave bottom 25% empty** - we use glassmorphism UI overlays
-   - Subject fills frame dramatically with immersive environment surrounding it
-   - Composition should work with semi-transparent text overlays on top/bottom
-   - Think Magic the Gathering "borderless" or "extended art" cards
+1. **Art Style**: EPIC FANTASY MASTERPIECE
+   - Style: Magic the Gathering (MTG) modern era, Dungeons & Dragons 5e art.
+   - Mood: Epic, dramatic, atmospheric, slightly dark but vibrant.
+   - Lighting: Cinematic, volumetric, rim lighting, bioluminescence where appropriate.
+   - Quality: 8k resolution, highly detailed, oil painting aesthetic, sharp focus.
+   - Composition: Dynamic action or imposing stance. Vertical portrait.
 
-3. **Thematic Coherence**:
-   - All ${count} cards must feel like part of the same "set"
-   - Shared visual motifs, color palettes, or design elements
-   - Progressive narrative through flavor text
-   - Cross-references between cards when appropriate
+2. **Flavor Text**: ANCIENT & POETIC
+   - Tone: Serious, mythical, legendary. Avoid casual or generic descriptions.
+   - Content: Fragments of ancient prophecies, quotes from forgotten heroes, or whispers from the void.
+   - Style: Use archaic or poetic Spanish phrasing (e.g., "En las sombras donde la luz no osa entrar...", "Aquel que susurra a las tormentas...").
+   - Length: 1-2 evocative sentences.
 
-4. **Flavor Text**:
-   - Evocative, thematic narrative text (1-2 sentences)
-   - Reference the broader lore of the theme
-   - Make each card feel like part of a larger story
+3. **Card Names**:
+   - Use powerful, evocative titles (e.g., "Ignis, Señor de la Ceniza", "Susurro del Vacío", "Guardiana del Bosque Eterno").
 
-5. **Effect Descriptions**:
-   - Separate from flavor text
-   - Clear game mechanics (e.g., "Inflige 3 de daño", "Roba 2 cartas")
-   - Balanced for the card's cost
-
-6. **Tags**:
-   - Include 3-5 thematic tags per card in Spanish
-   - Examples: ["dragón", "fuego", "legendario"], ["samurái", "guerrero", "honor"]
+4. **Tags**:
+   - 3-5 thematic tags in Spanish (e.g., "Dragón", "Fuego", "Legendario", "Hechizo").
 
 GAME BALANCE:
-- Cost range: 1-10 mana
-- Power range: 1-10 (REQUIRED - all cards MUST have power)
-- Defense range: 1-10 (REQUIRED - all cards MUST have defense)
-- Cost should correlate with total stats (cost ≈ (power + defense) / 2)
-- Difficulty for educational problems: ${difficulty}/10
-- CRITICAL: Every card must have valid integer power and defense values. No nulls or zeros.
+- Cost: 1-10
+- Power/Defense: 1-10 (Integers only, NO zeros)
+- Difficulty: ${difficulty}/10
 
-IMAGE PROMPT REQUIREMENTS (OPTIMIZED FOR 2025):
-- Start with subject description matching card name
-- Include: "Vertical portrait, full-bleed borderless composition extending to all edges"
-- Add style: "High-quality anime art style, oil painting aesthetic, dramatic cinematic lighting"
-- Add quality boosters: "masterpiece, highly detailed, vibrant saturated colors, rich textures, sharp focus"
-- Add technical: "Professional TCG artwork, Magic the Gathering full art card style"
-- EXCLUDE: "NO text, NO watermarks, NO borders, NO frames, NO reserved space"
-- Include theme context: "Theme: ${request.theme}"
+IMAGE PROMPT CONSTRUCTION (CRITICAL):
+- Start with the subject.
+- ALWAYS append these exact style keywords: "epic fantasy art style, magic the gathering style, oil painting, masterpiece, highly detailed, dramatic cinematic lighting, 8k resolution, artstation, unreal engine 5 render, volumetric fog, dark fantasy aesthetic".
+- NO text, NO borders, NO frames.
 
 OUTPUT FORMAT:
-Return ONLY a valid JSON object with this exact structure (no markdown, no code blocks):
+Return ONLY a valid JSON object:
 {
-  "styleGuidelines": "Brief description of the visual style for this batch (1-2 sentences)",
+  "styleGuidelines": "Brief description of the visual style",
   "cards": [
     {
-      "name": "Card Name (in Spanish)",
-      "flavorText": "Evocative thematic narrative in Spanish (1-2 sentences)",
-      "effectDescription": "Clear game mechanics in Spanish",
-      "cost": integer (1-10),
-      "power": integer (1-10),
-      "defense": integer (1-10),
+      "name": "Epic Name",
+      "flavorText": "Poetic lore text.",
+      "effectDescription": "Game mechanic.",
+      "cost": 1-10,
+      "power": 1-10,
+      "defense": 1-10,
       "element": "Fire" | "Water" | "Earth" | "Air",
       "problemCategory": "Math" | "Logic" | "Science",
-      "imagePrompt": "[Detailed subject description]. Vertical portrait, full-bleed borderless composition extending to all edges. High-quality anime art style, oil painting aesthetic, dramatic cinematic lighting, vibrant saturated colors, intricate details, sharp focus. Subject fills frame with immersive environment. Professional TCG artwork, Magic the Gathering full art card style, masterpiece, highly detailed, rich textures. NO text, NO watermarks, NO borders, NO frames. Theme: ${request.theme}",
-      "tags": ["tag1", "tag2", "tag3"]
+      "imagePrompt": "[Subject description], epic fantasy art style, magic the gathering style, oil painting, masterpiece, highly detailed, dramatic cinematic lighting, 8k resolution, artstation, unreal engine 5 render, volumetric fog, dark fantasy aesthetic. Theme: ${request.theme}",
+      "tags": ["tag1", "tag2"]
     }
-    // ... repeat for all ${count} cards
   ]
 }
 `;

@@ -1,17 +1,30 @@
 'use client';
 
 import { Sidebar } from './Sidebar';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
+
+import { Button } from "@/components/ui/button";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   return (
     <div className="flex h-screen bg-zinc-950 text-white overflow-hidden">
       {/* Desktop Sidebar */}
-      <div className="hidden md:block">
-        <Sidebar />
+      <div className="hidden md:block relative group">
+        <Sidebar collapsed={isSidebarCollapsed} />
+        
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          className="absolute -right-3 top-9 z-50 h-6 w-6 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-700 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all"
+          aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </Button>
       </div>
 
       {/* Mobile Header */}
@@ -19,12 +32,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <h1 className="text-lg font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
           MindSpark
         </h1>
-        <button 
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 text-zinc-400 hover:text-white"
+          className="text-zinc-400 hover:text-white"
         >
           {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        </Button>
       </div>
 
       {/* Mobile Sidebar Overlay */}
@@ -41,7 +56,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto pt-16 md:pt-0 relative">
+      <main className="flex-1 overflow-y-auto pt-16 md:pt-0 relative scroll-smooth">
         {children}
       </main>
     </div>

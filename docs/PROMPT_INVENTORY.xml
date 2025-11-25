@@ -18,10 +18,10 @@ USO:
 - Mantener sincronizado con la estructura de carpetas en @docs/
 
 ÚLTIMA ACTUALIZACIÓN: 2025-11-24
-TOTAL DE PROMPTS: 14
+TOTAL DE PROMPTS: 14 (12 completed, 2 planned)
 -->
 
-<prompt_inventory version="2.1">
+<prompt_inventory version="2.2">
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <!-- METADATA                                                                 -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
@@ -32,6 +32,7 @@ TOTAL DE PROMPTS: 14
     <total_prompts>14</total_prompts>
     <total_categories>4</total_categories>
     <version_notes>
+      v2.2: Prompts #13 and #14 completed (Turn Manager + AI Opponent)
       v2.1: Added Prompt #14 (AI Opponent "The Dark Quizmaster")
       v2.0: Prompt #13 enhanced to comprehensive dual-purpose document (Game Rules + Turn Manager)
     </version_notes>
@@ -605,7 +606,7 @@ docs/
       <last_updated>2025-11-24</last_updated>
     </prompt>
 
-    <prompt id="13" status="planned">
+    <prompt id="13" status="completed">
       <file>13_RULES_ENHANCEMENT_TURN_MANAGER_PROMPT.xml</file>
       <title>Game Rules Enhancement &amp; Turn Manager Implementation</title>
       <phase>Gameplay - Core Systems</phase>
@@ -655,11 +656,58 @@ docs/
         <item>Progressive fatigue damage calculation</item>
         <item>Turn history logging for debugging</item>
       </technical_complexity>
+      <completion_notes>
+        ✅ COMPLETED (2025-11-24):
+
+        ALL 12 STEPS COMPLETED:
+        ✅ Step 1: TypeScript Type Definitions (src/types/game.ts expanded)
+        ✅ Step 2: Phase Controller Implementation (src/lib/game/phase-controller.ts, 189 lines)
+        ✅ Step 3: Deck Service Implementation (src/lib/game/deck-service.ts, 269 lines)
+        ✅ Step 4: Turn Manager Implementation (src/lib/game/turn-manager.ts, 574 lines)
+        ✅ Step 5: Game State Persistence (src/lib/game/game-state-persistence.ts, 183 lines)
+        ✅ Step 6: API Endpoint - Start Game (src/app/api/game/start/route.ts, 160 lines)
+        ✅ Step 7: API Endpoint - Execute Action (src/app/api/game/action/route.ts, 158 lines)
+        ✅ Step 8: API Endpoint - Advance Phase (src/app/api/game/advance-phase/route.ts, 130 lines)
+        ✅ Step 9: Database Schema Migration (Drizzle migration applied successfully)
+        ✅ Step 10: Integration with Battle System &amp; Persistence
+        ✅ Step 11: Test Suite Creation (scripts/test-turn-manager.ts, 663 lines)
+        ✅ Step 12: Git Commit (commit a230399)
+
+        IMPLEMENTATION:
+        - Created complete Turn Manager system with 4-phase turn structure
+        - Implemented mana management (recharge, increment, cap at 10)
+        - Implemented card drawing with fatigue system (progressive damage: 1, 2, 3...)
+        - Created deck shuffling with crypto.randomUUID() for randomness
+        - Full game state persistence to/from database (JSON serialization with Date handling)
+        - Integration with Battle System (prompt #12) via battle-service.ts
+        - API endpoints for game flow (start, action, advance-phase)
+        - Comprehensive test suite with 6 tests (all passing)
+
+        TEST RESULTS: 6/6 PASSING
+        ✅ Test 1: Turn Progression (turn counter, phase advancement, player switching)
+        ✅ Test 2: Mana Management (recharge, increment, cap at 10)
+        ✅ Test 3: Phase Restrictions (action validation per phase)
+        ✅ Test 4: Fatigue System (progressive damage on empty deck)
+        ✅ Test 5: State Persistence (save/load from database)
+        ✅ Test 6: Game End Detection (HP = 0, draw scenarios)
+
+        ARCHITECTURE:
+        src/lib/game/
+        ├── turn-manager.ts      # Main orchestrator (574 lines)
+        ├── phase-controller.ts  # Phase progression logic (189 lines)
+        ├── deck-service.ts      # Card drawing &amp; fatigue (269 lines)
+        └── game-state-persistence.ts  # Database persistence (183 lines)
+
+        READY FOR:
+        - AI Opponent implementation (Prompt #14)
+        - Problem Solving UI improvements (Prompt #15)
+        - Full game loop testing with AI opponent
+      </completion_notes>
       <last_updated>2025-11-24</last_updated>
       <prerequisite_for>14_AI_OPPONENT_PROMPT.xml, 15_PROBLEM_SOLVING_UI_PROMPT.xml, Phase 4 Battle UI</prerequisite_for>
     </prompt>
 
-    <prompt id="14" status="planned">
+    <prompt id="14" status="completed">
       <file>14_AI_OPPONENT_PROMPT.xml</file>
       <title>Implement AI Opponent "The Dark Quizmaster"</title>
       <phase>Gameplay - AI Systems</phase>
@@ -698,6 +746,75 @@ docs/
         <item>Difficulty scaling (Easy: 40% win rate, Hard: 60% win rate)</item>
         <item>Intentional suboptimal plays for balance</item>
       </technical_complexity>
+      <completion_notes>
+        ✅ COMPLETED (2025-11-24):
+
+        ALL 9 STEPS COMPLETED:
+        ✅ Step 1: Create AI TypeScript Types (src/types/ai.ts)
+        ✅ Step 2: Implement Card Evaluator (src/lib/ai/card-evaluator.ts, 131 lines)
+        ✅ Step 3: Implement Problem Solver (src/lib/ai/problem-solver.ts, 146 lines)
+        ✅ Step 4: Implement Decision Maker (src/lib/ai/decision-maker.ts, 274 lines)
+        ✅ Step 5: Implement AI Opponent Controller (src/lib/ai/ai-opponent.ts, 174 lines)
+        ✅ Step 6: Create AI Turn Trigger Endpoint (src/app/api/ai/take-turn/route.ts, 136 lines)
+        ✅ Step 7: Integrate AI with Game Loop (src/hooks/useAITurnTrigger.ts, 113 lines)
+        ✅ Step 8: Testing &amp; Balancing (scripts/test-ai-opponent.ts, 455 lines)
+        ✅ Step 9: Git Commit (commit 6d19413)
+
+        AI DECISION MAKING:
+        - Priority-based decision framework (5 levels: Lethal > Survival > Tempo > Combat > End)
+        - Card value evaluation with situation bonuses (Base: (Power+Defense)×2, +bonuses, -cost)
+        - Strategic card selection (on-curve play, mana efficiency, tempo optimization)
+        - Combat targeting (lethal check, survival priority, threat assessment, face damage)
+        - Threat assessment and defensive plays
+
+        PROBLEM SOLVING SIMULATION:
+        - Difficulty-based accuracy (30-95% range)
+          * Formula: accuracy = max(0.3, 1 - difficulty/15)
+          * Difficulty 1: 93%, Difficulty 5: 67%, Difficulty 10: 33%, Difficulty 15: 30%
+        - AI difficulty modifiers: Easy (-20%), Normal (0%), Hard (+20%)
+        - Plausible wrong answer generation (numeric offsets, percentage variance)
+
+        IMPLEMENTATION:
+        - Created src/types/ai.ts (AI types: AIDifficulty, AIState, CardEvaluation, AIDecision)
+        - Created src/lib/ai/ai-opponent.ts (main controller with takeTurn() orchestration)
+        - Created src/lib/ai/decision-maker.ts (strategic decisions with 5-level priority)
+        - Created src/lib/ai/card-evaluator.ts (card value scoring with bonuses)
+        - Created src/lib/ai/problem-solver.ts (answer simulation with accuracy formula)
+        - Created API endpoint POST /api/ai/take-turn (verifies turn, executes AI, returns state)
+        - Created src/hooks/useAITurnTrigger.ts (frontend integration for auto-triggering)
+        - Human-like thinking delays (0.5-5 seconds per action, configurable)
+        - Deterministic decisions (same state = same actions with seed)
+
+        TEST RESULTS: 9/9 PASSING
+        ✅ Test 1a: Card value calculation
+        ✅ Test 1b: Best card selection
+        ✅ Test 1c: Playable cards filter
+        ✅ Test 2a: Lethal detection
+        ✅ Test 2b: Survival threat detection
+        ✅ Test 2c: Combat targeting
+        ✅ Test 3a: Accuracy formula validation
+        ✅ Test 3b: Difficulty modifier validation
+        ✅ Test 3c: Problem solving simulation (100 samples)
+
+        ARCHITECTURE:
+        src/lib/ai/
+        ├── ai-opponent.ts      # Main orchestrator (174 lines)
+        ├── decision-maker.ts   # Priority-based strategy (274 lines)
+        ├── card-evaluator.ts   # Card value scoring (131 lines)
+        └── problem-solver.ts   # Answer simulation (146 lines)
+
+        BALANCE:
+        - AI is intentionally imperfect (~30% suboptimal plays)
+        - Accuracy ranges from 30-95% based on problem difficulty
+        - Strategic decisions prioritize survival over greed
+        - Target win rates: Easy 40%, Normal 50%, Hard 60%
+
+        READY FOR:
+        - Battlefield component refactoring to use Turn Manager API
+        - useAITurnTrigger integration in game UI
+        - Full game loop testing with AI opponent
+        - Future enhancements (personalities, dynamic difficulty, pattern learning)
+      </completion_notes>
       <last_updated>2025-11-24</last_updated>
       <prerequisite_for>15_PROBLEM_SOLVING_UI_PROMPT.xml, Full game loop testing</prerequisite_for>
     </prompt>
@@ -787,8 +904,8 @@ docs/
 
   <statistics>
     <total_prompts>14</total_prompts>
-    <completed_prompts>10</completed_prompts>
-    <planned_prompts>4</planned_prompts>
+    <completed_prompts>12</completed_prompts>
+    <planned_prompts>2</planned_prompts>
 
     <by_difficulty>
       <difficulty level="easy">1</difficulty>
@@ -797,16 +914,17 @@ docs/
     </by_difficulty>
 
     <by_status>
-      <status name="completed">10</status>
+      <status name="completed">12</status>
       <status name="in_progress">0</status>
-      <status name="planned">4</status>
+      <status name="planned">2</status>
     </by_status>
 
     <total_estimated_time>
-      <completed>1320-1710 minutes (~22-28.5 hours)</completed>
-      <planned>615-800 minutes (~10.25-13.3 hours)</planned>
-      <note>Prompt #13 expanded to comprehensive dual-purpose: 240-300 minutes</note>
-      <note>Prompt #14 added for AI opponent: 180-240 minutes</note>
+      <completed>1740-2250 minutes (~29-37.5 hours)</completed>
+      <planned>195-260 minutes (~3.25-4.3 hours)</planned>
+      <note>Prompt #13 completed: Turn Manager implementation (240-300 minutes)</note>
+      <note>Prompt #14 completed: AI Opponent "The Dark Quizmaster" (180-240 minutes)</note>
+      <note>Remaining: Prompt #15 (Problem Solving UI) + Phase 4 Battle UI</note>
     </total_estimated_time>
 
     <by_category>
@@ -815,7 +933,7 @@ docs/
       <category name="onboarding">5</category>
       <category name="gamification">1</category>
       <category name="store">1</category>
-      <category name="gameplay">8 (4 planned: #13, #14, #15, Phase 4 UI)</category>
+      <category name="gameplay">8 (2 planned: #15, Phase 4 Battle UI refinement)</category>
     </by_category>
   </statistics>
 

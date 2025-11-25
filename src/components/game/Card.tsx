@@ -9,6 +9,7 @@ interface CardProps {
   onClick?: (card: CardType) => void;
   disabled?: boolean;
   isPlayable?: boolean;
+  className?: string;
 }
 
 // Helper function to get element-based colors
@@ -47,7 +48,7 @@ const getElementColors = (element: string) => {
   }
 };
 
-export function Card({ card, onClick, disabled, isPlayable }: CardProps) {
+export function Card({ card, onClick, disabled, isPlayable, className }: CardProps) {
   const elementColors = getElementColors(card.element);
 
   return (
@@ -61,6 +62,7 @@ export function Card({ card, onClick, disabled, isPlayable }: CardProps) {
         ${card.canAttack ? 'ring-2 ring-red-500 ring-offset-2 ring-offset-zinc-900 animate-pulse' : ''}
         ${card.isTapped ? 'grayscale brightness-90' : ''}
         bg-gradient-to-br from-zinc-900 to-zinc-950
+        ${className || ''}
       `}
       onClick={() => !disabled && onClick?.(card)}
       style={{

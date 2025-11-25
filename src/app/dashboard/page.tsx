@@ -3,7 +3,7 @@ import { cards, userCards, users, mastery } from "@/db/schema";
 import { stackServerApp } from "@/lib/stack";
 import { eq, count } from "drizzle-orm";
 
-import { AppShell } from "@/components/layout/AppShell";
+
 import Link from "next/link";
 import { Swords } from "lucide-react";
 
@@ -33,7 +33,6 @@ export default async function DashboardPage() {
   const masteryTitle = getMasteryTitle(totalMasteryLevel);
 
   return (
-    <AppShell>
       <div className="p-8 space-y-8">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -57,7 +56,6 @@ export default async function DashboardPage() {
 
         {/* Recent Activity or Featured could go here */}
       </div>
-    </AppShell>
   );
 }
 

@@ -33,11 +33,14 @@ export default {
 			console.log('🎨 Generating image with Flux Schnell...');
 			console.log('📝 Prompt:', prompt.substring(0, 150));
 
+			// Enhance prompt with Epic Fantasy style
+			const enhancedPrompt = `${prompt}, epic fantasy art style, magic the gathering style, oil painting, masterpiece, highly detailed, dramatic cinematic lighting, 8k resolution, artstation, unreal engine 5 render, volumetric fog, dark fantasy aesthetic`;
+
 			// Generate image using Flux 1 Schnell
 			const aiResponse = await env.AI.run(
 				'@cf/black-forest-labs/flux-1-schnell',
 				{
-					prompt: prompt,
+					prompt: enhancedPrompt,
 					num_steps: 4, // Fast generation (1-4 steps)
 				}
 			);

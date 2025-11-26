@@ -144,15 +144,17 @@ export function Card({
       </div>
 
       {/* Bottom Glassmorphism Text Box */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 backdrop-blur-md bg-black/60 border-t border-white/20 rounded-t-lg p-3">
-        {/* Description */}
-        <p className="text-zinc-200 text-[11px] leading-snug line-clamp-2 font-serif mb-2">
-          {card.description}
-        </p>
+      <div className="absolute bottom-0 left-0 right-0 z-10 backdrop-blur-md bg-black/60 border-t border-white/20 rounded-t-lg p-2">
+        {/* Description - only show if no ability or on board */}
+        {(!card.ability || isOnBoard) && (
+          <p className="text-zinc-200 text-[10px] leading-snug line-clamp-2 font-serif mb-1.5">
+            {card.description}
+          </p>
+        )}
 
         {/* Ability Row (if card has ability) */}
         {card.ability && (
-          <div className="mb-2">
+          <div className="mb-1.5">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -162,20 +164,20 @@ export function Card({
               }}
               disabled={!abilityAvailable}
               className={`
-                w-full flex items-center justify-between gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold
+                w-full flex items-center justify-between gap-1 px-2 py-1 rounded-md text-[9px] font-bold
                 transition-all duration-200
                 ${abilityAvailable
                   ? 'bg-purple-600/80 hover:bg-purple-500 text-white cursor-pointer border border-purple-400/50 shadow-lg shadow-purple-500/30'
-                  : 'bg-zinc-800/60 text-zinc-500 cursor-not-allowed border border-zinc-700/50'
+                  : 'bg-zinc-800/60 text-zinc-400 border border-zinc-700/50'
                 }
               `}
               title={card.ability.description}
             >
               <span className="flex items-center gap-1">
-                <Sparkles size={10} />
-                {card.ability.name}
+                <Sparkles size={9} />
+                <span className="truncate max-w-[80px]">{card.ability.name}</span>
               </span>
-              <span className="flex items-center gap-0.5 bg-black/30 px-1.5 py-0.5 rounded">
+              <span className="flex items-center gap-0.5 bg-black/30 px-1 py-0.5 rounded text-[8px]">
                 {card.ability.manaCost}💎
               </span>
             </button>
@@ -183,25 +185,25 @@ export function Card({
         )}
 
         {/* Stats Row */}
-        <div className="flex justify-between items-center pt-2 border-t border-white/10">
+        <div className="flex justify-between items-center pt-1.5 border-t border-white/10">
           {/* Power */}
-          <div className="flex items-center gap-1 text-red-400 bg-black/40 px-2 py-1 rounded-full border border-red-500/30" title="Power">
-            <Sword size={12} />
-            <span className="font-bold text-xs">{card.power}</span>
+          <div className="flex items-center gap-0.5 text-red-400 bg-black/40 px-1.5 py-0.5 rounded-full border border-red-500/30" title="Power">
+            <Sword size={10} />
+            <span className="font-bold text-[10px]">{card.power}</span>
           </div>
 
           {/* Problem Category */}
-          <div className="flex items-center gap-1 text-purple-300" title="Problem Type">
-            <Brain size={12} />
-            <span className="text-[9px] uppercase tracking-tighter font-semibold">
+          <div className="flex items-center gap-0.5 text-purple-300" title="Problem Type">
+            <Brain size={10} />
+            <span className="text-[8px] uppercase tracking-tighter font-semibold">
               {card.problemCategory}
             </span>
           </div>
 
           {/* Defense */}
-          <div className="flex items-center gap-1 text-green-400 bg-black/40 px-2 py-1 rounded-full border border-green-500/30" title="Defense">
-            <Shield size={12} />
-            <span className="font-bold text-xs">{card.defense}</span>
+          <div className="flex items-center gap-0.5 text-green-400 bg-black/40 px-1.5 py-0.5 rounded-full border border-green-500/30" title="Defense">
+            <Shield size={10} />
+            <span className="font-bold text-[10px]">{card.defense}</span>
           </div>
         </div>
       </div>

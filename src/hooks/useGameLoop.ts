@@ -1,5 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GameState, Card, Problem, Phase, Player } from '../types/game';
+import {
+  assignAbilityToCard,
+  canUseAbility,
+  executeAbility,
+  resetAbilitiesForTurn,
+  markAbilityUsed,
+} from '@/lib/game/abilities';
 
 const INITIAL_PLAYER_HEALTH = 20;
 const INITIAL_MANA = 1;
@@ -15,7 +22,7 @@ const createPlayer = (id: string, name: string): Player => ({
   maxMana: INITIAL_MANA,
   hand: [],
   board: [],
-  deck: 20
+  deck: 20,
 });
 
 const initialState: GameState = {
@@ -31,22 +38,26 @@ const initialState: GameState = {
 export const useGameLoop = (userDeck: Card[] = []) => {
   const [gameState, setGameState] = useState<GameState>(initialState);
   const [deckCards] = useState<Card[]>(userDeck.length > 0 ? userDeck : []);
+  const [abilityMessage, setAbilityMessage] = useState<string | null>(null);
 
   // --- Helper Functions ---
 
   const drawCard = (playerId: string, count: number = 1) => {
-    setGameState(prev => {
+    setGameState((prev) => {
       const player = prev[playerId as 'player' | 'enemy'];
       if (player.deck <= 0 || deckCards.length === 0) {
-        // Fatigue logic could go here
         return prev;
       }
 
-      // Get random cards from user's deck
       const newCards = [];
       for (let i = 0; i < count; i++) {
         const randomIndex = Math.floor(Math.random() * deckCards.length);
-        newCards.push({ ...deckCards[randomIndex] });
+        // Assign ability to each new card
+        const cardWithAbility = assignAbilityToCard({
+          ...deckCards[randomIndex],
+          id: `${deckCards[randomIndex].id}-${Date.now()}-${i}`,
+        });
+        newCards.push(cardWithAbility);
       }
 
       return {
@@ -54,178 +65,293 @@ export const useGameLoop = (userDeck: Card[] = []) => {
         [playerId]: {
           ...player,
           hand: [...player.hand, ...newCards],
-          deck: player.deck - count
-        }
+          deck: player.deck - count,
+        },
       };
     });
   };
 
   const startTurn = (playerId: 'player' | 'enemy') => {
-    setGameState(prev => {
+    setGameState((prev) => {
       const player = prev[playerId];
       const newMaxMana = Math.min(MAX_MANA, player.maxMana + 1);
-      
-      // Reset board state (untap creatures)
-      const newBoard = player.board.map(c => ({ ...c, canAttack: true, isTapped: false }));
+
+      // Reset board state (untap creatures, reset abilities)
+      const newBoard = resetAbilitiesForTurn(
+        player.board.map((c) => ({ ...c, canAttack: true, isTapped: false }))
+      );
 
       return {
         ...prev,
-        currentPhase: playerId === 'player' ? 'draw' : 'main', // Enemy skips draw phase in this simple logic or handles it in AI
+        currentPhase: playerId === 'player' ? 'draw' : 'main',
         [playerId]: {
           ...player,
           maxMana: newMaxMana,
           mana: newMaxMana,
-          board: newBoard
-        }
+          board: newBoard,
+        },
       };
     });
-    
+
     if (playerId === 'player') {
-        // Auto-draw for player
-        drawCard('player', 1);
-        // Transition to main phase immediately (animations handled by UI)
-        setPhase('main');
+      drawCard('player', 1);
+      setPhase('main');
     }
   };
 
   const setPhase = (phase: Phase) => {
-    setGameState(prev => ({ ...prev, currentPhase: phase }));
+    setGameState((prev) => ({ ...prev, currentPhase: phase }));
   };
 
   // --- Actions ---
 
   const initializeGame = useCallback(() => {
     setGameState(initialState);
-    // Draw starting hands
     drawCard('player', STARTING_HAND_SIZE);
     drawCard('enemy', STARTING_HAND_SIZE);
     setPhase('main');
   }, []);
 
-  const playCard = useCallback(async (card: Card) => {
-    if (gameState.currentPhase !== 'main') return;
-    if (gameState.player.mana < card.cost) return;
+  const playCard = useCallback(
+    async (card: Card) => {
+      if (gameState.currentPhase !== 'main') return;
+      if (gameState.player.mana < card.cost) return;
 
-    // Set pending card immediately to show UI feedback
-    setGameState(prev => ({
-      ...prev,
-      pendingCard: card,
-      activeProblem: null // Clear any old problem
-    }));
+      setGameState((prev) => ({
+        ...prev,
+        pendingCard: card,
+        activeProblem: null,
+      }));
 
-    // Fetch problem from AI - NO FALLBACK
-    console.log('🎯 Fetching problem for card:', card.id);
-    const response = await fetch('/api/problems', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cardId: card.id })
-    });
+      console.log('🎯 Fetching problem for card:', card.id);
+      const response = await fetch('/api/problems', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId: card.id }),
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Problem API Error:', errorText);
-      throw new Error(`Failed to generate problem: ${response.status} - ${errorText}`);
-    }
-
-    const data = await response.json();
-    console.log('✅ Problem generated:', data.problem.question);
-
-    setGameState(prev => ({
-      ...prev,
-      activeProblem: data.problem
-    }));
-  }, [gameState.currentPhase, gameState.player.mana]);
-
-  const resolveProblem = useCallback((answer: string, timeTakenMs: number) => {
-    if (!gameState.activeProblem || !gameState.pendingCard) return;
-
-    // TODO: Real validation. For now, assume any answer is "correct" for testing flow if we don't have real problem logic yet
-    // But let's try to be slightly real if we can parse the mock question
-    const isCorrect = true; // activeProblem.correctAnswer === answer; 
-
-    setGameState(prev => {
-      if (!prev.pendingCard) return prev;
-
-      const card = prev.pendingCard;
-      const player = prev.player;
-      
-      if (isCorrect) {
-        const newMana = player.mana - card.cost;
-        const newHand = player.hand.filter(c => c.id !== card.id);
-        
-        // If creature, add to board
-        // If spell, apply effect (simplified: deal damage to enemy)
-        let newBoard = player.board;
-        let enemyHealth = prev.enemy.health;
-
-        if (card.power > 0 && card.defense > 0) {
-            // It's a creature (roughly)
-            newBoard = [...newBoard, { ...card, canAttack: false, isTapped: true }]; // Summoning sickness
-        } else {
-            // Spell
-            enemyHealth -= 3; // Mock spell damage
-        }
-
-        return {
-          ...prev,
-          player: { ...player, mana: newMana, hand: newHand, board: newBoard },
-          enemy: { ...prev.enemy, health: enemyHealth },
-          activeProblem: null,
-          pendingCard: null
-        };
-      } else {
-        // Fizzle
-        return {
-          ...prev,
-          player: { ...player, mana: player.mana - 1 }, // Penalty?
-          activeProblem: null,
-          pendingCard: null
-        };
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Problem API Error:', errorText);
+        throw new Error(
+          `Failed to generate problem: ${response.status} - ${errorText}`
+        );
       }
-    });
-  }, [gameState.activeProblem, gameState.pendingCard]);
 
-  const attack = useCallback((attackerId: string, targetId: string) => {
-      // Simplified: Player attacks Enemy Hero
-      setGameState(prev => {
-          const attacker = prev.player.board.find(c => c.id === attackerId);
-          if (!attacker || !attacker.canAttack) return prev;
+      const data = await response.json();
+      console.log('✅ Problem generated:', data.problem.question);
 
-          const newEnemyHealth = prev.enemy.health - attacker.power;
-          const newBoard = prev.player.board.map(c => 
-              c.id === attackerId ? { ...c, canAttack: false, isTapped: true } : c
-          );
+      setGameState((prev) => ({
+        ...prev,
+        activeProblem: data.problem,
+      }));
+    },
+    [gameState.currentPhase, gameState.player.mana]
+  );
+
+  const resolveProblem = useCallback(
+    (answer: string, timeTakenMs: number) => {
+      if (!gameState.activeProblem || !gameState.pendingCard) return;
+
+      const isCorrect = true; // TODO: Real validation
+
+      setGameState((prev) => {
+        if (!prev.pendingCard) return prev;
+
+        const card = prev.pendingCard;
+        const player = prev.player;
+
+        if (isCorrect) {
+          const newMana = player.mana - card.cost;
+          const newHand = player.hand.filter((c) => c.id !== card.id);
+
+          let newBoard = player.board;
+          let enemyHealth = prev.enemy.health;
+
+          if (card.power > 0 && card.defense > 0) {
+            // Creature with ability
+            const cardWithState = {
+              ...card,
+              canAttack: false,
+              isTapped: true,
+              abilityUsedThisTurn: false,
+            };
+            newBoard = [...newBoard, cardWithState];
+          } else {
+            enemyHealth -= 3;
+          }
 
           return {
-              ...prev,
-              player: { ...prev.player, board: newBoard },
-              enemy: { ...prev.enemy, health: newEnemyHealth }
+            ...prev,
+            player: {
+              ...player,
+              mana: newMana,
+              hand: newHand,
+              board: newBoard,
+            },
+            enemy: { ...prev.enemy, health: enemyHealth },
+            activeProblem: null,
+            pendingCard: null,
           };
+        } else {
+          return {
+            ...prev,
+            player: { ...player, mana: player.mana - 1 },
+            activeProblem: null,
+            pendingCard: null,
+          };
+        }
       });
+    },
+    [gameState.activeProblem, gameState.pendingCard]
+  );
+
+  /**
+   * Use a creature's ability from the board
+   */
+  const useAbility = useCallback(
+    (cardId: string, targetCreatureId?: string) => {
+      const card = gameState.player.board.find((c) => c.id === cardId);
+      if (!card) return;
+
+      const result = executeAbility(card, gameState.player.mana);
+      if (!result) {
+        console.log('❌ Cannot use ability:', cardId);
+        return;
+      }
+
+      console.log(`✨ ${result.message}`);
+      setAbilityMessage(result.message);
+
+      // Clear message after 2 seconds
+      setTimeout(() => setAbilityMessage(null), 2000);
+
+      setGameState((prev) => {
+        const player = prev.player;
+        const enemy = prev.enemy;
+
+        let newPlayerHealth = player.health;
+        let newEnemyHealth = enemy.health;
+        let newEnemyBoard = [...enemy.board];
+
+        // Apply ability effect based on target type
+        switch (result.target) {
+          case 'enemy_hero':
+            newEnemyHealth = Math.max(0, newEnemyHealth - result.damage);
+            console.log(`💥 Dealt ${result.damage} damage to enemy hero`);
+            break;
+
+          case 'self_heal':
+            newPlayerHealth = Math.min(
+              player.maxHealth,
+              newPlayerHealth + result.damage
+            );
+            console.log(`💚 Healed ${result.damage} HP`);
+            break;
+
+          case 'all_enemies':
+            // Damage all enemy creatures
+            newEnemyBoard = newEnemyBoard
+              .map((c) => ({
+                ...c,
+                defense: c.defense - result.damage,
+              }))
+              .filter((c) => c.defense > 0);
+            console.log(
+              `💥 Dealt ${result.damage} damage to all enemy creatures`
+            );
+            break;
+
+          case 'enemy_creature':
+            // Damage specific creature (first one if no target specified)
+            if (newEnemyBoard.length > 0) {
+              const targetId = targetCreatureId || newEnemyBoard[0].id;
+              newEnemyBoard = newEnemyBoard
+                .map((c) =>
+                  c.id === targetId
+                    ? { ...c, defense: c.defense - result.damage }
+                    : c
+                )
+                .filter((c) => c.defense > 0);
+              console.log(
+                `🎯 Dealt ${result.damage} damage to enemy creature`
+              );
+            }
+            break;
+        }
+
+        // Mark ability as used and deduct mana
+        const newPlayerBoard = markAbilityUsed(player.board, cardId);
+
+        // Check for game over
+        const winner = newEnemyHealth <= 0 ? ('player' as const) : null;
+
+        return {
+          ...prev,
+          player: {
+            ...player,
+            mana: player.mana - result.manaCost,
+            health: newPlayerHealth,
+            board: newPlayerBoard,
+          },
+          enemy: {
+            ...enemy,
+            health: newEnemyHealth,
+            board: newEnemyBoard,
+          },
+          winner,
+        };
+      });
+    },
+    [gameState.player.board, gameState.player.mana]
+  );
+
+  const attack = useCallback((attackerId: string, targetId: string) => {
+    setGameState((prev) => {
+      const attacker = prev.player.board.find((c) => c.id === attackerId);
+      if (!attacker || !attacker.canAttack) return prev;
+
+      const newEnemyHealth = prev.enemy.health - attacker.power;
+      const newBoard = prev.player.board.map((c) =>
+        c.id === attackerId ? { ...c, canAttack: false, isTapped: true } : c
+      );
+
+      const winner = newEnemyHealth <= 0 ? ('player' as const) : null;
+
+      return {
+        ...prev,
+        player: { ...prev.player, board: newBoard },
+        enemy: { ...prev.enemy, health: Math.max(0, newEnemyHealth) },
+        winner,
+      };
+    });
   }, []);
 
   const endTurn = useCallback(async () => {
-    setGameState(prev => ({ ...prev, currentPhase: 'end' }));
+    setGameState((prev) => ({ ...prev, currentPhase: 'end' }));
 
-    // Start AI turn
     console.log('🤖 Starting AI turn...');
 
-    // Simulate AI thinking
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    setGameState(prev => {
+    setGameState((prev) => {
       const enemy = prev.enemy;
       const newMaxMana = Math.min(MAX_MANA, enemy.maxMana + 1);
 
-      // AI draws a card
       let newHand = [...enemy.hand];
       if (enemy.deck > 0 && deckCards.length > 0) {
         const randomIndex = Math.floor(Math.random() * deckCards.length);
-        newHand.push({ ...deckCards[randomIndex] });
+        const cardWithAbility = assignAbilityToCard({
+          ...deckCards[randomIndex],
+          id: `enemy-${Date.now()}`,
+        });
+        newHand.push(cardWithAbility);
       }
 
-      // Untap all creatures
-      const untappedBoard = enemy.board.map(c => ({ ...c, canAttack: true, isTapped: false }));
+      // Reset abilities for AI creatures
+      const untappedBoard = resetAbilitiesForTurn(
+        enemy.board.map((c) => ({ ...c, canAttack: true, isTapped: false }))
+      );
 
       return {
         ...prev,
@@ -235,87 +361,143 @@ export const useGameLoop = (userDeck: Card[] = []) => {
           mana: newMaxMana,
           hand: newHand,
           board: untappedBoard,
-          deck: enemy.deck - 1
-        }
+          deck: enemy.deck - 1,
+        },
       };
     });
 
     // AI Main Phase: Play cards
-    await new Promise(resolve => setTimeout(resolve, 800));
+    await new Promise((resolve) => setTimeout(resolve, 800));
 
-    setGameState(prev => {
+    setGameState((prev) => {
       const enemy = prev.enemy;
       let mana = enemy.mana;
       let hand = [...enemy.hand];
       let board = [...enemy.board];
 
-      // AI plays cards it can afford (simple greedy strategy)
       const playableCards = hand
-        .filter(c => c.cost <= mana)
-        .sort((a, b) => b.power - a.power); // Prioritize high power
+        .filter((c) => c.cost <= mana)
+        .sort((a, b) => b.power - a.power);
 
       for (const card of playableCards) {
         if (mana >= card.cost && board.length < 7) {
           console.log(`🃏 AI plays: ${card.name}`);
           mana -= card.cost;
-          hand = hand.filter(c => c.id !== card.id);
-          board.push({ ...card, canAttack: false, isTapped: false }); // Summoning sickness
+          hand = hand.filter((c) => c.id !== card.id);
+          board.push({
+            ...card,
+            canAttack: false,
+            isTapped: false,
+            abilityUsedThisTurn: false,
+          });
         }
       }
 
       return {
         ...prev,
-        enemy: { ...enemy, mana, hand, board }
+        enemy: { ...enemy, mana, hand, board },
       };
     });
 
-    // AI Combat Phase: Attack with ready creatures
-    await new Promise(resolve => setTimeout(resolve, 800));
+    // AI uses abilities
+    await new Promise((resolve) => setTimeout(resolve, 600));
 
-    setGameState(prev => {
+    setGameState((prev) => {
+      const enemy = prev.enemy;
+      let mana = enemy.mana;
+      let board = [...enemy.board];
+      let playerHealth = prev.player.health;
+      let playerBoard = [...prev.player.board];
+
+      // AI uses abilities on creatures that can use them
+      for (const creature of board) {
+        if (canUseAbility(creature, mana)) {
+          const ability = creature.ability!;
+          console.log(`✨ AI uses ${ability.name} with ${creature.name}`);
+
+          mana -= ability.manaCost;
+
+          switch (ability.target) {
+            case 'enemy_hero':
+              playerHealth = Math.max(0, playerHealth - ability.damage);
+              break;
+            case 'self_heal':
+              // AI heals itself - would need to track enemy health separately
+              break;
+            case 'all_enemies':
+              playerBoard = playerBoard
+                .map((c) => ({ ...c, defense: c.defense - ability.damage }))
+                .filter((c) => c.defense > 0);
+              break;
+            case 'enemy_creature':
+              if (playerBoard.length > 0) {
+                const targetIdx = Math.floor(
+                  Math.random() * playerBoard.length
+                );
+                playerBoard[targetIdx] = {
+                  ...playerBoard[targetIdx],
+                  defense: playerBoard[targetIdx].defense - ability.damage,
+                };
+                playerBoard = playerBoard.filter((c) => c.defense > 0);
+              }
+              break;
+          }
+
+          // Mark ability as used
+          board = markAbilityUsed(board, creature.id);
+        }
+      }
+
+      return {
+        ...prev,
+        enemy: { ...enemy, mana, board },
+        player: { ...prev.player, health: playerHealth, board: playerBoard },
+      };
+    });
+
+    // AI Combat Phase: Attack
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    setGameState((prev) => {
       const enemy = prev.enemy;
       let playerHealth = prev.player.health;
 
-      // Attack with all ready creatures
-      const newBoard = enemy.board.map(creature => {
+      const newBoard = enemy.board.map((creature) => {
         if (creature.canAttack && !creature.isTapped) {
-          // Calculate damage (base power + 50% bonus if AI "answers correctly")
-          const aiAnsweredCorrectly = Math.random() < 0.6; // 60% accuracy
+          const aiAnsweredCorrectly = Math.random() < 0.6;
           const baseDamage = creature.power;
           const bonus = aiAnsweredCorrectly ? Math.ceil(baseDamage * 0.5) : 0;
           const damage = baseDamage + bonus;
 
           playerHealth -= damage;
-          console.log(`⚔️ AI attacks with ${creature.name} for ${damage} damage (${aiAnsweredCorrectly ? '✅ correct' : '❌ incorrect'})`);
+          console.log(
+            `⚔️ AI attacks with ${creature.name} for ${damage} damage (${aiAnsweredCorrectly ? '✅ correct' : '❌ incorrect'})`
+          );
 
           return { ...creature, canAttack: false, isTapped: true };
         }
         return creature;
       });
 
-      // Check for game over
-      const winner = playerHealth <= 0 ? 'enemy' as const : null;
+      const winner = playerHealth <= 0 ? ('enemy' as const) : null;
 
       return {
         ...prev,
         enemy: { ...enemy, board: newBoard },
         player: { ...prev.player, health: Math.max(0, playerHealth) },
-        winner
+        winner,
       };
     });
 
-    // End AI turn, pass back to player
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
     console.log('✅ AI turn complete');
 
-    setGameState(prev => ({ ...prev, turn: prev.turn + 1 }));
+    setGameState((prev) => ({ ...prev, turn: prev.turn + 1 }));
     startTurn('player');
-
   }, [deckCards]);
 
-  // Initialize on mount
   useEffect(() => {
-      initializeGame();
+    initializeGame();
   }, [initializeGame]);
 
   return {
@@ -323,6 +505,8 @@ export const useGameLoop = (userDeck: Card[] = []) => {
     playCard,
     resolveProblem,
     endTurn,
-    attack
+    attack,
+    useAbility,
+    abilityMessage,
   };
 };

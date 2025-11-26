@@ -5,9 +5,8 @@ import { Card } from './Card';
 import { Hand } from './Hand';
 import { EnemyArea } from './EnemyArea';
 import { ProblemModal } from './ProblemModal';
-import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Swords, Shield, Zap, Hourglass } from 'lucide-react';
+import { Swords, Hourglass } from 'lucide-react';
 import type { Card as CardType } from '@/types/game';
 
 interface BattlefieldProps {
@@ -15,10 +14,17 @@ interface BattlefieldProps {
 }
 
 export function Battlefield({ userDeck }: BattlefieldProps) {
-  const { gameState, playCard, resolveProblem, endTurn } = useGameLoop(userDeck);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { gameState, playCard, resolveProblem, endTurn, attack, useAbility, abilityMessage } = useGameLoop(userDeck);
 
   const isMyTurn = gameState.currentPhase === 'main' || gameState.currentPhase === 'draw';
+
+  const handleUseAbility = (card: CardType) => {
+    useAbility(card.id);
+  };
+
+  const handleAttack = (attackerId: string) => {
+    attack(attackerId, 'enemy_hero');
+  };
 
   return (
     <div className="h-screen w-full bg-zinc-950 text-white overflow-hidden flex flex-col relative selection:bg-blue-500/30">
@@ -71,20 +77,27 @@ export function Battlefield({ userDeck }: BattlefieldProps) {
         <div className="flex justify-center gap-6 min-h-[280px] w-full px-12 items-center overflow-visible">
           <AnimatePresence>
             {gameState.player.board.map(card => (
-              <motion.div 
+              <motion.div
                 key={card.id}
                 initial={{ scale: 0.8, opacity: 0, y: 50 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.8, opacity: 0 }}
                 className="relative"
               >
-                <Card card={card} disabled={!isMyTurn} />
+                <Card
+                  card={card}
+                  disabled={!isMyTurn}
+                  isOnBoard={true}
+                  currentMana={gameState.player.mana}
+                  onUseAbility={handleUseAbility}
+                />
                 {/* Attack Indicator (if can attack) */}
                 {card.canAttack && isMyTurn && (
-                    <motion.div 
+                    <motion.div
                         initial={{ scale: 0 }} animate={{ scale: 1 }}
                         className="absolute -top-4 -right-4 bg-red-500 text-white p-2 rounded-full shadow-lg cursor-pointer hover:bg-red-600 z-20"
                         title="Attack!"
+                        onClick={() => handleAttack(card.id)}
                     >
                         <Swords size={20} />
                     </motion.div>
@@ -176,13 +189,67 @@ export function Battlefield({ userDeck }: BattlefieldProps) {
         </div>
       </div>
 
+      {/* Ability Message Toast */}
+      <AnimatePresence>
+        {abilityMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-purple-900/90 backdrop-blur-md text-white px-8 py-4 rounded-xl border border-purple-500/50 shadow-2xl shadow-purple-500/30"
+          >
+            <p className="text-lg font-bold text-center">{abilityMessage}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Problem Modal */}
       <AnimatePresence>
         {gameState.activeProblem && (
-            <ProblemModal 
-                problem={gameState.activeProblem} 
+            <ProblemModal
+                problem={gameState.activeProblem}
                 onSolve={resolveProblem}
             />
+        )}
+      </AnimatePresence>
+
+      {/* Game Over Overlay */}
+      <AnimatePresence>
+        {gameState.winner && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center"
+          >
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', damping: 15 }}
+              className={`
+                p-12 rounded-2xl border-4 text-center
+                ${gameState.winner === 'player'
+                  ? 'bg-gradient-to-br from-blue-900 to-blue-950 border-blue-500 shadow-2xl shadow-blue-500/50'
+                  : 'bg-gradient-to-br from-red-900 to-red-950 border-red-500 shadow-2xl shadow-red-500/50'
+                }
+              `}
+            >
+              <h1 className="text-5xl font-bold mb-4">
+                {gameState.winner === 'player' ? '🎉 VICTORY!' : '💀 DEFEAT'}
+              </h1>
+              <p className="text-xl text-zinc-300 mb-6">
+                {gameState.winner === 'player'
+                  ? 'You defeated the Dark Quizmaster!'
+                  : 'The Dark Quizmaster has won...'}
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-8 py-3 bg-white text-black font-bold rounded-xl hover:bg-zinc-200 transition-colors"
+              >
+                Play Again
+              </button>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

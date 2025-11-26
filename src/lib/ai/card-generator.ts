@@ -36,14 +36,15 @@ interface ProblemResponse {
   category: "Math" | "Logic" | "Science";
 }
 
-export async function generateImageWithWorkersAI(prompt: string): Promise<string> {
+export async function generateImageWithWorkersAI(prompt: string, element?: string): Promise<string> {
   console.log('🖼️  Generating image with Cloudflare Workers AI (Flux 1 Schnell)...');
   console.log('📝 Prompt:', prompt.substring(0, 150) + '...');
+  console.log('🎨 Element for color palette:', element || 'none');
 
   const response = await fetch(WORKERS_IMAGE_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt })
+    body: JSON.stringify({ prompt, element })
   });
 
   if (!response.ok) {
@@ -162,7 +163,7 @@ export async function generateCard(options: GenerateCardOptions): Promise<Card> 
 
   // 3. Generate image - Workers AI (Flux Schnell)
   console.log('🎨 Starting image generation for card:', cardData.name);
-  const imageUrl = await generateImageWithWorkersAI(cardData.imagePrompt);
+  const imageUrl = await generateImageWithWorkersAI(cardData.imagePrompt, cardData.element);
 
   // 4. Save card to database
   console.log('💾 Saving card to database:', cardData.name);

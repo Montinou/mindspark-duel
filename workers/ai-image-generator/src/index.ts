@@ -2,6 +2,41 @@ export interface Env {
 	AI: any;
 }
 
+// Color palettes by element for visual consistency
+const ELEMENT_PALETTES: Record<string, string> = {
+	fire: "warm color palette with deep reds, oranges, amber, volcanic blacks, ember glows",
+	water: "cool color palette with deep blues, teals, aquamarines, pearl whites, bioluminescent accents",
+	earth: "natural color palette with forest greens, rich browns, gold accents, moss textures, stone grays",
+	air: "ethereal color palette with sky blues, silver whites, lavender mists, cloud grays, lightning purples"
+};
+
+// Quality enhancers that rotate for variety
+const QUALITY_ENHANCERS = [
+	"masterpiece, museum quality, award winning illustration",
+	"highly detailed, intricate textures, professional artwork",
+	"stunning composition, breathtaking detail, gallery worthy",
+	"exquisite craftsmanship, meticulous detail, collector piece"
+];
+
+// Lighting variations for visual diversity
+const LIGHTING_STYLES = [
+	"dramatic chiaroscuro lighting, deep shadows, highlighted features",
+	"ethereal backlighting, rim light, mystical glow",
+	"golden hour lighting, warm atmospheric rays",
+	"moonlit scene, cool ambient light, subtle luminescence",
+	"dramatic storm lighting, lightning illumination, dynamic shadows",
+	"underwater caustics, dappled light, mysterious depths"
+];
+
+// Rendering styles for variety
+const RENDER_STYLES = [
+	"oil painting style, visible brushstrokes, rich textures",
+	"digital painting, clean lines, vibrant colors",
+	"concept art style, painterly finish, cinematic",
+	"illustration style, bold colors, striking composition",
+	"fantasy art, atmospheric, evocative mood"
+];
+
 export default {
 	async fetch(request: Request, env: Env): Promise<Response> {
 		// CORS headers
@@ -21,7 +56,7 @@ export default {
 		}
 
 		try {
-			const { prompt } = await request.json() as { prompt: string };
+			const { prompt, element } = await request.json() as { prompt: string; element?: string };
 
 			if (!prompt) {
 				return new Response(
@@ -33,8 +68,19 @@ export default {
 			console.log('🎨 Generating image with Flux Schnell...');
 			console.log('📝 Prompt:', prompt.substring(0, 150));
 
-			// Enhance prompt with Epic Fantasy style
-			const enhancedPrompt = `${prompt}, epic fantasy art style, magic the gathering style, oil painting, masterpiece, highly detailed, dramatic cinematic lighting, 8k resolution, artstation, unreal engine 5 render, volumetric fog, dark fantasy aesthetic`;
+			// Random selections for visual variety
+			const qualityEnhancer = QUALITY_ENHANCERS[Math.floor(Math.random() * QUALITY_ENHANCERS.length)];
+			const lightingStyle = LIGHTING_STYLES[Math.floor(Math.random() * LIGHTING_STYLES.length)];
+			const renderStyle = RENDER_STYLES[Math.floor(Math.random() * RENDER_STYLES.length)];
+
+			// Element-based color palette
+			const elementLower = element?.toLowerCase() || '';
+			const colorPalette = ELEMENT_PALETTES[elementLower] || "rich fantasy color palette";
+
+			// Build enhanced prompt with variety
+			const enhancedPrompt = `${prompt}, ${renderStyle}, ${lightingStyle}, ${colorPalette}, ${qualityEnhancer}, trading card game art, vertical portrait composition, single character focus, dark fantasy aesthetic, no text, no watermarks`;
+
+			console.log('🎨 Enhanced prompt:', enhancedPrompt.substring(0, 200));
 
 			// Generate image using Flux 1 Schnell
 			const aiResponse = await env.AI.run(

@@ -18,8 +18,46 @@ export interface CardDataResponse {
   element: "Fire" | "Water" | "Earth" | "Air";
   problemCategory: "Math" | "Logic" | "Science";
   imagePrompt: string;
-  tags: string[]; // 2-4 thematic keywords in Spanish for contextual problem generation
+  tags: string[];
+  ability?: string; // Special ability name
+  abilityEffect?: string; // Ability description
 }
+
+// Name patterns to AVOID (too generic)
+const FORBIDDEN_PATTERNS = [
+  "del Abismo", "del Mar", "del Océano", "del Agua", "del Fuego", "del Viento", "de la Tierra",
+  "de las Profundidades", "de los Mares", "de las Llamas", "de los Cielos"
+];
+
+// Creative name structures for variety
+const NAME_STRUCTURES = [
+  "Título + Nombre Propio (ej: Archimaga Velestris)",
+  "Nombre + Epíteto (ej: Korrath el Implacable)",
+  "Nombre Compuesto (ej: Tormenta Carmesí)",
+  "Nombre en otro idioma inventado (ej: Ven'kari)",
+  "Título Único (ej: La Última Marea)",
+  "Nombre + Origen (ej: Yara de las Sombras Marinas)"
+];
+
+// Art styles for variety
+const ART_STYLES = [
+  "dark fantasy oil painting, dramatic chiaroscuro lighting",
+  "ethereal watercolor illustration, mystical atmosphere",
+  "detailed manga style, dynamic pose, dramatic angles",
+  "gothic art nouveau, ornate borders, symbolic elements",
+  "realistic concept art, cinematic composition",
+  "impressionist style, vibrant brushstrokes, emotional lighting"
+];
+
+// Perspectives for variety
+const PERSPECTIVES = [
+  "dramatic low angle shot looking up",
+  "portrait view, intense eye contact with viewer",
+  "dynamic action pose mid-movement",
+  "majestic full body shot with environment",
+  "close-up detail shot showing power emanating",
+  "silhouette against dramatic sky"
+];
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -45,84 +83,88 @@ export default {
       const { topic, theme, difficulty = 5, element } = body;
 
       const themeText = theme || topic || "Fantasy";
-      const elementInstruction = element
-        ? `The card MUST belong to the element: "${element}".`
-        : "Choose a suitable element (Fire, Water, Earth, Air).";
+      const finalElement = element || ['Fire', 'Water', 'Earth', 'Air'][Math.floor(Math.random() * 4)];
 
-      const prompt = `Eres un diseñador creativo de juegos de cartas. Crea una carta para "MindSpark Duel" basada en el tema: "${themeText}". ${elementInstruction}
+      // Random selections for variety
+      const randomNameStructure = NAME_STRUCTURES[Math.floor(Math.random() * NAME_STRUCTURES.length)];
+      const randomArtStyle = ART_STYLES[Math.floor(Math.random() * ART_STYLES.length)];
+      const randomPerspective = PERSPECTIVES[Math.floor(Math.random() * PERSPECTIVES.length)];
 
-INSTRUCCIONES ESTRICTAS:
-1. Debes responder ÚNICAMENTE con JSON válido
-2. NO incluyas markdown, código, explicaciones ni texto extra
-3. NO uses comillas dentro de los valores de texto
-4. RESPETA EXACTAMENTE esta estructura:
+      // Structured prompt optimized for JSON output
+      const randomCost = Math.floor(Math.random() * 5) + 3;
+      const randomPower = Math.floor(Math.random() * 5) + 4;
+      const randomDefense = Math.floor(Math.random() * 4) + 3;
+      const randomCategory = ['Math', 'Logic', 'Science'][Math.floor(Math.random() * 3)];
 
-{
-  "name": "Nombre de la Carta",
-  "description": "Texto descriptivo en español de 1-2 oraciones",
-  "cost": 5,
-  "power": 6,
-  "defense": 4,
-  "element": "Fire",
-  "problemCategory": "Math",
-  "imagePrompt": "Descripcion detallada en ingles para arte vertical de carta tipo trading card estilo full-bleed",
-  "tags": ["palabra1", "palabra2", "palabra3"]
-}
+      const prompt = `Generate a fantasy trading card in JSON format.
 
-REGLAS OBLIGATORIAS:
-- name: En ESPAÑOL, sin comillas internas
-- description: En ESPAÑOL, 1-2 oraciones, sin comillas internas
-- cost: Número entero (promedio de power + defense dividido por 2)
-- power: Número entero entre 1-10
-- defense: Número entero entre 1-10
-- element: DEBE ser EXACTAMENTE uno de estos: Fire, Water, Earth, Air
-- problemCategory: DEBE ser EXACTAMENTE uno de estos: Math, Logic, Science
-- imagePrompt: En INGLÉS, descripción corta y clara, SIN comillas
-- tags: Array de 2-4 palabras clave temáticas en ESPAÑOL (relacionadas con nombre, elemento, tema)
+Theme: ${themeText}
+Element: ${finalElement}
+Name style: ${randomNameStructure}
+Art style: ${randomArtStyle}
+Perspective: ${randomPerspective}
 
-EJEMPLO VÁLIDO:
-{
-  "name": "El Dragon de Fuego",
-  "description": "Un poderoso dragon que domina las llamas del inframundo.",
-  "cost": 5,
-  "power": 7,
-  "defense": 3,
-  "element": "Fire",
-  "problemCategory": "Math",
-  "imagePrompt": "Majestic red dragon breathing fire in a volcanic landscape vertical portrait card art full bleed style",
-  "tags": ["dragón", "fuego", "volcán"]
-}`;
+Output ONLY valid JSON with this exact structure:
+{"name":"<unique fantasy name in Spanish>","description":"<mysterious flavor text in Spanish, 1 sentence>","cost":${randomCost},"power":${randomPower},"defense":${randomDefense},"element":"${finalElement}","problemCategory":"${randomCategory}","imagePrompt":"<detailed English art description>","tags":["${themeText.split(' ')[0]}","fantasy"]}`;
 
-      console.log('🤖 Generating card data with Llama 3.1 8B...');
+      console.log('🤖 Generating card data with Llama 3.3 70B...');
       console.log('📝 Theme:', themeText);
 
       const aiResponse = await env.AI.run(
-        '@cf/meta/llama-3.1-8b-instruct',
+        '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
         {
           messages: [
             {
               role: 'system',
-              content: 'Eres un "Lorekeeper" legendario y diseñador maestro de juegos de cartas de fantasía épica. Generas respuestas JSON perfectamente válidas. Tu estilo de escritura para "flavorText" y "name" es antiguo, poético, oscuro y dramático (estilo Dark Souls, Elden Ring, Magic the Gathering). Evitas descripciones genéricas. Siempre respetas la estructura JSON exacta solicitada.'
+              content: `Eres el ÚLTIMO LOREKEEPER de un mundo olvidado, guardián de nombres prohibidos y secretos ancestrales.
+
+TU MISIÓN: Crear cartas de TCG con nombres ÚNICOS y flavor text MEMORABLE.
+
+ESTILO DE ESCRITURA:
+- Nombres: Inventivos, memorables, con personalidad propia (NUNCA genéricos)
+- Flavor text: Inscripciones antiguas, fragmentos de profecías, últimas palabras de héroes caídos
+- Tono: Oscuro, poético, misterioso (Dark Souls, Elden Ring, Bloodborne)
+
+REGLAS ABSOLUTAS:
+1. JAMÁS uses patrones como "El/La [Criatura] del [Lugar]"
+2. JAMÁS describas apariencia física en el flavor text
+3. SIEMPRE inventa nombres propios únicos (Velestris, Korrath, Ven'kari)
+4. SIEMPRE escribe flavor text que sugiera una historia más grande
+5. SIEMPRE responde SOLO con JSON válido, sin markdown ni explicaciones
+
+Cada carta debe sentirse como un fragmento de un mundo vasto y antiguo.`
             },
             {
               role: 'user',
               content: prompt
             }
-          ]
+          ],
+          temperature: 0.9, // Higher creativity
+          top_p: 0.95
         }
       );
 
-      // Extract text from AI response
+      // Extract text from AI response - handle multiple formats
       let responseText = '';
-      if (aiResponse && typeof aiResponse === 'object' && 'response' in aiResponse) {
-        responseText = aiResponse.response;
+      if (aiResponse && typeof aiResponse === 'object') {
+        if ('response' in aiResponse && typeof aiResponse.response === 'string') {
+          responseText = aiResponse.response;
+        } else if ('text' in aiResponse && typeof aiResponse.text === 'string') {
+          responseText = aiResponse.text;
+        } else if ('content' in aiResponse && typeof aiResponse.content === 'string') {
+          responseText = aiResponse.content;
+        } else {
+          // Try to stringify and extract
+          responseText = JSON.stringify(aiResponse);
+        }
       } else if (typeof aiResponse === 'string') {
         responseText = aiResponse;
       } else {
-        throw new Error('Invalid response format from Llama 3.1');
+        throw new Error(`Invalid response format from Llama: ${typeof aiResponse}`);
       }
 
-      console.log('📄 Raw response:', responseText.substring(0, 300));
+      console.log('📄 Raw response type:', typeof responseText);
+      console.log('📄 Raw response:', String(responseText).substring(0, 300));
 
       // Clean up markdown code blocks and extract JSON
       let jsonString = responseText
@@ -139,17 +181,41 @@ EJEMPLO VÁLIDO:
       // Try parsing first - if it fails, log and retry with Llama
       let cardData: CardDataResponse;
       try {
-        cardData = JSON.parse(jsonString) as CardDataResponse;
+        console.log('📄 JSON to parse:', jsonString.substring(0, 500));
+        let parsed = JSON.parse(jsonString);
+
+        // Handle nested response format from Llama 3.3
+        if (parsed.response && typeof parsed.response === 'object') {
+          parsed = parsed.response;
+        }
+
+        cardData = parsed as CardDataResponse;
+        console.log('📄 Parsed cardData:', JSON.stringify(cardData).substring(0, 300));
       } catch (parseError) {
         console.error('⚠️  JSON parse failed, raw response:', jsonString.substring(0, 500));
         console.error('⚠️  Error:', parseError);
         throw new Error(`Invalid JSON from Llama: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
       }
 
-      // Validate required fields
-      if (!cardData.name || !cardData.element || !cardData.imagePrompt || !cardData.tags || cardData.tags.length < 2) {
-        throw new Error('Missing required fields in generated card data (tags must have at least 2 keywords)');
+      // Validate and fix required fields
+      if (!cardData.name || !cardData.element) {
+        throw new Error(`Missing required fields: name=${cardData.name}, element=${cardData.element}. Parsed: ${JSON.stringify(cardData).substring(0, 200)}`);
       }
+
+      // Ensure tags exist with at least 2 items
+      if (!cardData.tags || !Array.isArray(cardData.tags) || cardData.tags.length < 2) {
+        cardData.tags = [cardData.element.toLowerCase(), themeText.split(' ')[0].toLowerCase()];
+      }
+
+      // Ensure imagePrompt exists
+      if (!cardData.imagePrompt) {
+        cardData.imagePrompt = `${themeText} character, ${randomArtStyle}, ${randomPerspective}, fantasy art`;
+      }
+
+      // Ensure numeric fields
+      cardData.power = cardData.power || 5;
+      cardData.defense = cardData.defense || 4;
+      cardData.cost = cardData.cost || Math.round((cardData.power + cardData.defense) / 2);
 
       console.log('✅ Card data generated:', cardData.name);
 

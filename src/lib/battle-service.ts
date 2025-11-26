@@ -89,49 +89,116 @@ export async function generateBattleProblem(
 
 /**
  * Calculate damage based on card stats, problem accuracy, and elemental advantage
+ *
+ * FORMULA:
+ * - Base Damage = Attacker Power (minimum 1)
+ * - Accuracy Bonus = +50% if answer correct
+ * - Elemental Bonus = +25% if advantage
+ * - Total Damage is reduced by Defender's Defense
  */
 export function calculateDamage(
   attackCard: Card,
   defenseCard: Card,
   answerCorrect: boolean
-): DamageCalculation {
-  // Base damage = attacker's power - defender's defense (minimum 1)
-  const baseDamage = Math.max(1, attackCard.power - defenseCard.defense);
+): DamageCalculation & { elementalDescription?: string } {
+  // Base damage = attacker's power
+  const baseDamage = Math.max(1, attackCard.power);
 
   // Accuracy bonus: +50% damage if answer is correct
   const accuracyBonus = answerCorrect ? Math.ceil(baseDamage * 0.5) : 0;
 
-  // Elemental advantage: +25% damage for advantageous element matchup
-  const elementalBonus = calculateElementalAdvantage(attackCard.element, defenseCard.element)
-    ? Math.ceil(baseDamage * 0.25)
-    : 0;
+  // Elemental advantage check
+  const elemental = calculateElementalAdvantage(attackCard.element, defenseCard.element);
+  const elementalBonus = elemental.hasAdvantage ? Math.ceil(baseDamage * elemental.bonus) : 0;
 
-  const totalDamage = baseDamage + accuracyBonus + elementalBonus;
+  // Total raw damage before defense
+  const rawDamage = baseDamage + accuracyBonus + elementalBonus;
+
+  // Defense reduces damage (minimum 1 damage if attack connects)
+  const totalDamage = answerCorrect ? Math.max(1, rawDamage - defenseCard.defense) : 0;
 
   return {
     baseDamage,
     accuracyBonus,
     elementalBonus,
     totalDamage,
+    elementalDescription: elemental.description,
   };
 }
 
 /**
- * Check if attacker element has advantage over defender element
- * Fire > Air > Earth > Water > Fire (rock-paper-scissors-lizard-spock style)
+ * Elemental Advantage System (intuitive wheel)
+ *
+ * ═══════════════════════════════════════════════════════
+ *                    🔥 FIRE
+ *                   /         \
+ *                  /   WEAK    \
+ *                 ↙             ↘
+ *          🌍 EARTH ←─────────→ 💨 AIR
+ *                 ↖             ↗
+ *                  \   WEAK    /
+ *                   \         /
+ *                    💧 WATER
+ * ═══════════════════════════════════════════════════════
+ *
+ * Fire  → Earth (fire burns plants/soil)
+ * Earth → Air   (earth blocks wind)
+ * Air   → Water (wind evaporates/scatters water)
+ * Water → Fire  (water extinguishes fire)
  */
 export function calculateElementalAdvantage(
   attackElement: string,
   defenseElement: string
-): boolean {
+): { hasAdvantage: boolean; bonus: number; description: string } {
   const advantages: Record<string, string> = {
-    Fire: 'Air',
-    Air: 'Earth',
-    Earth: 'Water',
-    Water: 'Fire',
+    Fire: 'Earth',   // Fire burns
+    Earth: 'Air',    // Earth blocks
+    Air: 'Water',    // Wind scatters
+    Water: 'Fire',   // Water extinguishes
   };
 
-  return advantages[attackElement] === defenseElement;
+  const descriptions: Record<string, Record<string, string>> = {
+    Fire: { Earth: '🔥 ¡Las llamas consumen la tierra!' },
+    Earth: { Air: '🌍 ¡La tierra bloquea el viento!' },
+    Air: { Water: '💨 ¡El viento dispersa las aguas!' },
+    Water: { Fire: '💧 ¡El agua extingue las llamas!' },
+  };
+
+  const hasAdvantage = advantages[attackElement] === defenseElement;
+
+  return {
+    hasAdvantage,
+    bonus: hasAdvantage ? 0.25 : 0, // 25% bonus damage
+    description: hasAdvantage
+      ? descriptions[attackElement]?.[defenseElement] || '¡Ventaja elemental!'
+      : '',
+  };
+}
+
+/**
+ * Get elemental weakness (what beats this element)
+ */
+export function getElementalWeakness(element: string): string {
+  const weaknesses: Record<string, string> = {
+    Fire: 'Water',
+    Water: 'Air',
+    Air: 'Earth',
+    Earth: 'Fire',
+  };
+  return weaknesses[element] || 'None';
+}
+
+/**
+ * Get what this element is strong against
+ */
+export function getElementalStrength(element: string): string {
+  const strengths: Record<string, string> = {
+    Fire: 'Earth',
+    Earth: 'Air',
+    Air: 'Water',
+    Water: 'Fire',
+  };
+  return strengths[element] || 'None';
 }
 
 /**

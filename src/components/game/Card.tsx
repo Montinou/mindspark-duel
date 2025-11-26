@@ -4,13 +4,17 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { Card as CardType } from '@/types/game';
-import { Shield, Zap, Brain, Sword } from 'lucide-react';
+import { Shield, Zap, Brain, Sword, Sparkles } from 'lucide-react';
+import { canUseAbility } from '@/lib/game/abilities';
 
 interface CardProps {
   card: CardType;
   onClick?: (card: CardType) => void;
+  onUseAbility?: (card: CardType) => void;
   disabled?: boolean;
   isPlayable?: boolean;
+  isOnBoard?: boolean;
+  currentMana?: number;
   className?: string;
 }
 
@@ -50,9 +54,21 @@ const getElementColors = (element: string) => {
   }
 };
 
-export function Card({ card, onClick, disabled, isPlayable, className }: CardProps) {
+export function Card({
+  card,
+  onClick,
+  onUseAbility,
+  disabled,
+  isPlayable,
+  isOnBoard = false,
+  currentMana = 0,
+  className
+}: CardProps) {
   const elementColors = getElementColors(card.element);
   const [imgError, setImgError] = useState(false);
+
+  // Check if ability can be used (only on board, has ability, has mana, not used this turn)
+  const abilityAvailable = isOnBoard && card.ability && canUseAbility(card, currentMana);
 
   return (
     <motion.div
@@ -130,9 +146,41 @@ export function Card({ card, onClick, disabled, isPlayable, className }: CardPro
       {/* Bottom Glassmorphism Text Box */}
       <div className="absolute bottom-0 left-0 right-0 z-10 backdrop-blur-md bg-black/60 border-t border-white/20 rounded-t-lg p-3">
         {/* Description */}
-        <p className="text-zinc-200 text-[11px] leading-snug line-clamp-4 font-serif mb-2">
+        <p className="text-zinc-200 text-[11px] leading-snug line-clamp-2 font-serif mb-2">
           {card.description}
         </p>
+
+        {/* Ability Row (if card has ability) */}
+        {card.ability && (
+          <div className="mb-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (abilityAvailable && onUseAbility) {
+                  onUseAbility(card);
+                }
+              }}
+              disabled={!abilityAvailable}
+              className={`
+                w-full flex items-center justify-between gap-1 px-2 py-1.5 rounded-lg text-[10px] font-bold
+                transition-all duration-200
+                ${abilityAvailable
+                  ? 'bg-purple-600/80 hover:bg-purple-500 text-white cursor-pointer border border-purple-400/50 shadow-lg shadow-purple-500/30'
+                  : 'bg-zinc-800/60 text-zinc-500 cursor-not-allowed border border-zinc-700/50'
+                }
+              `}
+              title={card.ability.description}
+            >
+              <span className="flex items-center gap-1">
+                <Sparkles size={10} />
+                {card.ability.name}
+              </span>
+              <span className="flex items-center gap-0.5 bg-black/30 px-1.5 py-0.5 rounded">
+                {card.ability.manaCost}💎
+              </span>
+            </button>
+          </div>
+        )}
 
         {/* Stats Row */}
         <div className="flex justify-between items-center pt-2 border-t border-white/10">

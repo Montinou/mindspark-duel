@@ -31,10 +31,25 @@ export interface Card {
   batchOrder?: number; // Position in batch (1-10)
   createdById?: string;
   createdAt?: Date;
-  
+
   // Game State Properties
   canAttack?: boolean;
   isTapped?: boolean; // Exhausted
+
+  // Ability System
+  ability?: CardAbility;
+  abilityUsedThisTurn?: boolean;
+}
+
+/**
+ * Card ability - simple damage-based abilities with mana cost
+ */
+export interface CardAbility {
+  name: string;
+  manaCost: number;
+  damage: number;
+  target: 'enemy_hero' | 'enemy_creature' | 'all_enemies' | 'self_heal';
+  description: string;
 }
 
 export interface Problem {
@@ -108,6 +123,7 @@ export interface TurnState {
 export type GameActionType =
   | 'play_card'       // Play a card from hand (Main Phase only)
   | 'attack'          // Attack with a creature (Combat Phase only)
+  | 'use_ability'     // Use a creature's ability (Main or Combat Phase)
   | 'end_phase'       // Manually end current phase
   | 'pass_turn';      // Pass turn to opponent
 

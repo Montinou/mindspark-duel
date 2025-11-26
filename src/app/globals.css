@@ -120,3 +120,13 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Fix Stack Auth spinner visibility - force invisible class to work */
+.stack-scope .invisible {
+  visibility: hidden !important;
+}
+
+/* Hide Stack Auth button spinner when not loading */
+.stack-scope button:not([disabled]) .stack-button-do-not-hide-when-siblings-are {
+  visibility: hidden !important;
+}

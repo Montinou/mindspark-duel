@@ -14,22 +14,25 @@ interface HandProps {
 export function Hand({ cards, onPlayCard, currentMana, isMyTurn }: HandProps) {
   const totalCards = cards.length;
 
-  // Calculate spread based on number of cards
-  const cardWidth = 180; // approximate card width in pixels
-  const maxSpread = Math.min(totalCards * 100, 800); // max total spread
-  const spacing = totalCards > 1 ? maxSpread / (totalCards - 1) : 0;
+  // Card dimensions - smaller for hand display
+  const cardWidth = 140;
+
+  // Calculate spacing between cards based on count
+  // More cards = less spacing to fit them all
+  const baseSpacing = Math.max(60, 120 - (totalCards * 8));
+  const spacing = totalCards > 1 ? baseSpacing : 0;
 
   return (
-    <div className="relative h-80 w-full max-w-6xl mx-auto perspective-1000">
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex items-end justify-center">
+    <div className="relative h-72 w-full max-w-5xl mx-auto">
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-end justify-center">
         {cards.map((card, index) => {
           const centerIndex = (totalCards - 1) / 2;
           const offset = index - centerIndex;
 
           // Position each card with proper spacing
           const translateX = offset * spacing;
-          const rotate = offset * 5; // Rotation for fan effect
-          const translateY = Math.abs(offset) * 15; // Arc effect - cards at edges are higher
+          const rotate = offset * 3; // Subtle rotation for fan effect
+          const translateY = Math.abs(offset) * 8; // Subtle arc effect
 
           const isPlayable = isMyTurn && currentMana >= card.cost;
 
@@ -42,13 +45,13 @@ export function Hand({ cards, onPlayCard, currentMana, isMyTurn }: HandProps) {
                 x: translateX,
                 rotate: rotate,
                 opacity: 1,
-                scale: 1,
+                scale: 0.65, // Scale down cards in hand
                 zIndex: index
               }}
               whileHover={{
-                y: -60,
+                y: -80,
                 zIndex: 100,
-                scale: 1.15,
+                scale: 0.85,
                 rotate: 0,
                 transition: { type: "spring", stiffness: 400, damping: 25 }
               }}

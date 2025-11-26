@@ -6,7 +6,7 @@ import { Hand } from './Hand';
 import { EnemyArea } from './EnemyArea';
 import { ProblemModal } from './ProblemModal';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Swords, Hourglass } from 'lucide-react';
+import { Swords, Hourglass, Shield } from 'lucide-react';
 import type { Card as CardType } from '@/types/game';
 
 interface BattlefieldProps {
@@ -115,60 +115,60 @@ export function Battlefield({ userDeck }: BattlefieldProps) {
       </div>
 
       {/* --- BOTTOM BAR: Player Hand & Controls --- */}
-      <div className="h-[400px] bg-gradient-to-t from-zinc-950 via-zinc-900/95 to-transparent relative z-30 flex flex-col justify-end pb-4 overflow-visible">
-        
-        {/* Phase & End Turn Controls */}
-        <div className="absolute top-12 right-8 flex flex-col gap-4 items-end z-40">
-            <div className="bg-zinc-900/80 backdrop-blur border border-zinc-700 px-4 py-2 rounded-lg shadow-xl transition-all hover:scale-105 hover:bg-zinc-900 hover:shadow-2xl cursor-pointer group">
-                <div className="text-xs text-zinc-500 uppercase tracking-wider mb-1 group-hover:text-zinc-400">Current Phase</div>
-                <div className="text-white font-bold text-lg capitalize flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse group-hover:w-3 group-hover:h-3 transition-all" />
+      <div className="h-[320px] bg-gradient-to-t from-zinc-950 via-zinc-900/95 to-transparent relative z-30 flex flex-col justify-end pb-2">
+
+        {/* Phase & End Turn Controls - Fixed positioning */}
+        <div className="absolute top-4 right-6 flex flex-col gap-3 items-end z-40">
+            <div className="bg-zinc-900/80 backdrop-blur border border-zinc-700 px-3 py-1.5 rounded-lg shadow-xl">
+                <div className="text-[10px] text-zinc-500 uppercase tracking-wider mb-0.5">Current Phase</div>
+                <div className="text-white font-bold text-sm capitalize flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                     {gameState.currentPhase}
                 </div>
             </div>
 
-            <button 
+            <button
                 onClick={endTurn}
                 disabled={!isMyTurn}
                 className={`
-                    group relative px-8 py-3 rounded-xl font-bold text-lg shadow-xl transition-all
-                    ${isMyTurn 
-                        ? 'bg-yellow-600 hover:bg-yellow-500 text-white hover:scale-105 hover:shadow-yellow-500/20' 
+                    group relative px-6 py-2 rounded-lg font-bold text-sm shadow-xl transition-all
+                    ${isMyTurn
+                        ? 'bg-yellow-600 hover:bg-yellow-500 text-white hover:scale-105 hover:shadow-yellow-500/20'
                         : 'bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700'}
                 `}
             >
                 <span className="relative z-10 flex items-center gap-2">
                     End Turn
-                    <Hourglass size={18} />
+                    <Hourglass size={14} />
                 </span>
-                {isMyTurn && <div className="absolute inset-0 rounded-xl bg-yellow-400/20 blur-md group-hover:blur-lg transition-all" />}
+                {isMyTurn && <div className="absolute inset-0 rounded-lg bg-yellow-400/20 blur-md group-hover:blur-lg transition-all" />}
             </button>
         </div>
 
         {/* Player Stats (Left) */}
-        <div className="absolute bottom-8 left-8 z-40">
-            <div className="flex items-end gap-4">
+        <div className="absolute bottom-4 left-6 z-40">
+            <div className="flex items-end gap-3">
                 <div className="relative group cursor-pointer">
-                    <div className="w-20 h-20 rounded-full bg-blue-900 flex items-center justify-center text-3xl font-bold border-4 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.6)] transition-all group-hover:scale-110 group-hover:shadow-[0_0_40px_rgba(59,130,246,0.8)]">
+                    <div className="w-16 h-16 rounded-full bg-blue-900 flex items-center justify-center text-2xl font-bold border-4 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.6)] transition-all group-hover:scale-110">
                         {gameState.player.health}
                     </div>
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-zinc-900 text-blue-200 text-xs font-bold px-2 py-0.5 rounded border border-blue-900 transition-transform group-hover:scale-105">
+                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-zinc-900 text-blue-200 text-[10px] font-bold px-1.5 py-0.5 rounded border border-blue-900">
                         HP
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-1 mb-2">
-                    <h2 className="font-bold text-blue-100 text-xl">{gameState.player.name}</h2>
-                    <div className="flex items-center gap-2 bg-zinc-900/80 px-3 py-1.5 rounded-full border border-blue-900/50 transition-all hover:scale-105 hover:bg-zinc-900 cursor-pointer group">
+                <div className="flex flex-col gap-1 mb-1">
+                    <h2 className="font-bold text-blue-100 text-base">{gameState.player.name}</h2>
+                    <div className="flex items-center gap-2 bg-zinc-900/80 px-2 py-1 rounded-full border border-blue-900/50">
                         <div className="flex gap-0.5">
                             {Array.from({ length: gameState.player.maxMana }).map((_, i) => (
                                 <div
                                     key={i}
-                                    className={`w-3 h-4 rounded-sm transition-all ${i < gameState.player.mana ? 'bg-blue-400 shadow-[0_0_5px_rgba(96,165,250,0.8)] group-hover:shadow-[0_0_8px_rgba(96,165,250,1)]' : 'bg-zinc-700'}`}
+                                    className={`w-2.5 h-3 rounded-sm transition-all ${i < gameState.player.mana ? 'bg-blue-400 shadow-[0_0_5px_rgba(96,165,250,0.8)]' : 'bg-zinc-700'}`}
                                 />
                             ))}
                         </div>
-                        <span className="text-blue-300 font-mono font-bold text-sm ml-2">
+                        <span className="text-blue-300 font-mono font-bold text-xs ml-1">
                             {gameState.player.mana}/{gameState.player.maxMana}
                         </span>
                     </div>
@@ -177,11 +177,11 @@ export function Battlefield({ userDeck }: BattlefieldProps) {
         </div>
 
         {/* Hand Component */}
-        <div className="w-full flex justify-center items-end pb-4 z-30 pointer-events-none">
-            <div className="pointer-events-auto w-full max-w-6xl">
-                <Hand 
-                    cards={gameState.player.hand} 
-                    onPlayCard={playCard} 
+        <div className="w-full flex justify-center items-end z-30 pointer-events-none">
+            <div className="pointer-events-auto w-full max-w-5xl">
+                <Hand
+                    cards={gameState.player.hand}
+                    onPlayCard={playCard}
                     currentMana={gameState.player.mana}
                     isMyTurn={isMyTurn}
                 />

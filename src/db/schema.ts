@@ -36,6 +36,15 @@ export const cardBatches = pgTable('card_batches', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// Problem hints type for dynamic problem generation
+export interface ProblemHintsDB {
+  keywords: string[]; // 3-5 thematic keywords
+  difficulty: number; // 1-10
+  subCategory: string; // e.g., "algebra", "geometry", "physics"
+  contextType: 'fantasy' | 'real_world' | 'abstract';
+  suggestedTopics: string[]; // 2-3 specific concepts
+}
+
 // Cards table
 export const cards = pgTable('cards', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -53,6 +62,7 @@ export const cards = pgTable('cards', {
   imagePrompt: text('image_prompt'), // For regeneration/debugging
   theme: text('theme'), // Thematic category (e.g., "Dragons", "Samurai")
   tags: json('tags').$type<string[]>(), // Array of thematic tags
+  problemHints: json('problem_hints').$type<ProblemHintsDB>(), // Dynamic problem generation metadata
   batchId: uuid('batch_id').references(() => cardBatches.id), // Link to batch
   batchOrder: integer('batch_order'), // Position in batch (1-10)
   createdById: text('created_by_id').references(() => users.id),

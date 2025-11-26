@@ -9,19 +9,24 @@ import { checkDeckStatus } from '@/app/actions/user';
 export function DeckGenerationStatus() {
   const router = useRouter();
   const [status, setStatus] = useState('generating');
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
         const result = await checkDeckStatus();
-        if (result.status === 'completed') {
+        
+        if (result.status === 'completed' || (result.progress && result.progress === 100)) {
           setStatus('completed');
+          setProgress(100);
           router.push('/dashboard');
+        } else if (result.progress) {
+          setProgress(result.progress);
         }
       } catch (error) {
         console.error("Failed to check deck status:", error);
       }
-    }, 3000);
+    }, 2000); // Poll every 2 seconds
 
     return () => clearInterval(interval);
   }, [router]);
@@ -48,14 +53,19 @@ export function DeckGenerationStatus() {
         <motion.div
           className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
           initial={{ width: "0%" }}
-          animate={{ width: "100%" }}
-          transition={{ duration: 20, ease: "linear" }}
+          animate={{ width: `${progress}%` }}
+          transition={{ duration: 0.5 }}
         />
       </div>
       
-      <p className="text-xs text-zinc-500 font-mono">
-        {status === 'completed' ? 'Deck Ready! Redirecting...' : 'Generating card art and stats...'}
-      </p>
+      <div className="flex justify-between w-full max-w-md px-1">
+        <p className="text-xs text-zinc-500 font-mono">
+          {status === 'completed' ? 'Deck Ready! Redirecting...' : 'Generating card art and stats...'}
+        </p>
+        <p className="text-xs text-zinc-500 font-mono">
+          {progress}%
+        </p>
+      </div>
     </div>
   );
 }

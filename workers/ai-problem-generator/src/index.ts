@@ -1,5 +1,32 @@
 export interface Env {
-  AI: any;
+  AI: any; // Using any to avoid Cloudflare AI type strictness
+}
+
+/**
+ * Problem hints - metadata for dynamic problem generation
+ * Stored on the card, used at play-time
+ */
+export interface ProblemHints {
+  keywords: string[];
+  difficulty: number;
+  subCategory: string;
+  contextType: "fantasy" | "real_world" | "abstract";
+  suggestedTopics: string[];
+}
+
+/**
+ * Card stats for thematic problem generation
+ */
+export interface CardStats {
+  power: number;
+  cost: number;
+  defense: number;
+  ability?: {
+    name: string;
+    manaCost: number;
+    damage: number;
+    target: "enemy_hero" | "enemy_creature" | "all_enemies" | "self_heal";
+  };
 }
 
 export interface ProblemGenerationRequest {
@@ -14,6 +41,9 @@ export interface ProblemGenerationRequest {
   cardName?: string;
   cardElement?: "Fire" | "Water" | "Earth" | "Air";
   cardTags?: string[];
+  // NEW: Card stats and problem hints for dynamic generation
+  cardStats?: CardStats;
+  problemHints?: ProblemHints;
 }
 
 export interface ProblemResponse {
@@ -44,7 +74,19 @@ export default {
 
     try {
       const body = await request.json() as ProblemGenerationRequest;
-      const { category, difficulty, theme, userAge, userEducationLevel, userInterests, cardName, cardElement, cardTags } = body;
+      const {
+        category,
+        difficulty,
+        theme,
+        userAge,
+        userEducationLevel,
+        userInterests,
+        cardName,
+        cardElement,
+        cardTags,
+        cardStats,
+        problemHints
+      } = body;
 
       if (!category || !difficulty) {
         return new Response(
@@ -76,26 +118,79 @@ export default {
         userContext += '\n';
       }
 
-      // Build card context for battle problems
+      // Build card context for battle problems (enhanced with stats and hints)
       let cardContext = '';
-      if (cardName || cardElement || (cardTags && cardTags.length > 0)) {
+      const hasCardData = cardName || cardElement || cardTags?.length || cardStats || problemHints;
+
+      if (hasCardData) {
         cardContext = '\n\nCONTEXTO DE CARTA (BATALLA):';
+
         if (cardName) {
-          cardContext += `\n- La carta jugada es: "${cardName}"`;
+          cardContext += `\n- Carta jugada: "${cardName}"`;
         }
+
         if (cardElement) {
           const elementNames: Record<string, string> = {
-            Fire: 'Fuego',
-            Water: 'Agua',
-            Earth: 'Tierra',
-            Air: 'Aire'
+            Fire: 'Fuego 🔥',
+            Water: 'Agua 💧',
+            Earth: 'Tierra 🌍',
+            Air: 'Aire 💨'
           };
           cardContext += `\n- Elemento: ${elementNames[cardElement]}`;
         }
-        if (cardTags && cardTags.length > 0) {
-          cardContext += `\n- Tags temáticos: ${cardTags.join(', ')}`;
+
+        // Card stats for numeric problems
+        if (cardStats) {
+          cardContext += '\n\nESTADÍSTICAS DE LA CARTA (úsalas en el problema):';
+          cardContext += `\n- Poder de ataque: ${cardStats.power}`;
+          cardContext += `\n- Costo de maná: ${cardStats.cost}`;
+          cardContext += `\n- Defensa: ${cardStats.defense}`;
+
+          if (cardStats.ability) {
+            cardContext += `\n- Habilidad: "${cardStats.ability.name}" (cuesta ${cardStats.ability.manaCost} maná, causa ${cardStats.ability.damage} de daño)`;
+            const targetDesc: Record<string, string> = {
+              enemy_hero: 'al héroe enemigo',
+              enemy_creature: 'a una criatura enemiga',
+              all_enemies: 'a todas las criaturas enemigas',
+              self_heal: 'curación propia'
+            };
+            cardContext += `\n- Objetivo de habilidad: ${targetDesc[cardStats.ability.target]}`;
+          }
+
+          cardContext += '\n- IMPORTANTE: Usa estos números en el problema (ej: "Si el ataque es X y la defensa Y...")';
         }
-        cardContext += '\n- IMPORTANTE: El problema debe estar relacionado temáticamente con la carta (usar tags, elemento o nombre como inspiración)';
+
+        // Problem hints for thematic generation
+        if (problemHints) {
+          cardContext += '\n\nHINTS PARA GENERACIÓN:';
+
+          if (problemHints.keywords?.length) {
+            cardContext += `\n- Palabras clave temáticas: ${problemHints.keywords.join(', ')}`;
+          }
+
+          if (problemHints.subCategory) {
+            cardContext += `\n- Subcategoría específica: ${problemHints.subCategory}`;
+          }
+
+          if (problemHints.suggestedTopics?.length) {
+            cardContext += `\n- Temas sugeridos: ${problemHints.suggestedTopics.join(', ')}`;
+          }
+
+          if (problemHints.contextType) {
+            const contextDesc: Record<string, string> = {
+              fantasy: 'Usa contexto de fantasía/magia (hechizos, criaturas, batallas)',
+              real_world: 'Usa contexto del mundo real (situaciones cotidianas)',
+              abstract: 'Usa formato abstracto/matemático puro'
+            };
+            cardContext += `\n- Estilo de contexto: ${contextDesc[problemHints.contextType]}`;
+          }
+        }
+
+        if (cardTags?.length) {
+          cardContext += `\n- Tags adicionales: ${cardTags.join(', ')}`;
+        }
+
+        cardContext += '\n\n⚡ IMPORTANTE: El problema DEBE estar temáticamente relacionado con la carta. Usa los stats, keywords y contexto para crear un problema inmersivo y relevante.';
         cardContext += '\n';
       }
 
@@ -133,9 +228,15 @@ EJEMPLO VÁLIDO:
 
       console.log('🧮 Generating educational problem...');
       console.log('📚 Category:', category, '| Difficulty:', difficulty);
+      if (cardStats) {
+        console.log('⚔️ Card Stats:', `Power=${cardStats.power}, Cost=${cardStats.cost}, Defense=${cardStats.defense}`);
+      }
+      if (problemHints) {
+        console.log('💡 Problem Hints:', problemHints.keywords?.slice(0, 3).join(', '));
+      }
 
       const aiResponse = await env.AI.run(
-        '@cf/meta/llama-3.1-8b-instruct',
+        "@cf/meta/llama-3.1-8b-instruct",
         {
           messages: [
             {
@@ -151,8 +252,9 @@ EJEMPLO VÁLIDO:
       );
 
       let responseText = '';
-      if (aiResponse && typeof aiResponse === 'object' && 'response' in aiResponse) {
-        responseText = aiResponse.response;
+      const response = aiResponse as AiTextGenerationOutput;
+      if (response && typeof response === 'object' && 'response' in response && response.response) {
+        responseText = response.response;
       } else if (typeof aiResponse === 'string') {
         responseText = aiResponse;
       } else {

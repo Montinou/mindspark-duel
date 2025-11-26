@@ -15,8 +15,8 @@ export interface CardBatch {
 export interface Card {
   id: string;
   name: string;
-  description: string; // Kept for backwards compatibility
-  flavorText?: string; // Thematic narrative text
+  description: string; // Flavor text - thematic narrative
+  flavorText?: string; // Thematic narrative text (alias)
   effectDescription?: string; // Game mechanics description
   cost: number;
   power: number;
@@ -32,6 +32,9 @@ export interface Card {
   createdById?: string;
   createdAt?: Date;
 
+  // Problem Generation Hints - used to dynamically generate problems when card is played
+  problemHints?: ProblemHints;
+
   // Game State Properties
   canAttack?: boolean;
   isTapped?: boolean; // Exhausted
@@ -39,6 +42,17 @@ export interface Card {
   // Ability System
   ability?: CardAbility;
   abilityUsedThisTurn?: boolean;
+}
+
+/**
+ * Problem generation hints - stored on card, used to generate unique problems each play
+ */
+export interface ProblemHints {
+  keywords: string[]; // Thematic keywords for problem context (e.g., "volcano", "eruption", "lava")
+  difficulty: number; // 1-10, complexity level
+  subCategory?: string; // More specific category (e.g., "algebra", "geometry", "physics")
+  contextType?: 'fantasy' | 'real_world' | 'abstract'; // How to frame the problem
+  suggestedTopics?: string[]; // Optional specific topics (e.g., "fractions", "velocity")
 }
 
 /**

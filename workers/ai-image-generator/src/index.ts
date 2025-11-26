@@ -18,6 +18,22 @@ const QUALITY_ENHANCERS = [
 	"exquisite craftsmanship, meticulous detail, collector piece"
 ];
 
+// Full art card composition guidelines
+const FULL_ART_STYLES = [
+	"full art trading card, edge-to-edge artwork, no borders, character fills entire frame",
+	"full bleed illustration, immersive scene, expansive composition filling all space",
+	"borderless card art, dynamic full-frame composition, character dominating the scene",
+	"full art style, epic scale illustration, subject commanding the entire canvas"
+];
+
+// Composition guidelines for vertical full art cards
+const COMPOSITION_GUIDES = [
+	"vertical 2:3 aspect ratio, subject centered with dramatic pose",
+	"portrait orientation, character in heroic stance, filling vertical space",
+	"tall format composition, dynamic diagonal energy, full body or dramatic close-up",
+	"vertical frame, powerful presence, environmental effects extending to edges"
+];
+
 // Lighting variations for visual diversity
 const LIGHTING_STYLES = [
 	"dramatic chiaroscuro lighting, deep shadows, highlighted features",
@@ -72,13 +88,15 @@ export default {
 			const qualityEnhancer = QUALITY_ENHANCERS[Math.floor(Math.random() * QUALITY_ENHANCERS.length)];
 			const lightingStyle = LIGHTING_STYLES[Math.floor(Math.random() * LIGHTING_STYLES.length)];
 			const renderStyle = RENDER_STYLES[Math.floor(Math.random() * RENDER_STYLES.length)];
+			const fullArtStyle = FULL_ART_STYLES[Math.floor(Math.random() * FULL_ART_STYLES.length)];
+			const compositionGuide = COMPOSITION_GUIDES[Math.floor(Math.random() * COMPOSITION_GUIDES.length)];
 
 			// Element-based color palette
 			const elementLower = element?.toLowerCase() || '';
 			const colorPalette = ELEMENT_PALETTES[elementLower] || "rich fantasy color palette";
 
-			// Build enhanced prompt with variety
-			const enhancedPrompt = `${prompt}, ${renderStyle}, ${lightingStyle}, ${colorPalette}, ${qualityEnhancer}, trading card game art, vertical portrait composition, single character focus, dark fantasy aesthetic, no text, no watermarks`;
+			// Build enhanced prompt with full art card style
+			const enhancedPrompt = `${prompt}, ${fullArtStyle}, ${compositionGuide}, ${renderStyle}, ${lightingStyle}, ${colorPalette}, ${qualityEnhancer}, collectible card game illustration, dark fantasy aesthetic, no text, no watermarks, no borders, no card frame`;
 
 			console.log('🎨 Enhanced prompt:', enhancedPrompt.substring(0, 200));
 

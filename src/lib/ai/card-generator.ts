@@ -8,7 +8,6 @@ import { cards } from '@/db/schema';
 // Workers AI endpoints
 const WORKERS_TEXT_URL = process.env.WORKERS_AI_TEXT_URL || 'https://mindspark-ai-text-generator.agusmontoya.workers.dev';
 const WORKERS_IMAGE_URL = process.env.WORKERS_AI_IMAGE_URL || 'https://mindspark-ai-image-generator.agusmontoya.workers.dev';
-const WORKERS_PROBLEM_URL = process.env.WORKERS_AI_PROBLEM_URL || 'https://mindspark-ai-problem-generator.agusmontoya.workers.dev';
 
 export interface GenerateCardOptions {
   topic?: string;
@@ -16,6 +15,15 @@ export interface GenerateCardOptions {
   difficulty?: number;
   element?: "Fire" | "Water" | "Earth" | "Air";
   userId?: string;
+}
+
+// Problem hints for dynamic generation at play-time
+interface ProblemHints {
+  keywords: string[];
+  difficulty: number;
+  subCategory: string;
+  contextType: "fantasy" | "real_world" | "abstract";
+  suggestedTopics: string[];
 }
 
 interface CardDataResponse {
@@ -28,12 +36,7 @@ interface CardDataResponse {
   problemCategory: "Math" | "Logic" | "Science";
   imagePrompt: string;
   tags: string[]; // 2-4 thematic keywords from Workers AI
-}
-
-interface ProblemResponse {
-  question: string;
-  answer: string;
-  category: "Math" | "Logic" | "Science";
+  problemHints: ProblemHints; // For dynamic problem generation when card is played
 }
 
 export async function generateImageWithWorkersAI(prompt: string, element?: string): Promise<string> {
@@ -110,63 +113,22 @@ async function generateCardData(options: GenerateCardOptions): Promise<CardDataR
   return data.data;
 }
 
-async function generateProblem(
-  category: "Math" | "Logic" | "Science",
-  difficulty: number,
-  theme?: string
-): Promise<ProblemResponse> {
-  console.log('🧮 Generating educational problem with Workers AI...');
-
-  const response = await fetch(WORKERS_PROBLEM_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      category,
-      difficulty,
-      theme
-    })
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('❌ Workers AI Problem Error:', errorText);
-    throw new Error(`Workers AI Problem Error (${response.status}): ${errorText}`);
-  }
-
-  const data = await response.json();
-
-  if (!data.success || !data.data) {
-    console.error('❌ Invalid response from Workers AI Problem:', data);
-    throw new Error("No problem data found in Workers AI response");
-  }
-
-  console.log('✅ Problem generated:', data.data.question.substring(0, 50) + '...');
-
-  return data.data;
-}
-
 export async function generateCard(options: GenerateCardOptions): Promise<Card> {
-  const { theme, userId } = options;
+  const { userId } = options;
 
   console.log('🎴 Starting card generation with Workers AI...');
 
-  // 1. Generate card data (name, stats, imagePrompt) - Workers AI
+  // 1. Generate card data (name, stats, imagePrompt, problemHints) - Workers AI
   const cardData = await generateCardData(options);
 
-  // 2. Generate educational problem - Workers AI
-  const themeText = theme || options.topic || "Fantasy";
-  const problemData = await generateProblem(
-    cardData.problemCategory,
-    options.difficulty || 5,
-    themeText
-  );
-
-  // 3. Generate image - Workers AI (Flux Schnell)
+  // 2. Generate image - Workers AI (Flux Schnell)
   console.log('🎨 Starting image generation for card:', cardData.name);
   const imageUrl = await generateImageWithWorkersAI(cardData.imagePrompt, cardData.element);
 
-  // 4. Save card to database
+  // 3. Save card to database (with problemHints for dynamic problem generation at play-time)
   console.log('💾 Saving card to database:', cardData.name);
+  console.log('💡 Problem Hints:', cardData.problemHints?.keywords?.join(', ') || 'none');
+
   const [savedCard] = await db
     .insert(cards)
     .values({
@@ -180,13 +142,14 @@ export async function generateCard(options: GenerateCardOptions): Promise<Card> 
       imageUrl: imageUrl,
       imagePrompt: cardData.imagePrompt,
       tags: cardData.tags,
+      problemHints: cardData.problemHints, // Store hints for dynamic generation
       createdById: userId || null,
     })
     .returning();
 
   console.log('✅ Card successfully created:', savedCard.id);
 
-  // 5. Return card with database ID
+  // 4. Return card with database ID and problemHints
   return {
     id: savedCard.id,
     name: savedCard.name,
@@ -197,6 +160,7 @@ export async function generateCard(options: GenerateCardOptions): Promise<Card> 
     element: savedCard.element,
     problemCategory: savedCard.problemCategory,
     imageUrl: savedCard.imageUrl!,
-    imagePrompt: cardData.imagePrompt
+    imagePrompt: cardData.imagePrompt,
+    problemHints: cardData.problemHints,
   };
 }

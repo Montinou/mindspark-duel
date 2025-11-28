@@ -1,7 +1,0 @@
-<svg width="400" height="600" viewBox="0 0 400 600" xmlns="http://www.w3.org/2000/svg">
-  <rect width="400" height="600" fill="#1e3a8a" />
-  <rect x="50" y="50" width="300" height="500" rx="20" fill="#3b82f6" stroke="#60a5fa" stroke-width="10" />
-  <path d="M200 150 L250 250 L150 250 Z" fill="#fbbf24" />
-  <text x="200" y="400" font-family="Arial" font-size="24" text-anchor="middle" fill="white">Technomancer</text>
-  <text x="200" y="440" font-family="Arial" font-size="18" text-anchor="middle" fill="#93c5fd">Deck Box</text>
-</svg>

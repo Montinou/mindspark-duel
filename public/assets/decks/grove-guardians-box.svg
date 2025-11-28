@@ -1,7 +1,0 @@
-<svg width="400" height="600" viewBox="0 0 400 600" xmlns="http://www.w3.org/2000/svg">
-  <rect width="400" height="600" fill="#14532d" />
-  <rect x="50" y="50" width="300" height="500" rx="20" fill="#22c55e" stroke="#86efac" stroke-width="10" />
-  <circle cx="200" cy="200" r="50" fill="#fde047" />
-  <text x="200" y="400" font-family="Arial" font-size="24" text-anchor="middle" fill="white">Grove Guardians</text>
-  <text x="200" y="440" font-family="Arial" font-size="18" text-anchor="middle" fill="#bbf7d0">Deck Box</text>
-</svg>

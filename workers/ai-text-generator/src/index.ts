@@ -2,6 +2,170 @@ export interface Env {
   AI: any;
 }
 
+// ============================================
+// CARD-01: Stats validation utilities
+// ============================================
+
+const clamp = (val: number, min: number, max: number): number =>
+  Math.max(min, Math.min(max, val));
+
+const VALID_ELEMENTS = ['Fire', 'Water', 'Earth', 'Air'] as const;
+const VALID_CATEGORIES = ['Math', 'Logic', 'Science'] as const;
+
+interface ValidatedCard {
+  name: string;
+  description: string;
+  cost: number;
+  power: number;
+  defense: number;
+  element: typeof VALID_ELEMENTS[number];
+  problemCategory: typeof VALID_CATEGORIES[number];
+}
+
+function validateCardStats(parsed: any, defaults: { cost: number; power: number; defense: number; element: string; category: string }): ValidatedCard {
+  return {
+    name: String(parsed.name || 'Unknown Card').slice(0, 50),
+    description: String(parsed.description || '').slice(0, 200),
+    cost: clamp(Number(parsed.cost) || defaults.cost, 1, 10),
+    power: clamp(Number(parsed.power) || defaults.power, 1, 10),
+    defense: clamp(Number(parsed.defense) || defaults.defense, 1, 10),
+    element: VALID_ELEMENTS.includes(parsed.element) ? parsed.element : defaults.element as typeof VALID_ELEMENTS[number],
+    problemCategory: VALID_CATEGORIES.includes(parsed.problemCategory) ? parsed.problemCategory : defaults.category as typeof VALID_CATEGORIES[number],
+  };
+}
+
+// ============================================
+// CARD-02: Safe JSON parsing with fallback
+// ============================================
+
+/**
+ * Repair common JSON errors from LLM output
+ */
+function repairJSON(text: string): string {
+  let repaired = text;
+
+  // Remove trailing commas before } or ]
+  repaired = repaired.replace(/,(\s*[}\]])/g, '$1');
+
+  // Fix unescaped quotes in strings (common LLM error)
+  // Match strings and escape internal quotes
+  repaired = repaired.replace(/"([^"]*?)(?<!\\)"([^"]*?)"/g, (match, p1, p2) => {
+    if (p2.includes(':') || p2.includes(',') || p2.includes('}')) {
+      // This looks like it might be a real string boundary
+      return match;
+    }
+    return `"${p1}\\"${p2}"`;
+  });
+
+  // Fix missing quotes around property names
+  repaired = repaired.replace(/{\s*(\w+)\s*:/g, '{"$1":');
+  repaired = repaired.replace(/,\s*(\w+)\s*:/g, ',"$1":');
+
+  // Fix single quotes to double quotes
+  repaired = repaired.replace(/'/g, '"');
+
+  // Remove control characters that break JSON
+  repaired = repaired.replace(/[\x00-\x1F\x7F]/g, (char) => {
+    if (char === '\n' || char === '\r' || char === '\t') return ' ';
+    return '';
+  });
+
+  // Fix truncated JSON - add missing closing braces/brackets
+  const openBraces = (repaired.match(/{/g) || []).length;
+  const closeBraces = (repaired.match(/}/g) || []).length;
+  const openBrackets = (repaired.match(/\[/g) || []).length;
+  const closeBrackets = (repaired.match(/\]/g) || []).length;
+
+  // Add missing closing brackets
+  for (let i = 0; i < openBrackets - closeBrackets; i++) {
+    repaired += ']';
+  }
+  // Add missing closing braces
+  for (let i = 0; i < openBraces - closeBraces; i++) {
+    repaired += '}';
+  }
+
+  return repaired;
+}
+
+function safeParseJSON(text: string): any | null {
+  // Clean up markdown code blocks
+  let cleaned = text
+    .replace(/```json\s*/gi, '')
+    .replace(/```\s*/g, '')
+    .trim();
+
+  // Extract JSON from response
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    console.warn('No JSON object found in response');
+    return null;
+  }
+
+  let jsonString = jsonMatch[0];
+
+  // Try parsing as-is first
+  try {
+    return JSON.parse(jsonString);
+  } catch (firstError) {
+    console.warn('First JSON parse failed, attempting repair...');
+  }
+
+  // Try with repairs
+  try {
+    const repaired = repairJSON(jsonString);
+    const result = JSON.parse(repaired);
+    console.log('JSON repaired successfully');
+    return result;
+  } catch (repairError) {
+    console.error('JSON repair failed:', repairError);
+  }
+
+  // Last resort: try to extract just the essential fields
+  try {
+    const nameMatch = jsonString.match(/"name"\s*:\s*"([^"]+)"/);
+    const descMatch = jsonString.match(/"description"\s*:\s*"([^"]+)"/);
+    const elementMatch = jsonString.match(/"element"\s*:\s*"([^"]+)"/);
+    const imageMatch = jsonString.match(/"imagePrompt"\s*:\s*"([^"]+)"/);
+
+    if (nameMatch) {
+      console.log('Extracted partial data from malformed JSON');
+      return {
+        name: nameMatch[1],
+        description: descMatch?.[1] || '',
+        element: elementMatch?.[1] || null,
+        imagePrompt: imageMatch?.[1] || null,
+        _partial: true
+      };
+    }
+  } catch (extractError) {
+    console.error('Field extraction failed:', extractError);
+  }
+
+  return null;
+}
+
+function getDefaultCard(theme: string, element: string): CardDataResponse {
+  return {
+    name: `${theme} Guardian`,
+    description: 'Un guardián místico emerge de las sombras.',
+    cost: 5,
+    power: 4,
+    defense: 4,
+    element: element as CardDataResponse['element'],
+    problemCategory: 'Math',
+    imagePrompt: `${theme} guardian character, fantasy card art, dramatic lighting`,
+    tags: [theme.toLowerCase(), element.toLowerCase()],
+    problemHints: {
+      keywords: [theme.toLowerCase(), element.toLowerCase(), 'guardian'],
+      difficulty: 5,
+      subCategory: 'arithmetic',
+      contextType: 'fantasy',
+      suggestedTopics: ['addition', 'multiplication']
+    }
+  };
+}
+
 export interface CardGenerationRequest {
   topic?: string;
   theme?: string;
@@ -29,16 +193,6 @@ export interface CardDataResponse {
   tags: string[];
   problemHints: ProblemHints; // For dynamic problem generation when card is played
 }
-
-// Creative name structures for variety
-const NAME_STRUCTURES = [
-  "Título + Nombre Propio inventado (ej: Archimaga Velestris, Guardián Kor'thax)",
-  "Nombre + Epíteto único (ej: Sylvara la Inquebrantable, Mordex el Silente)",
-  "Nombre Compuesto evocador (ej: Ceniza Carmesí, Velo Eterno)",
-  "Nombre en idioma inventado (ej: Zha'reth, Vel'korion, Xynareth)",
-  "Título Único poético (ej: El Último Suspiro, La Primera Llama)",
-  "Nombre + Origen mítico (ej: Kaelen de la Forja Olvidada)"
-];
 
 // Art styles for variety
 const ART_STYLES = [
@@ -102,7 +256,6 @@ export default {
       const finalElement = element || (['Fire', 'Water', 'Earth', 'Air'] as const)[Math.floor(Math.random() * 4)];
 
       // Random selections for variety
-      const randomNameStructure = NAME_STRUCTURES[Math.floor(Math.random() * NAME_STRUCTURES.length)];
       const randomArtStyle = ART_STYLES[Math.floor(Math.random() * ART_STYLES.length)];
       const randomPerspective = PERSPECTIVES[Math.floor(Math.random() * PERSPECTIVES.length)];
 
@@ -122,171 +275,158 @@ export default {
       // Generate unique seed for name variety
       const nameSeed = Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
 
-      const prompt = `Create a fantasy trading card in JSON format.
+      // Optimized prompt for reliable JSON output
+      const prompt = `Generate a fantasy TCG card. Output ONLY raw JSON, no markdown.
 
-Theme: ${themeText}
-Element: ${finalElement}
-Name structure to use: ${randomNameStructure}
-Unique seed for name: ${nameSeed}
+Theme: ${themeText} | Element: ${finalElement} | Seed: ${nameSeed}
 
-CRITICAL: The name MUST be completely unique and inventive. Do NOT use common names like "Tharros", "Xylara", or any name you've used before.
+REQUIRED JSON (copy this structure exactly, fill in values):
+{"name":"<unique Spanish fantasy name>","description":"<1 poetic sentence in Spanish>","cost":${randomCost},"power":${randomPower},"defense":${randomDefense},"element":"${finalElement}","problemCategory":"${randomCategory}","imagePrompt":"<English art description: ${randomArtStyle}, ${randomPerspective}>","tags":["${themeText.toLowerCase()}","${finalElement.toLowerCase()}","<tag3>"],"problemHints":{"keywords":["<word1>","<word2>","<word3>"],"difficulty":${difficulty},"subCategory":"${randomSubCategory}","contextType":"fantasy","suggestedTopics":${JSON.stringify(shuffledTopics)}}}`;
 
-Output ONLY valid JSON with this exact structure:
-{
-  "name": "<completely unique fantasy name in Spanish - use the seed for inspiration>",
-  "description": "<mysterious flavor text in Spanish, 1 poetic sentence - NO physical descriptions>",
-  "cost": ${randomCost},
-  "power": ${randomPower},
-  "defense": ${randomDefense},
-  "element": "${finalElement}",
-  "problemCategory": "${randomCategory}",
-  "imagePrompt": "<detailed English art description using: ${randomArtStyle}, ${randomPerspective}>",
-  "tags": ["${themeText.toLowerCase()}", "${finalElement.toLowerCase()}", "<add 1-2 more thematic tags>"],
-  "problemHints": {
-    "keywords": ["<3-5 thematic keywords related to the card's theme and element for generating math/logic problems>"],
-    "difficulty": ${difficulty},
-    "subCategory": "${randomSubCategory}",
-    "contextType": "fantasy",
-    "suggestedTopics": ${JSON.stringify(shuffledTopics)}
-  }
-}`;
+      const systemPrompt = `You are a JSON generator for fantasy TCG cards.
+
+CRITICAL RULES:
+1. Output ONLY valid JSON - no markdown, no \`\`\`, no explanations
+2. Start response with { and end with }
+3. Use double quotes for all strings
+4. No trailing commas
+5. Escape special characters in strings
+
+For names: Invent unique names using syllables like Vel-, Kor-, Zha-, Xyn-, Mor-
+For description: Short poetic Spanish text, no physical descriptions
+For keywords: 3-5 thematic words useful for math problems (e.g., "volcán", "temperatura")`;
 
       console.log('🤖 Generating card data with Llama 3.3 70B...');
       console.log('📝 Theme:', themeText, '| Element:', finalElement, '| Category:', randomCategory);
 
-      const aiResponse = await env.AI.run(
-        '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
-        {
-          messages: [
-            {
-              role: 'system',
-              content: `Eres el ÚLTIMO LOREKEEPER de un mundo olvidado, creador de cartas de TCG legendarias.
-
-TU MISIÓN: Crear cartas ÚNICAS con nombres IRREPETIBLES y flavor text MEMORABLE.
-
-REGLAS DE NOMBRES:
-- INVENTAR nombres propios únicos usando el seed proporcionado
-- Mezclar sílabas inventadas: Vel-, Kor-, Zha-, Xyn-, Mor-, Kae-, Ven-, Thal-
-- NUNCA repetir nombres comunes (Tharros, Xylara, etc.)
-- Variar estructuras: a veces título+nombre, a veces solo nombre épico
-
-REGLAS DE FLAVOR TEXT:
-- Fragmentos de profecías antiguas
-- Últimas palabras de héroes caídos
-- Inscripciones en runas olvidadas
-- NUNCA describir apariencia física
-
-REGLAS DE PROBLEM HINTS:
-- keywords: Palabras temáticas del mundo de la carta que servirán de contexto para problemas matemáticos
-- Deben ser evocadoras pero útiles (ej: "volcán", "erupción", "lava", "temperatura", "presión")
-
-Responde SOLO con JSON válido, sin markdown ni explicaciones.`
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.95, // Higher creativity for unique names
-          top_p: 0.98
+      // Helper to extract response text
+      const extractResponseText = (response: any): string => {
+        if (response && typeof response === 'object') {
+          if ('response' in response && typeof response.response === 'string') return response.response;
+          if ('text' in response && typeof response.text === 'string') return response.text;
+          if ('content' in response && typeof response.content === 'string') return response.content;
+          return JSON.stringify(response);
         }
-      );
+        return typeof response === 'string' ? response : '';
+      };
 
-      // Extract text from AI response
+      // Retry configuration: first try with moderate temp, retry with lower temp
+      const attempts = [
+        { temperature: 0.7, top_p: 0.9 },   // First attempt: balanced
+        { temperature: 0.3, top_p: 0.8 },   // Retry: more deterministic
+      ];
+
+      let parsed: any = null;
       let responseText = '';
-      if (aiResponse && typeof aiResponse === 'object') {
-        if ('response' in aiResponse && typeof aiResponse.response === 'string') {
-          responseText = aiResponse.response;
-        } else if ('text' in aiResponse && typeof aiResponse.text === 'string') {
-          responseText = aiResponse.text;
-        } else if ('content' in aiResponse && typeof aiResponse.content === 'string') {
-          responseText = aiResponse.content;
-        } else {
-          responseText = JSON.stringify(aiResponse);
+      let attemptNum = 0;
+
+      for (const config of attempts) {
+        attemptNum++;
+        console.log(`🔄 Attempt ${attemptNum}/${attempts.length} (temp: ${config.temperature})`);
+
+        try {
+          const aiResponse = await env.AI.run(
+            '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+            {
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: prompt }
+              ],
+              temperature: config.temperature,
+              top_p: config.top_p,
+              max_tokens: 800 // Limit output to prevent truncation
+            }
+          );
+
+          responseText = extractResponseText(aiResponse);
+          console.log('📄 Raw response:', String(responseText).substring(0, 300));
+
+          // Try to parse
+          parsed = safeParseJSON(responseText);
+
+          // Handle nested response
+          if (parsed?.response && typeof parsed.response === 'object') {
+            parsed = parsed.response;
+          }
+
+          // If we got valid data, break the retry loop
+          if (parsed && parsed.name) {
+            console.log(`✅ JSON parsed successfully on attempt ${attemptNum}`);
+            break;
+          }
+
+          console.warn(`⚠️ Attempt ${attemptNum} failed to produce valid JSON`);
+          parsed = null;
+
+        } catch (attemptError) {
+          console.error(`❌ Attempt ${attemptNum} error:`, attemptError);
         }
-      } else if (typeof aiResponse === 'string') {
-        responseText = aiResponse;
-      } else {
-        throw new Error(`Invalid response format from Llama: ${typeof aiResponse}`);
       }
 
-      console.log('📄 Raw response:', String(responseText).substring(0, 400));
-
-      // Clean up markdown and extract JSON
-      let jsonString = responseText
-        .replace(/```json/g, '')
-        .replace(/```/g, '')
-        .trim();
-
-      const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        jsonString = jsonMatch[0];
+      // If all attempts failed, return fallback card (200 status, not 500)
+      if (!parsed) {
+        console.warn('⚠️ All parsing attempts failed, returning fallback card');
+        const fallbackCard = getDefaultCard(themeText, finalElement);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: fallbackCard,
+            fallback: true,
+            reason: 'JSON parsing failed after retries',
+            attempts: attemptNum
+          }),
+          {
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
       }
 
-      let cardData: CardDataResponse;
-      try {
-        let parsed = JSON.parse(jsonString);
-        if (parsed.response && typeof parsed.response === 'object') {
-          parsed = parsed.response;
-        }
-        cardData = parsed as CardDataResponse;
-      } catch (parseError) {
-        console.error('⚠️  JSON parse failed:', jsonString.substring(0, 500));
-        throw new Error(`Invalid JSON from Llama: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
-      }
+      // CARD-01: Validate and clamp stats
+      const validatedStats = validateCardStats(parsed, {
+        cost: randomCost,
+        power: randomPower,
+        defense: randomDefense,
+        element: finalElement,
+        category: randomCategory
+      });
 
-      // Validate required fields
-      if (!cardData.name || !cardData.element) {
-        throw new Error(`Missing required fields: name=${cardData.name}, element=${cardData.element}`);
-      }
-
-      // Ensure problemCategory is valid
-      if (!['Math', 'Logic', 'Science'].includes(cardData.problemCategory)) {
-        cardData.problemCategory = randomCategory;
-      }
-
-      // Ensure tags exist
-      if (!cardData.tags || !Array.isArray(cardData.tags) || cardData.tags.length < 2) {
-        cardData.tags = [finalElement.toLowerCase(), themeText.toLowerCase()];
-      }
-
-      // Ensure imagePrompt exists
-      if (!cardData.imagePrompt) {
-        cardData.imagePrompt = `${themeText} character, ${randomArtStyle}, ${randomPerspective}, fantasy card art`;
-      }
-
-      // Ensure problemHints exist with defaults if not provided
-      if (!cardData.problemHints || typeof cardData.problemHints !== 'object') {
-        cardData.problemHints = {
-          keywords: cardData.tags.slice(0, 3),
+      // Build cardData with validated stats
+      let cardData: CardDataResponse = {
+        ...validatedStats,
+        imagePrompt: parsed.imagePrompt || `${themeText} character, ${randomArtStyle}, ${randomPerspective}, fantasy card art`,
+        tags: Array.isArray(parsed.tags) && parsed.tags.length >= 2
+          ? parsed.tags
+          : [finalElement.toLowerCase(), themeText.toLowerCase()],
+        problemHints: {
+          keywords: [],
           difficulty: difficulty,
           subCategory: randomSubCategory,
           contextType: "fantasy",
           suggestedTopics: shuffledTopics
+        }
+      };
+
+      // Validate and fix problemHints
+      if (parsed.problemHints && typeof parsed.problemHints === 'object') {
+        cardData.problemHints = {
+          keywords: Array.isArray(parsed.problemHints.keywords) && parsed.problemHints.keywords.length >= 2
+            ? parsed.problemHints.keywords.slice(0, 5).map(String)
+            : cardData.tags.slice(0, 3),
+          difficulty: clamp(Number(parsed.problemHints.difficulty) || difficulty, 1, 10),
+          subCategory: String(parsed.problemHints.subCategory || randomSubCategory),
+          contextType: ['fantasy', 'real_world', 'abstract'].includes(parsed.problemHints.contextType)
+            ? parsed.problemHints.contextType
+            : 'fantasy',
+          suggestedTopics: Array.isArray(parsed.problemHints.suggestedTopics) && parsed.problemHints.suggestedTopics.length >= 1
+            ? parsed.problemHints.suggestedTopics.slice(0, 3).map(String)
+            : shuffledTopics
         };
       } else {
-        // Validate and fix problemHints fields
-        if (!cardData.problemHints.keywords || cardData.problemHints.keywords.length < 2) {
-          cardData.problemHints.keywords = cardData.tags.slice(0, 3);
-        }
-        if (!cardData.problemHints.difficulty) {
-          cardData.problemHints.difficulty = difficulty;
-        }
-        if (!cardData.problemHints.subCategory) {
-          cardData.problemHints.subCategory = randomSubCategory;
-        }
-        if (!cardData.problemHints.contextType) {
-          cardData.problemHints.contextType = "fantasy";
-        }
-        if (!cardData.problemHints.suggestedTopics || cardData.problemHints.suggestedTopics.length < 1) {
-          cardData.problemHints.suggestedTopics = shuffledTopics;
-        }
+        cardData.problemHints.keywords = cardData.tags.slice(0, 3);
       }
-
-      // Ensure numeric fields
-      cardData.power = cardData.power || randomPower;
-      cardData.defense = cardData.defense || randomDefense;
-      cardData.cost = cardData.cost || randomCost;
 
       console.log('✅ Card generated:', cardData.name, '| Hints:', cardData.problemHints.keywords.join(', '));
 

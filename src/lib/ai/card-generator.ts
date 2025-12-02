@@ -4,6 +4,38 @@ import { Card } from '@/types/game';
 import { uploadImage } from '../storage';
 import { db } from '@/db';
 import { cards } from '@/db/schema';
+import { z } from 'zod';
+
+// ============================================
+// CARD-03: Zod validation for card insert
+// ============================================
+
+const cardInsertSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(50, 'Name too long'),
+  description: z.string().max(200, 'Description too long'),
+  cost: z.number().int().min(1).max(10),
+  power: z.number().int().min(1).max(10),
+  defense: z.number().int().min(1).max(10),
+  element: z.enum(['Fire', 'Water', 'Earth', 'Air']),
+  problemCategory: z.enum(['Math', 'Logic', 'Science']),
+  imageUrl: z.string().url().optional(),
+  imagePrompt: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  problemHints: z.object({
+    keywords: z.array(z.string()).min(1),
+    topics: z.array(z.string()).optional(),
+    difficulty: z.number().min(1).max(10).optional(),
+    subCategory: z.string().optional(),
+    contextType: z.enum(['fantasy', 'real_world', 'abstract']).optional(),
+    suggestedTopics: z.array(z.string()).optional(),
+  }).optional(),
+});
+
+export type ValidatedCardInsert = z.infer<typeof cardInsertSchema>;
+
+export function validateCardForInsert(card: unknown) {
+  return cardInsertSchema.safeParse(card);
+}
 
 // Workers AI endpoints
 const WORKERS_TEXT_URL = process.env.WORKERS_AI_TEXT_URL || 'https://mindspark-ai-text-generator.agusmontoya.workers.dev';
@@ -132,20 +164,35 @@ export async function generateCard(options: GenerateCardOptions): Promise<Card> 
   console.log('💾 Saving card to database:', cardData.name);
   console.log('💡 Problem Hints:', cardData.problemHints?.keywords?.join(', ') || 'none');
 
+  // CARD-03 & CARD-05: Validate card data before insert
+  const cardToInsert = {
+    name: cardData.name,
+    description: cardData.description,
+    cost: cardData.cost,
+    power: cardData.power,
+    defense: cardData.defense,
+    element: cardData.element,
+    problemCategory: cardData.problemCategory,
+    imageUrl: imageUrl,
+    imagePrompt: cardData.imagePrompt,
+    tags: cardData.tags,
+    problemHints: cardData.problemHints,
+  };
+
+  const validation = validateCardForInsert(cardToInsert);
+  if (!validation.success) {
+    console.warn('⚠️ Card validation failed, applying safe defaults:', validation.error.errors);
+    // Apply safe defaults for invalid fields
+    cardToInsert.problemHints = cardToInsert.problemHints || {
+      keywords: cardToInsert.tags?.slice(0, 3) || ['fantasy'],
+      topics: [],
+    };
+  }
+
   const [savedCard] = await db
     .insert(cards)
     .values({
-      name: cardData.name,
-      description: cardData.description,
-      cost: cardData.cost,
-      power: cardData.power,
-      defense: cardData.defense,
-      element: cardData.element,
-      problemCategory: cardData.problemCategory,
-      imageUrl: imageUrl,
-      imagePrompt: cardData.imagePrompt,
-      tags: cardData.tags,
-      problemHints: cardData.problemHints, // Store hints for dynamic generation
+      ...cardToInsert,
       createdById: userId || null,
     })
     .returning();

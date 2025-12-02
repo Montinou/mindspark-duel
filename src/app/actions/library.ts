@@ -1,11 +1,40 @@
 'use server';
 
 import { db } from "@/db";
-import { cards, userCards, users, rarityEnum } from "@/db/schema";
+import { cards, userCards, users } from "@/db/schema";
 import { stackServerApp } from "@/lib/stack";
 import { eq, sql } from "drizzle-orm";
 import { determineRarity } from "@/lib/game/rarity-system";
 import { generateCard } from "@/lib/ai/card-generator";
+
+// ============================================
+// CARD-04: Atomic pity counter operations
+// ============================================
+
+/**
+ * Atomically increment pity counter using SQL UPDATE
+ * Prevents race conditions when multiple requests happen simultaneously
+ */
+async function incrementPityCounter(userId: string): Promise<number> {
+  const result = await db.execute(sql`
+    UPDATE users
+    SET pity_counter = pity_counter + 1
+    WHERE id = ${userId}
+    RETURNING pity_counter
+  `);
+  return (result.rows[0] as { pity_counter: number })?.pity_counter ?? 0;
+}
+
+/**
+ * Atomically reset pity counter to 0
+ */
+async function resetPityCounter(userId: string): Promise<void> {
+  await db.execute(sql`
+    UPDATE users
+    SET pity_counter = 0
+    WHERE id = ${userId}
+  `);
+}
 
 // Tome Types
 type TomeType = 'standard' | 'fire' | 'water' | 'earth' | 'air' | 'logic';
@@ -27,23 +56,25 @@ export async function researchTome(tomeType: TomeType) {
     .set({ sparks: userData.sparks - TOME_COST })
     .where(eq(users.id, user.id));
 
-  // 2. Determine Rarities & Update Pity (Upfront)
-  let pityCounter = userData.pityCounter;
+  // 2. Determine Rarities using atomic pity counter (CARD-04: Fix race condition)
   const cardConfigs = [];
 
   for (let i = 0; i < 3; i++) {
     let rarity = 'common';
     if (i === 1) rarity = 'uncommon';
     if (i === 2) {
-      rarity = determineRarity(pityCounter);
-      // Update local pity counter for next pack (or save to DB at end)
+      // Get current pity counter atomically before determining rarity
+      const currentPity = userData.pityCounter;
+      rarity = determineRarity(currentPity);
+
+      // CARD-04: Use atomic operations for pity counter
       if (rarity === 'epic' || rarity === 'legendary') {
-        pityCounter = 0;
+        await resetPityCounter(user.id);
       } else {
-        pityCounter++;
+        await incrementPityCounter(user.id);
       }
     }
-    
+
     const themeHint = tomeType === 'standard' ? 'Fantasy' : `${tomeType} Element`;
     cardConfigs.push({ rarity, themeHint });
   }
@@ -86,10 +117,7 @@ export async function researchTome(tomeType: TomeType) {
     return savedCard;
   }));
 
-  // 5. Update Pity Counter
-  await db.update(users)
-    .set({ pityCounter })
-    .where(eq(users.id, user.id));
+  // Note: Pity counter already updated atomically in step 2 (CARD-04)
 
   return savedCards;
 }

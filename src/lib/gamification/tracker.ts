@@ -2,24 +2,36 @@ import { db } from "@/db";
 import { mastery, missions, userMissions, users } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 
-export type GameEvent = 
-  | { type: 'GAME_WIN'; opponentId?: string }
-  | { type: 'CARD_PLAYED'; element: string; cost: number }
-  | { type: 'PROBLEM_SOLVED'; category: string; difficulty: number }
+export type GameEvent =
+  | { type: 'GAME_STARTED' }
+  | { type: 'GAME_WON'; turns: number; cardsPlayed: number; problemsSolved: number }
+  | { type: 'GAME_LOST'; turns: number; cardsPlayed: number; problemsSolved: number }
+  | { type: 'GAME_WIN'; opponentId?: string } // Legacy, kept for compatibility
+  | { type: 'CARD_PLAYED'; element: string; cost: number; rarity?: string }
+  | { type: 'PROBLEM_SOLVED'; category: string; difficulty: number; correct: boolean; timeMs?: number }
   | { type: 'GAME_PLAYED' };
 
 import { checkAchievements } from "./achievements";
 
 export async function trackEvent(userId: string, event: GameEvent) {
   try {
-    // 1. Update Mastery
+    // 1. Calculate and award XP
+    const xpGained = calculateXP(event);
+    if (xpGained > 0) {
+      await db.update(users)
+        .set({ sparks: sql`${users.sparks} + ${xpGained}` })
+        .where(eq(users.id, userId));
+      console.log(`🎮 XP awarded: ${xpGained} to user ${userId} for ${event.type}`);
+    }
+
+    // 2. Update Mastery
     if (event.type === 'CARD_PLAYED') {
       await addMasteryXp(userId, event.element, event.cost * 10);
-    } else if (event.type === 'PROBLEM_SOLVED') {
+    } else if (event.type === 'PROBLEM_SOLVED' && event.correct) {
       await addMasteryXp(userId, event.category, event.difficulty * 20);
     }
 
-    // 2. Update Missions
+    // 3. Update Missions
     const activeMissions = await db
       .select()
       .from(userMissions)
@@ -34,13 +46,14 @@ export async function trackEvent(userId: string, event: GameEvent) {
     for (const { user_missions: um, missions: m } of activeMissions) {
       let progressIncrement = 0;
 
-      if (m.requirementType === 'win_game' && event.type === 'GAME_WIN') {
+      // Match mission requirement to event type
+      if (m.requirementType === 'win_game' && (event.type === 'GAME_WIN' || event.type === 'GAME_WON')) {
         progressIncrement = 1;
       } else if (m.requirementType === 'play_cards' && event.type === 'CARD_PLAYED') {
         progressIncrement = 1;
       } else if (m.requirementType === 'solve_problems' && event.type === 'PROBLEM_SOLVED') {
-        progressIncrement = 1;
-      } else if (m.requirementType === 'play_games' && event.type === 'GAME_PLAYED') {
+        progressIncrement = event.correct ? 1 : 0;
+      } else if (m.requirementType === 'play_games' && (event.type === 'GAME_PLAYED' || event.type === 'GAME_STARTED')) {
         progressIncrement = 1;
       }
 
@@ -55,16 +68,45 @@ export async function trackEvent(userId: string, event: GameEvent) {
             updatedAt: new Date()
           })
           .where(eq(userMissions.id, um.id));
-        
-        // If just completed, maybe notify user? (For now, just silent update)
+
+        if (isCompleted) {
+          console.log(`🎯 Mission completed: ${m.title} for user ${userId}`);
+        }
       }
     }
 
-    // 3. Check Achievements
+    // 4. Check Achievements
     await checkAchievements(userId, event);
 
   } catch (error) {
     console.error("Error tracking event:", error);
+  }
+}
+
+/**
+ * Calculate XP rewards based on event type
+ * Balanced for engagement without excessive grinding
+ */
+function calculateXP(event: GameEvent): number {
+  switch (event.type) {
+    case 'PROBLEM_SOLVED':
+      return event.correct
+        ? 10 + (event.difficulty * 2) // 10-30 XP for correct answers
+        : 2; // Minimal XP for attempting
+    case 'CARD_PLAYED':
+      return 5;
+    case 'GAME_WON':
+      return 50 + (event.turns * 2); // Bonus for longer games
+    case 'GAME_LOST':
+      return 15; // Consolation XP
+    case 'GAME_STARTED':
+      return 5;
+    case 'GAME_WIN': // Legacy event
+      return 50;
+    case 'GAME_PLAYED':
+      return 5;
+    default:
+      return 0;
   }
 }
 

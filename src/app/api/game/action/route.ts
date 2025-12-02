@@ -11,7 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stackServerApp } from '@/lib/stack';
 import { db } from '@/db';
-import { gameSessions } from '@/db/schema';
+import { gameSessions, cards } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { TurnManager, ExtendedGameState } from '@/lib/game/turn-manager';
 import {
@@ -22,6 +22,7 @@ import {
 } from '@/lib/game/game-state-persistence';
 import { GameActionType } from '@/types/game';
 import { z } from 'zod';
+import { trackEvent } from '@/lib/gamification/tracker';
 
 const actionSchema = z.object({
   gameId: z.string().uuid(),
@@ -88,6 +89,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Track card played event for gamification
+    if (action.type === 'play_card' && action.data?.cardId) {
+      const [cardData] = await db
+        .select()
+        .from(cards)
+        .where(eq(cards.id, action.data.cardId))
+        .limit(1);
+
+      if (cardData) {
+        await trackEvent(user.id, {
+          type: 'CARD_PLAYED',
+          element: cardData.element,
+          cost: cardData.cost,
+          rarity: cardData.rarity,
+        });
+      }
+    }
+
     // 8. Save updated state to database
     await saveTurnManagerToDB(turnManager);
 
@@ -105,6 +124,15 @@ export async function POST(req: NextRequest) {
       }
 
       await endGame(gameId, winnerId);
+
+      // Track game end event for gamification
+      const isPlayerWinner = gameEndCheck.winner === 'player';
+      await trackEvent(user.id, {
+        type: isPlayerWinner ? 'GAME_WON' : 'GAME_LOST',
+        turns: gameState.turnNumber,
+        cardsPlayed: 0, // TODO: track actual cards played during game
+        problemsSolved: 0, // TODO: track actual problems solved during game
+      });
     }
 
     console.log(`⚡ Action executed: ${action.type}`);

@@ -18,6 +18,7 @@ import { createTurnManager } from '@/lib/game/turn-manager';
 import { saveTurnManagerToDB } from '@/lib/game/game-state-persistence';
 import { Card } from '@/types/game';
 import { z } from 'zod';
+import { trackEvent } from '@/lib/gamification/tracker';
 
 const startGameSchema = z.object({
   deckId: z.string().uuid().optional(), // Optional: specific deck to use
@@ -115,6 +116,9 @@ export async function POST(req: NextRequest) {
     console.log(`🤖 Opponent: AI`);
     console.log(`🃏 Player hand: ${gameState.playerHand.length} cards`);
     console.log(`🃏 Opponent hand: ${gameState.opponentHand.length} cards`);
+
+    // Track game start event for gamification
+    await trackEvent(user.id, { type: 'GAME_STARTED' });
 
     return NextResponse.json({
       success: true,

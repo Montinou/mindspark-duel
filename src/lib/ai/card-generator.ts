@@ -33,7 +33,7 @@ const cardInsertSchema = z.object({
 
 export type ValidatedCardInsert = z.infer<typeof cardInsertSchema>;
 
-export function validateCardForInsert(card: unknown) {
+export async function validateCardForInsert(card: unknown) {
   return cardInsertSchema.safeParse(card);
 }
 
@@ -179,9 +179,9 @@ export async function generateCard(options: GenerateCardOptions): Promise<Card> 
     problemHints: cardData.problemHints,
   };
 
-  const validation = validateCardForInsert(cardToInsert);
+  const validation = await validateCardForInsert(cardToInsert);
   if (!validation.success) {
-    console.warn('⚠️ Card validation failed, applying safe defaults:', validation.error.errors);
+    console.warn('⚠️ Card validation failed, applying safe defaults:', validation.error.issues);
     // Apply safe defaults for invalid fields
     cardToInsert.problemHints = cardToInsert.problemHints || {
       keywords: cardToInsert.tags?.slice(0, 3) || ['fantasy'],

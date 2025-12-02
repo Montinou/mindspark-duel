@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { resolveBattle } from '@/lib/battle-service';
 import { BattleProblem } from '@/types/battle';
 import { ResolveBattleResponse } from '@/types/battle';
+import { trackEvent } from '@/lib/gamification/tracker';
 
 const resolveBattleSchema = z.object({
   battleId: z.string().uuid(),
@@ -137,6 +138,14 @@ export async function POST(req: NextRequest) {
       winner: battleResult.winner,
       playerHealthRemaining,
       opponentHealthRemaining,
+    });
+
+    // Track problem solved event for gamification
+    await trackEvent(user.id, {
+      type: 'PROBLEM_SOLVED',
+      category: playerProblem.category,
+      difficulty: playerProblem.difficulty,
+      correct: battleResult.playerResult.correct,
     });
 
     const response: ResolveBattleResponse = {

@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { cards, userCards, users, mastery } from "@/db/schema";
 import { stackServerApp } from "@/lib/stack";
 import { eq, count } from "drizzle-orm";
-
+import { generateDailyMissions } from "@/app/actions/missions";
 
 import Link from "next/link";
 import { Swords } from "lucide-react";
@@ -12,6 +12,9 @@ export const dynamic = 'force-dynamic';
 export default async function DashboardPage() {
   const user = await stackServerApp.getUser();
   if (!user) return null;
+
+  // Generate daily missions if not already generated today
+  await generateDailyMissions(user.id);
 
   // Fetch stats
   const [cardCount] = await db

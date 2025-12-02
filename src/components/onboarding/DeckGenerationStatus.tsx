@@ -25,11 +25,22 @@ export function DeckGenerationStatus() {
   const router = useRouter();
   const [status, setStatus] = useState<GenerationStatus>({
     status: 'generating',
-    total: 10,
+    total: 20,
     completed: 0,
     failed: 0,
   });
   const [error, setError] = useState<string | null>(null);
+  const [shouldRedirect, setShouldRedirect] = useState(false);
+
+  // Separate effect for redirect to avoid router dependency in polling
+  useEffect(() => {
+    if (shouldRedirect) {
+      const timeout = setTimeout(() => {
+        router.push('/dashboard');
+      }, 1500);
+      return () => clearTimeout(timeout);
+    }
+  }, [shouldRedirect, router]);
 
   useEffect(() => {
     const startTime = Date.now();
@@ -49,19 +60,15 @@ export function DeckGenerationStatus() {
           clearInterval(interval);
           setStatus({
             status: result.status,
-            total: result.total || 10,
-            completed: result.completed || 10,
+            total: result.total || 20,
+            completed: result.completed || 20,
             failed: result.failed || 0,
           });
-
-          // Small delay before redirect to show completion state
-          setTimeout(() => {
-            router.push('/dashboard');
-          }, 1500);
+          setShouldRedirect(true);
         } else {
           setStatus({
             status: result.status || 'generating',
-            total: result.total || 10,
+            total: result.total || 20,
             completed: result.completed || 0,
             failed: result.failed || 0,
             current: result.current,
@@ -74,17 +81,28 @@ export function DeckGenerationStatus() {
 
     // Initial fetch immediately
     checkDeckStatus().then(result => {
-      setStatus({
-        status: result.status || 'generating',
-        total: result.total || 10,
-        completed: result.completed || 0,
-        failed: result.failed || 0,
-        current: result.current,
-      });
+      if (result.status === 'completed' || result.status === 'completed_with_errors') {
+        setStatus({
+          status: result.status,
+          total: result.total || 20,
+          completed: result.completed || 20,
+          failed: result.failed || 0,
+        });
+        setShouldRedirect(true);
+        clearInterval(interval);
+      } else {
+        setStatus({
+          status: result.status || 'generating',
+          total: result.total || 20,
+          completed: result.completed || 0,
+          failed: result.failed || 0,
+          current: result.current,
+        });
+      }
     }).catch(console.error);
 
     return () => clearInterval(interval);
-  }, [router]);
+  }, []); // Empty array - runs only once
 
   const { total, completed, failed, current } = status;
   const progress = total > 0 ? Math.round((completed / total) * 100) : 0;

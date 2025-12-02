@@ -2,6 +2,11 @@ export interface Env {
   AI: any; // Using any to avoid Cloudflare AI type strictness
 }
 
+// Cloudflare Workers AI response type
+interface AiTextGenerationOutput {
+  response?: string;
+}
+
 /**
  * Problem hints - metadata for dynamic problem generation
  * Stored on the card, used at play-time

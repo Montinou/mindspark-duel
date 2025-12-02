@@ -18,8 +18,6 @@ export async function generateBattleProblem(
   userId: string,
   difficulty: number = 5
 ): Promise<BattleProblem> {
-  console.log('🎲 Generating battle problem for card:', card.name);
-
   // Fetch user profile for personalization (optional - cached from API)
   let userProfile = null;
   try {
@@ -81,8 +79,6 @@ export async function generateBattleProblem(
     cardTags: card.tags,
     createdAt: new Date(),
   };
-
-  console.log('✅ Battle problem generated:', battleProblem.question.substring(0, 50) + '...');
 
   return battleProblem;
 }
@@ -275,14 +271,6 @@ export function resolveBattle(
   } else {
     winner = 'draw';
   }
-
-  console.log('⚔️  Battle resolved:', {
-    winner,
-    playerDamage,
-    opponentDamage,
-    playerCorrect: playerResult.correct,
-    opponentCorrect: opponentResult.correct,
-  });
 
   return {
     playerResult,

@@ -1,4 +1,4 @@
-import { pgTable, text, integer, timestamp, uuid, pgEnum, json, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, timestamp, uuid, pgEnum, json, boolean, unique, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Enums
@@ -83,28 +83,46 @@ export const problems = pgTable('problems', {
 // User Cards (many-to-many relationship)
 export const userCards = pgTable('user_cards', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: text('user_id').references(() => users.id).notNull(),
-  cardId: uuid('card_id').references(() => cards.id).notNull(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  cardId: uuid('card_id').references(() => cards.id, { onDelete: 'cascade' }).notNull(),
   acquiredAt: timestamp('acquired_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  userIdIdx: index('user_cards_user_id_idx').on(table.userId),
+  cardIdIdx: index('user_cards_card_id_idx').on(table.cardId),
+}));
 
 // Decks table - tracks user decks and generation status
 export const decks = pgTable('decks', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: text('user_id').references(() => users.id).notNull(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
   name: text('name').notNull(),
   theme: text('theme').notNull(), // 'technomancer', 'nature', 'arcane'
   status: text('status').notNull().default('generating'), // 'generating', 'completed', 'failed'
   createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  userIdIdx: index('decks_user_id_idx').on(table.userId),
+}));
+
+// Deck Cards table - many-to-many relationship between decks and cards
+export const deckCards = pgTable('deck_cards', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  deckId: uuid('deck_id').notNull().references(() => decks.id, { onDelete: 'cascade' }),
+  cardId: uuid('card_id').notNull().references(() => cards.id, { onDelete: 'cascade' }),
+  quantity: integer('quantity').notNull().default(1),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => ({
+  uniqueDeckCard: unique().on(table.deckId, table.cardId),
+  deckIdIdx: index('deck_cards_deck_id_idx').on(table.deckId),
+  cardIdIdx: index('deck_cards_card_id_idx').on(table.cardId),
+}));
 
 // Game Sessions table
 export const gameSessions = pgTable('game_sessions', {
   id: uuid('id').primaryKey().defaultRandom(),
-  playerId: text('player_id').references(() => users.id).notNull(),
-  enemyId: text('enemy_id').references(() => users.id), // null for AI opponent
+  playerId: text('player_id').references(() => users.id, { onDelete: 'set null' }),
+  enemyId: text('enemy_id').references(() => users.id, { onDelete: 'set null' }), // null for AI opponent
   isAiOpponent: boolean('is_ai_opponent').default(true).notNull(),
-  winnerId: text('winner_id').references(() => users.id),
+  winnerId: text('winner_id').references(() => users.id, { onDelete: 'set null' }),
   turnsCount: integer('turns_count').default(0).notNull(),
   startedAt: timestamp('started_at').defaultNow().notNull(),
   endedAt: timestamp('ended_at'),
@@ -113,16 +131,21 @@ export const gameSessions = pgTable('game_sessions', {
   gameState: json('game_state'), // Full ExtendedGameState (includes decks, hands, boards, HP, etc.)
   actionHistory: json('action_history'), // Array of GameAction[] for debugging/replay
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  playerIdIdx: index('game_sessions_player_id_idx').on(table.playerId),
+  enemyIdIdx: index('game_sessions_enemy_id_idx').on(table.enemyId),
+}));
 
 export const mastery = pgTable("mastery", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: text("user_id").references(() => users.id).notNull(),
+  userId: text("user_id").references(() => users.id, { onDelete: 'cascade' }).notNull(),
   category: text("category").notNull(), // 'Fire', 'Water', 'Math', 'Logic', etc.
   xp: integer("xp").default(0).notNull(),
   level: integer("level").default(1).notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  userIdIdx: index('mastery_user_id_idx').on(table.userId),
+}));
 
 export const missions = pgTable("missions", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -137,13 +160,16 @@ export const missions = pgTable("missions", {
 
 export const userMissions = pgTable("user_missions", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: text("user_id").references(() => users.id).notNull(),
-  missionId: uuid("mission_id").references(() => missions.id).notNull(),
+  userId: text("user_id").references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  missionId: uuid("mission_id").references(() => missions.id, { onDelete: 'cascade' }).notNull(),
   progress: integer("progress").default(0).notNull(),
   completed: boolean("completed").default(false).notNull(),
   claimed: boolean("claimed").default(false).notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  userIdIdx: index('user_missions_user_id_idx').on(table.userId),
+  missionIdIdx: index('user_missions_mission_id_idx').on(table.missionId),
+}));
 
 export const achievementCategoryEnum = pgEnum('achievement_category', ['Combat', 'Collection', 'Mastery', 'Social', 'Special']);
 export const achievementTierEnum = pgEnum('achievement_tier', ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond']);
@@ -164,13 +190,16 @@ export const achievements = pgTable("achievements", {
 
 export const userAchievements = pgTable("user_achievements", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: text("user_id").references(() => users.id).notNull(),
-  achievementId: uuid("achievement_id").references(() => achievements.id).notNull(),
+  userId: text("user_id").references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  achievementId: uuid("achievement_id").references(() => achievements.id, { onDelete: 'cascade' }).notNull(),
   progress: integer("progress").default(0).notNull(),
   unlockedAt: timestamp("unlocked_at"),
   claimed: boolean("claimed").default(false),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  userIdIdx: index('user_achievements_user_id_idx').on(table.userId),
+  achievementIdIdx: index('user_achievements_achievement_id_idx').on(table.achievementId),
+}));
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
@@ -240,10 +269,22 @@ export const gameSessionsRelations = relations(gameSessions, ({ one }) => ({
   }),
 }));
 
-export const decksRelations = relations(decks, ({ one }) => ({
+export const decksRelations = relations(decks, ({ one, many }) => ({
   user: one(users, {
     fields: [decks.userId],
     references: [users.id],
+  }),
+  deckCards: many(deckCards),
+}));
+
+export const deckCardsRelations = relations(deckCards, ({ one }) => ({
+  deck: one(decks, {
+    fields: [deckCards.deckId],
+    references: [decks.id],
+  }),
+  card: one(cards, {
+    fields: [deckCards.cardId],
+    references: [cards.id],
   }),
 }));
 
@@ -297,6 +338,9 @@ export type NewGameSession = typeof gameSessions.$inferInsert;
 
 export type Deck = typeof decks.$inferSelect;
 export type NewDeck = typeof decks.$inferInsert;
+
+export type DeckCard = typeof deckCards.$inferSelect;
+export type NewDeckCard = typeof deckCards.$inferInsert;
 
 export type Mastery = typeof mastery.$inferSelect;
 export type Mission = typeof missions.$inferSelect;

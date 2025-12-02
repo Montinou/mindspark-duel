@@ -65,8 +65,6 @@ export function useAITurnTrigger(
     // Update previous active player
     previousActivePlayerRef.current = 'opponent';
 
-    console.log('🤖 Triggering AI turn...');
-
     // Trigger AI turn after delay
     const timeoutId = setTimeout(async () => {
       if (!gameState.gameId) {
@@ -92,8 +90,7 @@ export function useAITurnTrigger(
           return;
         }
 
-        const data = await response.json();
-        console.log('✅ AI turn complete:', data);
+        await response.json();
 
         // Notify parent component to refresh game state
         if (onAITurnComplete) {

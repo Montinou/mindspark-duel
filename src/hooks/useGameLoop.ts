@@ -123,7 +123,6 @@ export const useGameLoop = (userDeck: Card[] = []) => {
         activeProblem: null,
       }));
 
-      console.log('🎯 Fetching problem for card:', card.id);
       const response = await fetch('/api/problems', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -139,7 +138,6 @@ export const useGameLoop = (userDeck: Card[] = []) => {
       }
 
       const data = await response.json();
-      console.log('✅ Problem generated:', data.problem.question);
 
       setGameState((prev) => ({
         ...prev,
@@ -153,7 +151,9 @@ export const useGameLoop = (userDeck: Card[] = []) => {
     (answer: string, timeTakenMs: number) => {
       if (!gameState.activeProblem || !gameState.pendingCard) return;
 
-      const isCorrect = true; // TODO: Real validation
+      // Normalize answers for comparison (case-insensitive, trim whitespace)
+      const normalizeAnswer = (a: string) => a.trim().toLowerCase();
+      const isCorrect = normalizeAnswer(answer) === normalizeAnswer(gameState.activeProblem.correctAnswer);
 
       setGameState((prev) => {
         if (!prev.pendingCard) return prev;
@@ -216,11 +216,9 @@ export const useGameLoop = (userDeck: Card[] = []) => {
 
       const result = executeAbility(card, gameState.player.mana);
       if (!result) {
-        console.log('❌ Cannot use ability:', cardId);
         return;
       }
 
-      console.log(`✨ ${result.message}`);
       setAbilityMessage(result.message);
 
       // Clear message after 2 seconds
@@ -238,7 +236,6 @@ export const useGameLoop = (userDeck: Card[] = []) => {
         switch (result.target) {
           case 'enemy_hero':
             newEnemyHealth = Math.max(0, newEnemyHealth - result.damage);
-            console.log(`💥 Dealt ${result.damage} damage to enemy hero`);
             break;
 
           case 'self_heal':
@@ -246,7 +243,6 @@ export const useGameLoop = (userDeck: Card[] = []) => {
               player.maxHealth,
               newPlayerHealth + result.damage
             );
-            console.log(`💚 Healed ${result.damage} HP`);
             break;
 
           case 'all_enemies':
@@ -257,9 +253,6 @@ export const useGameLoop = (userDeck: Card[] = []) => {
                 defense: c.defense - result.damage,
               }))
               .filter((c) => c.defense > 0);
-            console.log(
-              `💥 Dealt ${result.damage} damage to all enemy creatures`
-            );
             break;
 
           case 'enemy_creature':
@@ -273,9 +266,6 @@ export const useGameLoop = (userDeck: Card[] = []) => {
                     : c
                 )
                 .filter((c) => c.defense > 0);
-              console.log(
-                `🎯 Dealt ${result.damage} damage to enemy creature`
-              );
             }
             break;
         }
@@ -330,8 +320,6 @@ export const useGameLoop = (userDeck: Card[] = []) => {
   const endTurn = useCallback(async () => {
     setGameState((prev) => ({ ...prev, currentPhase: 'end' }));
 
-    console.log('🤖 Starting AI turn...');
-
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     setGameState((prev) => {
@@ -381,7 +369,6 @@ export const useGameLoop = (userDeck: Card[] = []) => {
 
       for (const card of playableCards) {
         if (mana >= card.cost && board.length < 7) {
-          console.log(`🃏 AI plays: ${card.name}`);
           mana -= card.cost;
           hand = hand.filter((c) => c.id !== card.id);
           board.push({
@@ -413,7 +400,6 @@ export const useGameLoop = (userDeck: Card[] = []) => {
       for (const creature of board) {
         if (canUseAbility(creature, mana)) {
           const ability = creature.ability!;
-          console.log(`✨ AI uses ${ability.name} with ${creature.name}`);
 
           mana -= ability.manaCost;
 
@@ -470,9 +456,6 @@ export const useGameLoop = (userDeck: Card[] = []) => {
           const damage = baseDamage + bonus;
 
           playerHealth -= damage;
-          console.log(
-            `⚔️ AI attacks with ${creature.name} for ${damage} damage (${aiAnsweredCorrectly ? '✅ correct' : '❌ incorrect'})`
-          );
 
           return { ...creature, canAttack: false, isTapped: true };
         }
@@ -490,7 +473,6 @@ export const useGameLoop = (userDeck: Card[] = []) => {
     });
 
     await new Promise((resolve) => setTimeout(resolve, 500));
-    console.log('✅ AI turn complete');
 
     setGameState((prev) => ({ ...prev, turn: prev.turn + 1 }));
     startTurn('player');

@@ -46,13 +46,16 @@ export interface Card {
 
 /**
  * Problem generation hints - stored on card, used to generate unique problems each play
+ * NOTE: This interface should match the zod schema in src/lib/validators/problem-hints.ts
  */
 export interface ProblemHints {
   keywords: string[]; // Thematic keywords for problem context (e.g., "volcano", "eruption", "lava")
-  difficulty: number; // 1-10, complexity level
+  topics: string[]; // Required topics for problem generation
+  difficulty?: number; // 1-10, complexity level
   subCategory?: string; // More specific category (e.g., "algebra", "geometry", "physics")
   contextType?: 'fantasy' | 'real_world' | 'abstract'; // How to frame the problem
   suggestedTopics?: string[]; // Optional specific topics (e.g., "fractions", "velocity")
+  examples?: string[]; // Optional example problems
 }
 
 /**

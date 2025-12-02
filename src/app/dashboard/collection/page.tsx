@@ -37,6 +37,7 @@ export default async function CollectionPage() {
               imagePrompt: card.imagePrompt ?? undefined,
               theme: card.theme ?? undefined,
               tags: card.tags ?? undefined,
+              problemHints: card.problemHints ?? undefined,
               batchId: card.batchId ?? undefined,
               batchOrder: card.batchOrder ?? undefined,
               createdById: card.createdById ?? undefined,

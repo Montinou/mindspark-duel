@@ -1,203 +1,171 @@
-# Neon AI Rules - Project Documentation
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
-This repository contains a comprehensive suite of AI-powered development tools for Neon, including:
+MindSpark Duel is an educational trading card game (TCG) built with Next.js 16, where players battle using AI-generated cards and must solve math/logic/science problems to play them. The game combines TCG mechanics with educational problem-solving to create engaging learning experiences.
 
-1. **Context Rules** (`.mdc` files): Markdown Context files that guide AI systems
-2. **Claude Code Plugin**: Full-featured plugin with guided skills and MCP server integration
-3. **Neon SDK Rules**: Guidelines for TypeScript and Python SDKs
+## Commands
 
-The primary audience includes AI developers using Claude, Cursor, and other AI-powered code assistants who work with Neon databases.
-
-## Repository Structure
-
-```
-.
-├── *.mdc                          # Context rule files (13 total)
-├── .claude-plugin/
-│   └── marketplace.json           # Marketplace metadata
-├── neon-plugin/                   # Claude Code plugin
-│   ├── .claude-plugin/
-│   │   └── plugin.json            # Plugin metadata
-│   ├── .mcp.json                  # MCP server configuration
-│   └── skills/                    # Guided skills for Claude Code
-│       ├── add-neon-docs/         # Documentation reference installer
-│       ├── neon-drizzle/
-│       │   ├── guides/            # Step-by-step workflow guides
-│       │   ├── references/        # Technical reference docs
-│       │   ├── scripts/           # Utility scripts
-│       │   └── templates/         # Code templates
-│       ├── neon-serverless/
-│       └── neon-toolkit/
-├── .claude/
-│   └── settings.local.json        # Local Claude Code settings
-├── .serena/                       # Serena code intelligence cache
-├── CHANGELOG.md                   # Version history and release notes
-├── CONTRIBUTING.md                # Contribution guidelines
-├── LICENSE                        # MIT License
-├── README.md                      # User-facing documentation
-└── CLAUDE.md                      # This file
-
+### Development
+```bash
+npm run dev          # Start Next.js dev server (localhost:3000)
+npm run build        # Production build
+npm run lint         # Run ESLint
 ```
 
-## Context Rules (.mdc files)
+### Database (Drizzle + Neon)
+```bash
+npm run db:generate  # Generate migrations from schema changes
+npm run db:migrate   # Apply migrations to database
+npm run db:push      # Push schema directly (dev only)
+npm run db:studio    # Open Drizzle Studio GUI
+npm run db:test      # Run database connection test
+```
 
-### Core Integration Rules (4 files)
-- **neon-auth.mdc**: Stack Auth + Neon Auth authentication patterns
-- **neon-serverless.mdc**: Serverless database connections and pooling
-- **neon-drizzle.mdc**: Drizzle ORM integration with Neon
-- **neon-toolkit.mdc**: Ephemeral database creation for testing
+### Utility Scripts
+```bash
+npm run seed:achievements    # Seed achievement data
+npm run generate:sets        # Generate starter card sets
+npx tsx scripts/<name>.ts    # Run any script in /scripts
+```
 
-### SDK Rules (2 files)
-- **neon-typescript-sdk.mdc**: TypeScript SDK usage patterns
-- **neon-python-sdk.mdc**: Python SDK usage patterns
+### Cloudflare Workers (AI Services)
+```bash
+cd workers/ai-text-generator && npx wrangler deploy
+cd workers/ai-image-generator && npx wrangler deploy
+cd workers/ai-problem-generator && npx wrangler deploy
+```
 
-### API Rules (7 files)
-- **neon-api-guidelines.mdc**: General API best practices
-- **neon-api-projects.mdc**: Project management API
-- **neon-api-branches.mdc**: Branch management API
-- **neon-api-endpoints.mdc**: Compute endpoint management API
-- **neon-api-organizations.mdc**: Organization and role management API
-- **neon-api-keys.mdc**: API key and authentication management
-- **neon-api-operations.mdc**: Operation execution and monitoring
+## Architecture
 
-## Claude Code Plugin Structure
+### Tech Stack
+- **Frontend**: Next.js 16 (App Router), React 19, Tailwind CSS 4, shadcn/ui
+- **Database**: Neon (serverless Postgres) + Drizzle ORM (HTTP adapter)
+- **Auth**: Stack Auth (@stackframe/stack)
+- **AI Services**: Cloudflare Workers with Workers AI (Llama 3.3, Stable Diffusion)
+- **Storage**: Cloudflare R2 for card images
+- **Deployment**: Vercel
 
-### Plugin Configuration
-- `.claude-plugin/plugin.json`: Contains plugin metadata (name, version, description)
-- `.mcp.json`: Configures connection to Neon's remote MCP server
+### Key Directories
+```
+src/
+├── app/                    # Next.js App Router pages and API routes
+│   ├── api/               # API endpoints (game/, battle/, cards/, problems/)
+│   ├── dashboard/         # Main game dashboard (collection, library, missions)
+│   └── onboarding/        # New user flow with theme selection
+├── components/
+│   ├── game/              # Game UI (GamePage, ProblemModal, EnemyArea)
+│   ├── battle/            # Battle system components (BattleSequence, DualProblemView)
+│   └── ui/                # shadcn/ui components
+├── db/
+│   ├── schema.ts          # Drizzle schema (users, cards, problems, gameSessions, etc.)
+│   ├── index.ts           # Database connection (neon HTTP adapter)
+│   └── migrations/        # Generated SQL migrations
+├── lib/
+│   ├── game/              # Core game logic
+│   │   ├── turn-manager.ts      # Turn/phase orchestration
+│   │   ├── phase-controller.ts  # Phase progression rules
+│   │   ├── deck-service.ts      # Deck operations, card drawing
+│   │   └── abilities.ts         # Card ability system
+│   ├── ai/                # AI systems
+│   │   ├── ai-opponent.ts       # AI player decision making
+│   │   ├── problem-generator.ts # Dynamic problem generation
+│   │   └── card-generator.ts    # Card content generation
+│   └── gamification/      # Achievements, mastery, missions
+├── types/
+│   ├── game.ts            # Core game types (Card, Player, GameState, TurnState)
+│   └── battle.ts          # Battle-specific types
+└── hooks/                 # React hooks (useAITurnTrigger)
 
-### Skills Directory
-Each skill is self-contained with multiple components:
+workers/                   # Cloudflare Workers for AI
+├── ai-text-generator/     # Card data generation (Llama 3.3 70B)
+├── ai-image-generator/    # Card art generation (Stable Diffusion)
+└── ai-problem-generator/  # Math/logic problem generation
+```
 
-1. **SKILL.md**: Describes the skill's purpose and workflow
-2. **scripts/**: Executable utilities for the skill (TypeScript or shell)
-3. **templates/**: Code examples and templates
-4. **guides/** (optional): Step-by-step guides for different scenarios
-5. **references/** (optional): Technical reference documentation
+### Game Flow
+1. **Onboarding**: User selects theme → generates initial 10-card deck via Cloudflare Workers
+2. **Game Start**: TurnManager creates ExtendedGameState with decks, hands (5 cards), boards
+3. **Turn Structure**: Start Phase (draw + mana) → Main Phase (play cards) → Combat Phase (attacks) → End Phase
+4. **Playing Cards**: Player must solve a problem (generated from card's `problemHints`) to play the card
+5. **Combat**: Dual-problem system where both attacker and defender solve problems to determine damage
 
-#### Neon Drizzle Skill
-- **Purpose**: Drizzle ORM setup and database management with comprehensive workflow support
-- **Scripts**: `generate-schema.ts`, `run-migration.ts`
-- **Templates**: Schema examples, drizzle config (HTTP and WebSocket adapters)
-- **Guides**:
-  - `new-project.md`: Setting up Drizzle in new projects
-  - `existing-project.md`: Integrating Drizzle into existing codebases
-  - `schema-only.md`: Schema-first workflow without migrations
-  - `troubleshooting.md`: Common issues and solutions
-- **References**:
-  - `adapters.md`: HTTP vs WebSocket adapter selection
-  - `migrations.md`: Migration strategies and patterns
-  - `query-patterns.md`: Common query patterns and best practices
+### Core Types
+```typescript
+// Card with problem generation hints
+interface Card {
+  id: string;
+  name: string;
+  cost: number;      // Mana cost (1-10)
+  power: number;     // Attack stat
+  defense: number;
+  element: 'Fire' | 'Water' | 'Earth' | 'Air';
+  problemCategory: 'Math' | 'Logic' | 'Science';
+  problemHints: ProblemHints;  // Keywords, difficulty, topics for problem gen
+}
 
-#### Neon Serverless Skill
-- **Purpose**: Serverless database connection configuration
-- **Scripts**: `validate-connection.ts`
-- **Templates**: HTTP connection, WebSocket pool
+// ExtendedGameState - full game state managed by TurnManager
+interface ExtendedGameState extends TurnState {
+  playerDeckState: DeckState;
+  playerHand: Card[];
+  playerBoard: Card[];
+  playerHealth: number;
+  // ... opponent equivalents
+}
+```
 
-#### Neon Toolkit Skill
-- **Purpose**: Ephemeral database creation for testing and CI/CD workflows
-- **Scripts**: `create-ephemeral-db.ts`, `destroy-ephemeral-db.ts`
-- **Templates**: Toolkit workflow
+### Database Schema (Drizzle)
+Key tables in `src/db/schema.ts`:
+- `users` - Player profiles with Stack Auth ID, sparks (currency), preferences
+- `cards` - Card definitions with AI-generated content and problemHints
+- `problems` - Pre-generated problems linked to cards
+- `userCards` - User card ownership (many-to-many)
+- `gameSessions` - Active/completed games with persisted state
+- `decks` - User deck configurations with generation status
+- `achievements`, `missions`, `mastery` - Gamification systems
 
-#### Add Neon Docs Skill
-- **Purpose**: Install Neon documentation references in project AI configuration files
-- **Workflow**: `install-knowledge.md` with step-by-step reference installation process
-- **Metadata**: `skill-knowledge-map.json` defining available documentation references
-- **Target Files**: CLAUDE.md, AGENTS.md, or Cursor rules files
+### Authentication
+Uses Stack Auth with cookie-based tokens:
+```typescript
+import { stackServerApp } from '@/lib/stack';
+const user = await stackServerApp.getUser();
+```
 
-## Key Patterns & Conventions
+### Environment Variables
+Required in `.env.local`:
+```
+DATABASE_URL=postgresql://...@neon.tech/...
+NEXT_PUBLIC_STACK_PROJECT_ID=
+NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=
+STACK_SECRET_SERVER_KEY=
+```
 
-### .mdc File Format
-- Each .mdc file uses Markdown with practical code examples
-- Files follow a consistent structure: Overview → Use Cases → Examples → Best Practices
-- Files are tool-agnostic and can be used in multiple AI environments
+For Cloudflare Workers (card generation):
+```
+R2_ACCOUNT_ID=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_BUCKET_NAME=mindspark-duel-cards
+```
 
-### Skill Organization
-- Skills are self-contained workflows with guided steps
-- Templates are production-ready examples
-- Scripts provide automation and validation
+## Integration Notes
 
-### Plugin Metadata
-- Version follows semantic versioning
-- Plugin description clearly indicates purpose and scope
-- MCP configuration uses remote URL for centralized updates
+### Neon + Drizzle
+Uses HTTP adapter for serverless (recommended for Next.js/Vercel):
+```typescript
+import { drizzle } from 'drizzle-orm/neon-http';
+import { neon } from '@neondatabase/serverless';
+const sql = neon(process.env.DATABASE_URL);
+export const db = drizzle(sql, { schema });
+```
 
-## Usage Context
+### Cloudflare Workers AI
+Workers use `@cf/meta/llama-3.3-70b-instruct-fp8-fast` for text and problem generation. Each worker is deployed independently with `wrangler deploy`.
 
-### For Claude Code Users
-- Activate the plugin in Claude Code
-- Use skills for guided workflows
-- MCP server provides real-time Neon resource management
-
-### For Other AI Tools
-- Copy .mdc files to tool-specific rule directories
-- Files work with Cursor, custom ChatGPT instances, etc.
-- Each file is self-contained and doesn't require dependencies
-
-### For Contributors
-- Add new .mdc files for new technologies or patterns
-- Update skills with new templates or scripts
-- Keep plugin.json version in sync with major updates
-
-## Recent Changes & Decisions
-
-### Version 1.0.0 Release (October 23, 2025)
-- First public release of the Neon Claude Code Plugin
-- Added CHANGELOG.md for version tracking
-- Added CONTRIBUTING.md with contribution guidelines
-- Restructured marketplace to follow Claude Code best practices
-  - Marketplace at repository root (`.claude-plugin/marketplace.json`)
-  - Plugin directory at repository root (`neon-plugin/`)
-- Implemented 4 guided skills:
-  - **neon-drizzle**: Drizzle ORM with comprehensive workflow guides (new projects, existing projects, schema-only)
-  - **neon-serverless**: Serverless connection configuration
-  - **neon-toolkit**: Ephemeral database management
-  - **add-neon-docs**: Documentation reference installer
-- Enhanced Drizzle skill with:
-  - Step-by-step workflow guides for different scenarios
-  - Technical references (adapters, migrations, query patterns)
-  - Migration scripts and standard `db:*` npm scripts
-- Configured MCP server integration for resource management (https://mcp.neon.tech/mcp)
-- Published 13 context rules (.mdc files) covering core integrations, SDKs, and API patterns
-
-### API Rules Addition (Previous)
-- Added 7 comprehensive API rule files
-- Organized API rules by resource type (projects, branches, endpoints, etc.)
-- Provides patterns for REST API usage
-
-### SDK Rules Addition
-- Added TypeScript and Python SDK rule files
-- Guides for programmatic database management
-
-## Important Notes for Future Work
-
-1. **Keep .mdc files separate**: Each .mdc file should remain independent and not reference others
-2. **Plugin versioning**: Update plugin.json version when adding new skills
-3. **MCP server**: The remote MCP server URL should be kept current (https://mcp.neon.tech/mcp)
-4. **Template testing**: Test new skill templates in real Claude Code environments before committing
-5. **Documentation sync**: Update README.md and CLAUDE.md when adding new rules or skills
-
-## Technology Stack
-
-- **Language**: Markdown (for .mdc files), TypeScript (for scripts and templates)
-- **Runtimes**: Node.js (for scripts), Shell (for setup)
-- **Tools**: Claude Code, Cursor, custom AI environments
-- **Integration**: MCP (Model Context Protocol) for resource management
-
-## Resources & References
-
-### Claude Code Documentation
-- **Skills**: https://docs.claude.com/en/docs/claude-code/skills
-- **Plugins**: https://docs.claude.com/en/docs/claude-code/plugins
-- **Subagents**: https://docs.claude.com/en/docs/claude-code/sub-agents
-- **Skills Examples**: https://github.com/anthropics/skills
-- **Skills Best Practices**: https://docs.claude.com/en/docs/agents-and-tools/agent-skills/best-practices
-- **Plugin Marketplace**: https://docs.claude.com/en/docs/claude-code/plugin-marketplaces
-
-These resources provide comprehensive guidance for:
-- Building new skills for Claude Code
-- Creating and distributing plugins
-- Understanding skill structure, templates, and scripts
-- Plugin configuration and marketplace integration
+### Cursor Rules
+Neon integration rules are in `.cursor/rules/`:
+- `neon-drizzle.mdc` - Drizzle ORM patterns
+- `neon-serverless.mdc` - Connection pooling
+- `neon-auth.mdc` - Stack Auth integration

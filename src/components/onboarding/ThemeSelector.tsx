@@ -16,21 +16,21 @@ const THEMES: ThemeOption[] = [
     id: 'technomancer',
     name: "Technomancer's Legion",
     description: "Masters of machines and calculation. High attack power, focused on Math problems.",
-    image: "/assets/decks/technomancer_epic_box_1764234646053.png",
+    image: "/assets/decks/technomancer_deck.png",
     bias: "Math"
   },
   {
     id: 'nature',
     name: "Grove Guardians",
     description: "Defenders of the natural world. High defense and healing, focused on Science problems.",
-    image: "/assets/decks/nature_epic_box_1764234660611.png",
+    image: "/assets/decks/nature_deck.png",
     bias: "Science"
   },
   {
     id: 'arcane',
     name: "Arcane Scholars",
     description: "Wielders of pure magic and logic. Balanced stats with powerful spells, focused on Logic problems.",
-    image: "/assets/decks/arcane_epic_box_1764234805234.png",
+    image: "/assets/decks/arcane_deck.png",
     bias: "Logic"
   }
 ];

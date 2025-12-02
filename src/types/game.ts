@@ -38,6 +38,7 @@ export interface Card {
   // Game State Properties
   canAttack?: boolean;
   isTapped?: boolean; // Exhausted
+  summonedThisTurn?: boolean; // For summoning sickness validation
 
   // Ability System
   ability?: CardAbility;

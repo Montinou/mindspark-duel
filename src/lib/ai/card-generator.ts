@@ -18,12 +18,15 @@ export interface GenerateCardOptions {
 }
 
 // Problem hints for dynamic generation at play-time
+// NOTE: This should match ProblemHints in src/types/game.ts and ProblemHintsDB in src/db/schema.ts
 interface ProblemHints {
   keywords: string[];
-  difficulty: number;
-  subCategory: string;
-  contextType: "fantasy" | "real_world" | "abstract";
-  suggestedTopics: string[];
+  topics: string[]; // Required topics for problem generation
+  difficulty?: number;
+  subCategory?: string;
+  contextType?: "fantasy" | "real_world" | "abstract";
+  suggestedTopics?: string[];
+  examples?: string[];
 }
 
 interface CardDataResponse {

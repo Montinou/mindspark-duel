@@ -37,12 +37,15 @@ export const cardBatches = pgTable('card_batches', {
 });
 
 // Problem hints type for dynamic problem generation
+// NOTE: This type should be compatible with ProblemHints in src/types/game.ts
 export interface ProblemHintsDB {
   keywords: string[]; // 3-5 thematic keywords
-  difficulty: number; // 1-10
-  subCategory: string; // e.g., "algebra", "geometry", "physics"
-  contextType: 'fantasy' | 'real_world' | 'abstract';
-  suggestedTopics: string[]; // 2-3 specific concepts
+  topics: string[]; // Required topics for problem generation
+  difficulty?: number; // 1-10
+  subCategory?: string; // e.g., "algebra", "geometry", "physics"
+  contextType?: 'fantasy' | 'real_world' | 'abstract';
+  suggestedTopics?: string[]; // 2-3 specific concepts
+  examples?: string[]; // Optional example problems
 }
 
 // Cards table

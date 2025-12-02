@@ -14,8 +14,33 @@ import { CardEvaluation } from '@/types/ai';
  */
 function calculateBaseValue(card: Card): number {
   // For creatures: (Power + Defense) * 2
-  // For now, all cards are creatures in Mindspark Duel
-  return (card.power + card.defense) * 2;
+  let score = (card.power + card.defense) * 2;
+
+  // Bonus for abilities
+  if (card.ability) {
+    switch (card.ability.target) {
+      case 'enemy_hero':
+        // Direct damage to hero is valuable
+        score += card.ability.damage * 1.5;
+        break;
+      case 'all_enemies':
+        // AoE damage is very valuable
+        score += card.ability.damage * 2;
+        break;
+      case 'self_heal':
+        // Healing is somewhat valuable
+        score += card.ability.damage * 0.8;
+        break;
+      case 'enemy_creature':
+        // Targeted removal is valuable
+        score += card.ability.damage * 1.2;
+        break;
+    }
+    // Penalize mana cost of ability
+    score -= card.ability.manaCost * 0.5;
+  }
+
+  return score;
 }
 
 /**

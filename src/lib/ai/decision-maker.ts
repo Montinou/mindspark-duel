@@ -24,9 +24,18 @@ import { selectBestCard } from './card-evaluator';
  * Priority 1: Check if AI can win this turn (lethal)
  */
 export function checkLethal(gameState: ExtendedGameState): LethalCheckResult {
-  // Calculate total potential damage from board + hand
-  const boardDamage = gameState.opponentBoard.reduce(
+  // Calculate total potential damage from board (only creatures that can attack)
+  const availableAttackers = gameState.opponentBoard.filter(
+    (card) => card.canAttack && !card.summonedThisTurn && !card.isTapped
+  );
+  const boardDamage = availableAttackers.reduce(
     (sum, card) => sum + card.power,
+    0
+  );
+
+  // Consider blockers from opponent
+  const potentialBlockDamage = gameState.playerBoard.reduce(
+    (sum, card) => sum + card.defense,
     0
   );
 
@@ -38,8 +47,11 @@ export function checkLethal(gameState: ExtendedGameState): LethalCheckResult {
 
   const totalDamage = boardDamage + playableHandDamage;
 
-  if (totalDamage >= gameState.playerHealth) {
-    console.log(`🎯 LETHAL DETECTED! Total damage: ${totalDamage} >= Player HP: ${gameState.playerHealth}`);
+  // Account for blockers: effective damage = total damage - blockers
+  const effectiveDamage = Math.max(0, totalDamage - potentialBlockDamage);
+
+  if (effectiveDamage >= gameState.playerHealth) {
+    console.log(`🎯 LETHAL DETECTED! Effective damage: ${effectiveDamage} (${totalDamage} - ${potentialBlockDamage} blockers) >= Player HP: ${gameState.playerHealth}`);
 
     // Generate lethal sequence: play all affordable damage cards, then attack face
     const actions: AIDecision[] = [];
@@ -55,8 +67,8 @@ export function checkLethal(gameState: ExtendedGameState): LethalCheckResult {
         });
       });
 
-    // Attack with all creatures on board
-    gameState.opponentBoard.forEach((card) => {
+    // Attack with creatures that can attack (not summonedThisTurn, not tapped)
+    availableAttackers.forEach((card) => {
       actions.push({
         type: 'attack',
         cardId: card.id,
@@ -67,7 +79,7 @@ export function checkLethal(gameState: ExtendedGameState): LethalCheckResult {
 
     return {
       hasLethal: true,
-      totalDamage,
+      totalDamage: effectiveDamage,
       actions,
     };
   }
@@ -161,9 +173,18 @@ export function selectCombatTargets(
 ): CombatTarget[] {
   const targets: CombatTarget[] = [];
 
-  // If player has no creatures, attack face with all
+  // Filter only creatures that can attack (not summonedThisTurn, not tapped)
+  const availableAttackers = gameState.opponentBoard.filter(
+    (card) => card.canAttack === true && !card.summonedThisTurn && !card.isTapped
+  );
+
+  if (availableAttackers.length === 0) {
+    return targets; // No available attackers
+  }
+
+  // If player has no creatures, attack face with all available attackers
   if (gameState.playerBoard.length === 0) {
-    gameState.opponentBoard.forEach((attacker) => {
+    availableAttackers.forEach((attacker) => {
       targets.push({
         attackerId: attacker.id,
         targetId: 'face',
@@ -179,7 +200,7 @@ export function selectCombatTargets(
     (c) => c.power <= 3
   );
   if (hasOnlySmallCreatures) {
-    gameState.opponentBoard.forEach((attacker) => {
+    availableAttackers.forEach((attacker) => {
       targets.push({
         attackerId: attacker.id,
         targetId: 'face',
@@ -193,7 +214,7 @@ export function selectCombatTargets(
   // If player has large creatures (power ≥ 5), trade favorably
   const largeCreatures = gameState.playerBoard.filter((c) => c.power >= 5);
 
-  gameState.opponentBoard.forEach((attacker) => {
+  availableAttackers.forEach((attacker) => {
     // Check if this attacker can kill a large creature without dying
     const canKillSafely = largeCreatures.find(
       (target) =>

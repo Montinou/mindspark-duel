@@ -392,6 +392,7 @@ export class TurnManager {
       ...card,
       canAttack: false, // Summoning sickness
       isTapped: false,
+      summonedThisTurn: true, // Track for summoning sickness validation
     };
 
     board.push(playedCard);
@@ -514,6 +515,7 @@ export class TurnManager {
     for (const creature of board) {
       creature.canAttack = true; // Can attack next turn
       creature.isTapped = false; // Untap
+      creature.summonedThisTurn = false; // Reset summoning sickness flag
     }
 
     // Switch active player

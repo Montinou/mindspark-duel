@@ -1,36 +1,140 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Sparkles, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { checkDeckStatus } from '@/app/actions/user';
+import { Progress } from '@/components/ui/progress';
+
+// Generation status interface (ONB-05)
+interface GenerationStatus {
+  status: string;
+  total: number;
+  completed: number;
+  failed: number;
+  current?: string; // Name of card being generated
+}
+
+// Constants (ONB-07)
+const POLL_INTERVAL = 5000; // 5s (reduced from 2s)
+const MAX_POLL_TIME = 10 * 60 * 1000; // 10 minutes max
+const AVG_SECONDS_PER_CARD = 8; // ~8s per card for ETA
 
 export function DeckGenerationStatus() {
   const router = useRouter();
-  const [status, setStatus] = useState('generating');
-  const [progress, setProgress] = useState(0);
+  const [status, setStatus] = useState<GenerationStatus>({
+    status: 'generating',
+    total: 10,
+    completed: 0,
+    failed: 0,
+  });
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const startTime = Date.now();
+
     const interval = setInterval(async () => {
+      // Timeout check (ONB-07)
+      if (Date.now() - startTime > MAX_POLL_TIME) {
+        clearInterval(interval);
+        setError('La generacion esta tomando mas tiempo del esperado. Por favor recarga la pagina.');
+        return;
+      }
+
       try {
         const result = await checkDeckStatus();
-        
-        if (result.status === 'completed' || (result.progress && result.progress === 100)) {
-          setStatus('completed');
-          setProgress(100);
-          router.push('/dashboard');
-        } else if (result.progress) {
-          setProgress(result.progress);
+
+        if (result.status === 'completed' || result.status === 'completed_with_errors') {
+          clearInterval(interval);
+          setStatus({
+            status: result.status,
+            total: result.total || 10,
+            completed: result.completed || 10,
+            failed: result.failed || 0,
+          });
+
+          // Small delay before redirect to show completion state
+          setTimeout(() => {
+            router.push('/dashboard');
+          }, 1500);
+        } else {
+          setStatus({
+            status: result.status || 'generating',
+            total: result.total || 10,
+            completed: result.completed || 0,
+            failed: result.failed || 0,
+            current: result.current,
+          });
         }
-      } catch (error) {
-        console.error("Failed to check deck status:", error);
+      } catch (err) {
+        console.error("Failed to check deck status:", err);
       }
-    }, 2000); // Poll every 2 seconds
+    }, POLL_INTERVAL);
+
+    // Initial fetch immediately
+    checkDeckStatus().then(result => {
+      setStatus({
+        status: result.status || 'generating',
+        total: result.total || 10,
+        completed: result.completed || 0,
+        failed: result.failed || 0,
+        current: result.current,
+      });
+    }).catch(console.error);
 
     return () => clearInterval(interval);
   }, [router]);
 
+  const { total, completed, failed, current } = status;
+  const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const remaining = total - completed;
+  const eta = Math.ceil(remaining * AVG_SECONDS_PER_CARD);
+  const isCompleted = status.status === 'completed' || status.status === 'completed_with_errors';
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <div className="mb-6 p-4 rounded-full bg-red-500/20">
+          <AlertTriangle className="text-red-400" size={48} />
+        </div>
+        <h2 className="text-2xl font-bold text-white mb-2">Tiempo Excedido</h2>
+        <p className="text-zinc-400 max-w-md mb-4">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white transition-colors"
+        >
+          Recargar Pagina
+        </button>
+      </div>
+    );
+  }
+
+  // Completed state
+  if (isCompleted) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="mb-6 p-4 rounded-full bg-green-500/20"
+        >
+          <CheckCircle2 className="text-green-400" size={48} />
+        </motion.div>
+        <h2 className="text-2xl font-bold text-white mb-2">Mazo Listo!</h2>
+        <p className="text-zinc-400 max-w-md mb-4">
+          {failed > 0
+            ? `${completed - failed} cartas generadas exitosamente. ${failed} carta(s) usaran alternativas.`
+            : `Las ${completed} cartas de tu mazo estan listas para jugar.`
+          }
+        </p>
+        <p className="text-sm text-zinc-500">Redirigiendo al dashboard...</p>
+      </div>
+    );
+  }
+
+  // Generating state (default)
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center">
       <motion.div
@@ -44,27 +148,38 @@ export function DeckGenerationStatus() {
         </div>
       </motion.div>
 
-      <h2 className="text-2xl font-bold text-white mb-2">Crafting Your Deck</h2>
-      <p className="text-zinc-400 max-w-md mb-8">
-        The AI is weaving magic into your cards. This process ensures your deck is perfectly balanced for your chosen path.
+      <h2 className="text-2xl font-bold text-white mb-2">Creando Tu Mazo</h2>
+      <p className="text-zinc-400 max-w-md mb-6">
+        La IA esta generando cartas unicas para tu mazo. Este proceso asegura que cada carta sea especial.
       </p>
 
-      <div className="w-full max-w-md bg-zinc-800/50 rounded-full h-2 overflow-hidden mb-4">
-        <motion.div
-          className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
-          initial={{ width: "0%" }}
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.5 }}
-        />
-      </div>
-      
-      <div className="flex justify-between w-full max-w-md px-1">
-        <p className="text-xs text-zinc-500 font-mono">
-          {status === 'completed' ? 'Deck Ready! Redirecting...' : 'Generating card art and stats...'}
+      {/* Progress info (ONB-05) */}
+      <div className="w-full max-w-md space-y-3">
+        <p className="text-lg font-medium text-white">
+          {completed} de {total} cartas
         </p>
-        <p className="text-xs text-zinc-500 font-mono">
-          {progress}%
-        </p>
+
+        {current && (
+          <p className="text-sm text-blue-400">
+            Generando: {current}...
+          </p>
+        )}
+
+        <Progress value={progress} className="h-2" />
+
+        <div className="flex justify-between text-xs text-zinc-500">
+          <span>
+            {remaining > 0 ? `~${eta}s restantes` : 'Finalizando...'}
+          </span>
+          <span>{progress}%</span>
+        </div>
+
+        {failed > 0 && (
+          <div className="flex items-center gap-2 text-sm text-yellow-500 bg-yellow-500/10 rounded-lg p-2">
+            <AlertTriangle size={16} />
+            <span>{failed} carta(s) con error (se usaran alternativas)</span>
+          </div>
+        )}
       </div>
     </div>
   );

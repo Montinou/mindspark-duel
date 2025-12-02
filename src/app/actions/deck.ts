@@ -66,8 +66,8 @@ export async function startDeckGeneration(themeId: string) {
     });
   }
 
-  // Mark onboarding as complete
-  await db.update(users).set({ hasCompletedOnboarding: true }).where(eq(users.id, user.id));
+  // NOTE: hasCompletedOnboarding flag will be set in process-deck-queue
+  // when all cards are successfully generated (moved from here to avoid premature flag)
 
   // Trigger background processing
   try {

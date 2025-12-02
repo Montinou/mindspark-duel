@@ -48,6 +48,9 @@ export interface ProblemHintsDB {
   examples?: string[]; // Optional example problems
 }
 
+// Card generation status enum
+export const cardStatusEnum = pgEnum('card_status', ['pending', 'generating', 'completed', 'failed']);
+
 // Cards table
 export const cards = pgTable('cards', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -69,6 +72,9 @@ export const cards = pgTable('cards', {
   batchId: uuid('batch_id').references(() => cardBatches.id), // Link to batch
   batchOrder: integer('batch_order'), // Position in batch (1-10)
   createdById: text('created_by_id').references(() => users.id),
+  // Generation tracking fields (ONB-04)
+  generationStatus: cardStatusEnum('generation_status').default('pending'), // pending, generating, completed, failed
+  generationError: text('generation_error'), // Error message if generation failed
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -94,13 +100,19 @@ export const userCards = pgTable('user_cards', {
   cardIdIdx: index('user_cards_card_id_idx').on(table.cardId),
 }));
 
+// Deck status enum
+export const deckStatusEnum = pgEnum('deck_status', ['pending', 'generating', 'completed', 'completed_with_errors', 'failed']);
+
 // Decks table - tracks user decks and generation status
 export const decks = pgTable('decks', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
   name: text('name').notNull(),
   theme: text('theme').notNull(), // 'technomancer', 'nature', 'arcane'
-  status: text('status').notNull().default('generating'), // 'generating', 'completed', 'failed'
+  status: text('status').notNull().default('generating'), // 'generating', 'completed', 'completed_with_errors', 'failed'
+  // Generation tracking fields (ONB-04)
+  errorCount: integer('error_count').default(0), // Number of cards that failed to generate
+  completedAt: timestamp('completed_at'), // When all cards finished generating
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
   userIdIdx: index('decks_user_id_idx').on(table.userId),

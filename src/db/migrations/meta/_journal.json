@@ -50,6 +50,13 @@
       "when": 1764664489600,
       "tag": "0006_mean_pepper_potts",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1764708390626,
+      "tag": "0007_foamy_ultragirl",
+      "breakpoints": true
     }
   ]
 }

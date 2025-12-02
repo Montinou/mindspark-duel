@@ -12,12 +12,15 @@ const WORKERS_PROBLEM_URL = process.env.WORKERS_AI_PROBLEM_URL || 'https://minds
 
 /**
  * Generate a battle problem for a specific card with user personalization
+ * EDU-05: Difficulty ahora usa problemHints de la carta o el costo como fallback
  */
 export async function generateBattleProblem(
   card: Card,
   userId: string,
-  difficulty: number = 5
+  difficulty?: number
 ): Promise<BattleProblem> {
+  // EDU-05: Priority: param > problemHints.difficulty > card.cost > 5
+  const effectiveDifficulty = difficulty ?? card.problemHints?.difficulty ?? card.cost ?? 5;
   // Fetch user profile for personalization (optional - cached from API)
   let userProfile = null;
   try {
@@ -33,17 +36,32 @@ export async function generateBattleProblem(
     console.warn('Could not fetch user profile, generating generic problem');
   }
 
-  // Call ai-problem-generator Worker with card context
+  // Call ai-problem-generator Worker with card context and problemHints
   const workerResponse = await fetch(WORKERS_PROBLEM_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       category: card.problemCategory,
-      difficulty,
+      difficulty: effectiveDifficulty,
       // Card context for thematic problems
       cardName: card.name,
       cardElement: card.element,
       cardTags: card.tags,
+      // EDU-05: Card stats for numeric problems
+      cardStats: {
+        power: card.power,
+        cost: card.cost,
+        defense: card.defense,
+        ability: card.ability
+      },
+      // EDU-05: Problem hints for thematic generation
+      problemHints: card.problemHints ? {
+        keywords: card.problemHints.keywords || [],
+        difficulty: card.problemHints.difficulty,
+        subCategory: card.problemHints.subCategory,
+        contextType: card.problemHints.contextType,
+        suggestedTopics: card.problemHints.suggestedTopics || card.problemHints.topics || []
+      } : undefined,
       // User profile for personalization
       userAge: userProfile?.age,
       userEducationLevel: userProfile?.educationLevel,
@@ -70,9 +88,9 @@ export async function generateBattleProblem(
   const battleProblem: BattleProblem = {
     id: crypto.randomUUID(),
     question: problemData.question,
-    answer: problemData.answer,
+    answer: problemData.answer ?? problemData.correctAnswer, // Support both formats
     category: card.problemCategory,
-    difficulty,
+    difficulty: effectiveDifficulty,
     cardId: card.id,
     cardName: card.name,
     cardElement: card.element,

@@ -81,9 +81,38 @@ async function generateCardWithRetry(
   }
 }
 
-// This route would ideally be called by a Cron job or a background worker
-// For MVP, we can call it manually or let it run on demand
+// Verify Vercel Cron authorization
+function verifyCronAuth(req: Request): boolean {
+  // In development, allow all requests
+  if (process.env.NODE_ENV === 'development') return true;
+
+  // Check for Vercel Cron secret header
+  const authHeader = req.headers.get('authorization');
+  const cronSecret = process.env.CRON_SECRET;
+
+  // If CRON_SECRET is set, verify it
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    return false;
+  }
+
+  return true;
+}
+
+// GET handler for Vercel Cron Jobs (Vercel uses GET by default)
+export async function GET(req: Request) {
+  if (!verifyCronAuth(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return handleProcessQueue();
+}
+
+// POST handler for manual triggers and self-chaining
 export async function POST(req: Request) {
+  // POST doesn't require auth (used for self-chaining from within the app)
+  return handleProcessQueue();
+}
+
+async function handleProcessQueue() {
   const startTime = Date.now();
 
   // 1. Find a deck that is 'generating'

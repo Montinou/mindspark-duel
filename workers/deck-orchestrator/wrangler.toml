@@ -1,0 +1,21 @@
+name = "mindspark-deck-orchestrator"
+main = "src/index.ts"
+compatibility_date = "2024-11-20"
+
+# Workers AI binding for text and image generation
+[ai]
+binding = "AI"
+
+# R2 bucket binding for direct image upload (no AWS SDK needed)
+[[r2_buckets]]
+binding = "CARD_IMAGES"
+bucket_name = "mindspark-duel-cards"
+
+# Environment variables
+[vars]
+R2_PUBLIC_URL = "https://pub-71e1e2623d9a4db38bd10a016a818b19.r2.dev"
+ENVIRONMENT = "production"
+
+# Secrets (configure with: wrangler secret put DATABASE_URL)
+# DATABASE_URL - NeonDB connection string
+# ORCHESTRATOR_SECRET - Auth secret for API calls

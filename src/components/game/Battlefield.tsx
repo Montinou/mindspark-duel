@@ -74,7 +74,11 @@ export function Battlefield({ userDeck }: BattlefieldProps) {
         <div className="w-full h-px bg-gradient-to-r from-transparent via-zinc-700 to-transparent my-4 opacity-50" />
 
         {/* Player Board */}
-        <div className="flex justify-center gap-6 min-h-[280px] w-full px-12 items-center overflow-visible">
+        <div
+          className="flex justify-center gap-2 md:gap-4 lg:gap-6 min-h-[160px] md:min-h-[220px] lg:min-h-[280px] w-full px-2 md:px-6 lg:px-12 items-center overflow-x-auto md:overflow-visible"
+          role="region"
+          aria-label="Tu campo de batalla"
+        >
           <AnimatePresence>
             {gameState.player.board.map(card => (
               <motion.div
@@ -115,7 +119,7 @@ export function Battlefield({ userDeck }: BattlefieldProps) {
       </div>
 
       {/* --- BOTTOM BAR: Player Hand & Controls --- */}
-      <div className="h-[320px] bg-gradient-to-t from-zinc-950 via-zinc-900/95 to-transparent relative z-30 flex flex-col justify-end pb-2">
+      <div className="h-[220px] md:h-[270px] lg:h-[320px] bg-gradient-to-t from-zinc-950 via-zinc-900/95 to-transparent relative z-30 flex flex-col justify-end pb-1 md:pb-2">
 
         {/* Phase & End Turn Controls - Fixed positioning */}
         <div className="absolute top-4 right-6 flex flex-col gap-3 items-end z-40">

@@ -194,25 +194,110 @@ export interface CardDataResponse {
   problemHints: ProblemHints; // For dynamic problem generation when card is played
 }
 
-// Art styles for variety
-const ART_STYLES = [
-  "dark fantasy oil painting, dramatic chiaroscuro lighting",
-  "ethereal watercolor illustration, mystical atmosphere",
-  "detailed manga style, dynamic pose, dramatic angles",
-  "gothic art nouveau, ornate borders, symbolic elements",
-  "realistic concept art, cinematic composition",
-  "impressionist style, vibrant brushstrokes, emotional lighting"
+// ============================================
+// CREATIVE CONTENT FOR EPIC CARDS
+// ============================================
+
+// Name prefixes by theme
+const NAME_PREFIXES: Record<string, string[]> = {
+  technomancer: [
+    'Cyber-', 'Meca-', 'Tecno-', 'Nano-', 'Circuito ', 'Voltio ', 'Quantum ',
+    'Proto-', 'Synth-', 'Chrome ', 'Byte ', 'Nexus ', 'Vector ', 'Flux ', 'Core '
+  ],
+  nature: [
+    'Silvestre ', 'Primordial ', 'Verde ', 'Salvaje ', 'Ancestral ', 'Bosque ',
+    'Raíz ', 'Flora ', 'Fauna ', 'Espina ', 'Selva ', 'Brote ', 'Semilla ', 'Musgo '
+  ],
+  arcane: [
+    'Arcano ', 'Místico ', 'Oculto ', 'Etéreo ', 'Rúnico ', 'Sombra ',
+    'Astral ', 'Vacío ', 'Nébula ', 'Cristal ', 'Espectro ', 'Enigma ', 'Éter '
+  ],
+  fantasy: [
+    'Noble ', 'Antiguo ', 'Sagrado ', 'Profano ', 'Celeste ', 'Infernal ',
+    'Primigenio ', 'Eterno ', 'Mítico ', 'Legendario '
+  ]
+};
+
+// Name suffixes by theme
+const NAME_SUFFIXES: Record<string, string[]> = {
+  technomancer: [
+    'Golem', 'Autómata', 'Centinela', 'Constructor', 'Ensamblador', 'Dron',
+    'Androide', 'Forjador', 'Ingeniero', 'Mecanismo', 'Interfaz', 'Código', 'Matriz'
+  ],
+  nature: [
+    'Guardián', 'Espíritu', 'Druida', 'Elemental', 'Bestia', 'Chamán',
+    'Protector', 'Titán', 'Coloso', 'Avatar', 'Enviado', 'Emisario', 'Custodio'
+  ],
+  arcane: [
+    'Mago', 'Hechicero', 'Conjurador', 'Invocador', 'Vidente', 'Oráculo',
+    'Tejedor', 'Ilusionista', 'Alquimista', 'Sabio', 'Ermitaño', 'Maestro', 'Arúspice'
+  ],
+  fantasy: [
+    'Campeón', 'Señor', 'Heraldo', 'Vengador', 'Guardián', 'Conquistador',
+    'Profeta', 'Destructor', 'Portador', 'Soberano', 'Cazador', 'Guerrero'
+  ]
+};
+
+// Descriptors for variety
+const DESCRIPTORS = [
+  'Antiguo', 'Eterno', 'Primigenio', 'Renacido', 'Corrupto', 'Purificado',
+  'Ascendido', 'Fragmentado', 'Fusionado', 'Evolucionado', 'Transcendido',
+  'Imparable', 'Indomable', 'Legendario', 'Mítico', 'Olvidado', 'Prohibido',
+  'Supremo', 'Infernal', 'Celestial', 'Abismal', 'Radiante', 'Sombrío'
 ];
 
-// Perspectives for variety
-const PERSPECTIVES = [
-  "dramatic low angle shot looking up",
-  "portrait view, intense eye contact with viewer",
-  "dynamic action pose mid-movement",
-  "majestic full body shot with environment",
-  "close-up detail shot showing power emanating",
-  "silhouette against dramatic sky"
+// Art styles for variety - ENHANCED
+const ART_STYLES = [
+  "dark fantasy oil painting, dramatic chiaroscuro lighting, museum quality",
+  "ethereal digital art, luminescent particles, mystical atmosphere, 8k detail",
+  "detailed concept art, cinematic lighting, epic scale, artstation trending",
+  "gothic art nouveau, ornate symbolic elements, golden ratio composition",
+  "realistic fantasy illustration, volumetric lighting, hyper detailed textures",
+  "impressionist fantasy style, vibrant brushstrokes, emotional atmosphere",
+  "dark gothic illustration, intricate details, dramatic shadows, award winning"
 ];
+
+// Perspectives for variety - ENHANCED
+const PERSPECTIVES = [
+  "dramatic low angle shot looking up, heroic presence, towering figure",
+  "portrait view, intense piercing gaze at viewer, soul-capturing detail",
+  "dynamic action pose mid-movement, energy trails, motion blur accents",
+  "majestic full body silhouette against dramatic sky, epic scale",
+  "close-up showing raw power emanating from hands, magical particles",
+  "environmental shot showing scale and grandeur, atmospheric depth",
+  "three-quarter view with magical particles swirling, mystical aura"
+];
+
+// Moods for variety
+const MOODS = [
+  'powerful and commanding, radiating authority',
+  'mysterious and ancient, keeper of forgotten secrets',
+  'wild and untamed, primal fury unleashed',
+  'ethereal and otherworldly, transcendent being',
+  'fierce and battle-ready, unstoppable warrior',
+  'serene yet deadly, calm before the storm',
+  'dark and foreboding, harbinger of doom'
+];
+
+// Element visual effects
+const ELEMENT_VISUALS: Record<string, { effects: string; palette: string }> = {
+  Fire: {
+    effects: 'flames, embers, heat distortion, volcanic glow, fire particles',
+    palette: 'deep reds, oranges, amber, volcanic blacks, ember glows'
+  },
+  Water: {
+    effects: 'water droplets, mist, bioluminescence, underwater caustics, waves',
+    palette: 'deep blues, teals, aquamarines, bioluminescent cyan accents'
+  },
+  Earth: {
+    effects: 'floating rocks, crystal formations, earth cracks, moss glow, roots',
+    palette: 'forest greens, rich browns, gold accents, stone grays, emerald'
+  },
+  Air: {
+    effects: 'wind trails, lightning, cloud wisps, feathers floating, storm energy',
+    palette: 'sky blues, silver whites, lavender mists, lightning purples'
+  }
+};
 
 // Problem subcategories by main category
 const SUBCATEGORIES = {
@@ -275,26 +360,84 @@ export default {
       // Generate unique seed for name variety
       const nameSeed = Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
 
-      // Optimized prompt for reliable JSON output
-      const prompt = `Generate a fantasy TCG card. Output ONLY raw JSON, no markdown.
+      // Get theme-specific name parts
+      const themeKey = themeText.toLowerCase().includes('techno') ? 'technomancer' :
+                       themeText.toLowerCase().includes('natur') ? 'nature' :
+                       themeText.toLowerCase().includes('arcan') ? 'arcane' : 'fantasy';
+      const prefixes = NAME_PREFIXES[themeKey] || NAME_PREFIXES.fantasy;
+      const suffixes = NAME_SUFFIXES[themeKey] || NAME_SUFFIXES.fantasy;
+      const randomPrefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+      const randomSuffix = suffixes[Math.floor(Math.random() * suffixes.length)];
+      const randomDescriptor = DESCRIPTORS[Math.floor(Math.random() * DESCRIPTORS.length)];
+      const randomMood = MOODS[Math.floor(Math.random() * MOODS.length)];
+
+      // Get element visuals
+      const elementVisuals = ELEMENT_VISUALS[finalElement] || ELEMENT_VISUALS.Fire;
+
+      // Determine context type based on theme
+      const contextType = themeKey === 'technomancer' ? 'abstract' :
+                          themeKey === 'nature' ? 'real_world' : 'fantasy';
+
+      // Enhanced prompt for EPIC cards
+      const prompt = `Generate an EPIC fantasy TCG card. Output ONLY raw JSON, no markdown.
 
 Theme: ${themeText} | Element: ${finalElement} | Seed: ${nameSeed}
 
-REQUIRED JSON (copy this structure exactly, fill in values):
-{"name":"<unique Spanish fantasy name>","description":"<1 poetic sentence in Spanish>","cost":${randomCost},"power":${randomPower},"defense":${randomDefense},"element":"${finalElement}","problemCategory":"${randomCategory}","imagePrompt":"<English art description: ${randomArtStyle}, ${randomPerspective}>","tags":["${themeText.toLowerCase()}","${finalElement.toLowerCase()}","<tag3>"],"problemHints":{"keywords":["<word1>","<word2>","<word3>"],"difficulty":${difficulty},"subCategory":"${randomSubCategory}","contextType":"fantasy","suggestedTopics":${JSON.stringify(shuffledTopics)}}}`;
+NAME IDEAS (combine creatively):
+- Prefixes: ${randomPrefix}, ${prefixes[Math.floor(Math.random() * prefixes.length)]}
+- Suffixes: ${randomSuffix}, ${suffixes[Math.floor(Math.random() * suffixes.length)]}
+- Descriptors: ${randomDescriptor}, ${DESCRIPTORS[Math.floor(Math.random() * DESCRIPTORS.length)]}
+- Examples: "${randomPrefix}${randomSuffix}", "${randomDescriptor} ${randomSuffix}", "${randomPrefix}${randomDescriptor}"
 
-      const systemPrompt = `You are a JSON generator for fantasy TCG cards.
+REQUIRED JSON:
+{
+  "name": "<UNIQUE 2-4 word Spanish name, EPIC and MEMORABLE>",
+  "description": "<1-2 POETIC evocative sentences in Spanish, transmit POWER/MYSTERY/MAJESTY, NO stats>",
+  "cost": ${randomCost},
+  "power": ${randomPower},
+  "defense": ${randomDefense},
+  "element": "${finalElement}",
+  "problemCategory": "${randomCategory}",
+  "imagePrompt": "<CINEMATIC English description: ${randomArtStyle}, ${randomPerspective}, ${randomMood}, ${elementVisuals.effects}, ${elementVisuals.palette}, full art trading card, no text, no borders>",
+  "tags": ["${themeText.toLowerCase()}", "${finalElement.toLowerCase()}", "<thematic_tag_1>", "<thematic_tag_2>"],
+  "problemHints": {
+    "keywords": ["<spanish_word_1>", "<spanish_word_2>", "<spanish_word_3>", "<spanish_word_4>", "<spanish_word_5>"],
+    "difficulty": ${Math.min(10, randomCost + 2)},
+    "subCategory": "${randomSubCategory}",
+    "contextType": "${contextType}",
+    "suggestedTopics": ${JSON.stringify(shuffledTopics)}
+  }
+}`;
 
-CRITICAL RULES:
-1. Output ONLY valid JSON - no markdown, no \`\`\`, no explanations
-2. Start response with { and end with }
-3. Use double quotes for all strings
-4. No trailing commas
-5. Escape special characters in strings
+      const systemPrompt = `Eres un generador de cartas TCG ÉPICAS y LEGENDARIAS. Cada carta debe sentirse ÚNICA y PODEROSA.
 
-For names: Invent unique names using syllables like Vel-, Kor-, Zha-, Xyn-, Mor-
-For description: Short poetic Spanish text, no physical descriptions
-For keywords: 3-5 thematic words useful for math problems (e.g., "volcán", "temperatura")`;
+REGLAS JSON CRÍTICAS:
+1. Solo JSON válido - sin \`\`\`, sin markdown, sin explicaciones
+2. Empieza con { y termina con }
+3. Comillas dobles para strings
+4. Sin comas finales
+5. Escapa caracteres especiales
+
+CREATIVIDAD PARA NOMBRES:
+- Combina prefijos + descriptores + sufijos de manera creativa
+- Ejemplos épicos: "Volcán Primigenio", "Oráculo del Vacío Eterno", "Cyber-Centinela Renacido"
+- NUNCA uses nombres genéricos como "Guardian" solo - siempre agrega modificadores épicos
+
+DESCRIPCIÓN (description):
+- Texto POÉTICO y EVOCADOR en español
+- 1-2 oraciones que transmitan PODER, MISTERIO o MAJESTUOSIDAD
+- Sin mencionar stats ni mecánicas
+- Ejemplo: "De las cenizas del mundo antiguo resurge, portando el fuego de eras olvidadas."
+
+KEYWORDS para problemHints:
+- 5 palabras en ESPAÑOL relacionadas con la carta
+- Útiles para contextualizar problemas matemáticos/científicos
+- Ejemplo para Fire: "volcán", "temperatura", "erupción", "magma", "combustión"
+
+IMAGE PROMPT:
+- Descripción CINEMATOGRÁFICA en inglés
+- Incluir estilo artístico, perspectiva, mood, efectos elementales, paleta de colores
+- Siempre terminar con: full art trading card, no text, no borders`;
 
       console.log('🤖 Generating card data with Llama 3.3 70B...');
       console.log('📝 Theme:', themeText, '| Element:', finalElement, '| Category:', randomCategory);

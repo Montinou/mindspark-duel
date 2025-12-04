@@ -76,6 +76,27 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Element Colors - Game Specific */
+  --element-fire: oklch(0.577 0.245 27.325);
+  --element-fire-glow: oklch(0.577 0.245 27.325 / 50%);
+  --element-fire-ring: oklch(0.577 0.245 27.325 / 30%);
+
+  --element-water: oklch(0.546 0.245 262.881);
+  --element-water-glow: oklch(0.546 0.245 262.881 / 50%);
+  --element-water-ring: oklch(0.546 0.245 262.881 / 30%);
+
+  --element-earth: oklch(0.577 0.194 145.071);
+  --element-earth-glow: oklch(0.577 0.194 145.071 / 50%);
+  --element-earth-ring: oklch(0.577 0.194 145.071 / 30%);
+
+  --element-air: oklch(0.558 0.288 302.321);
+  --element-air-glow: oklch(0.558 0.288 302.321 / 50%);
+  --element-air-ring: oklch(0.558 0.288 302.321 / 30%);
+
+  --element-neutral: oklch(0.556 0 0);
+  --element-neutral-glow: oklch(0.556 0 0 / 50%);
+  --element-neutral-ring: oklch(0.556 0 0 / 30%);
 }
 
 .dark {
@@ -110,6 +131,27 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* Element Colors - Game Specific (brighter for dark mode) */
+  --element-fire: oklch(0.637 0.237 25.331);
+  --element-fire-glow: oklch(0.637 0.237 25.331 / 50%);
+  --element-fire-ring: oklch(0.637 0.237 25.331 / 30%);
+
+  --element-water: oklch(0.623 0.214 259.815);
+  --element-water-glow: oklch(0.623 0.214 259.815 / 50%);
+  --element-water-ring: oklch(0.623 0.214 259.815 / 30%);
+
+  --element-earth: oklch(0.627 0.194 145.071);
+  --element-earth-glow: oklch(0.627 0.194 145.071 / 50%);
+  --element-earth-ring: oklch(0.627 0.194 145.071 / 30%);
+
+  --element-air: oklch(0.627 0.265 303.9);
+  --element-air-glow: oklch(0.627 0.265 303.9 / 50%);
+  --element-air-ring: oklch(0.627 0.265 303.9 / 30%);
+
+  --element-neutral: oklch(0.556 0 0);
+  --element-neutral-glow: oklch(0.556 0 0 / 50%);
+  --element-neutral-ring: oklch(0.556 0 0 / 30%);
 }
 
 @layer base {

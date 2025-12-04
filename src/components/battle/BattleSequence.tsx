@@ -122,7 +122,7 @@ export function BattleSequence({
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/90 flex items-center justify-center"
           >
-            <div className="flex items-center gap-16">
+            <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10 lg:gap-16">
               {/* Player Card */}
               <motion.div
                 initial={{ x: -200, opacity: 0, rotate: -10 }}
@@ -130,7 +130,7 @@ export function BattleSequence({
                 transition={{ duration: 0.8, type: 'spring' }}
                 className="relative"
               >
-                <div className="w-64 h-96 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-xl shadow-2xl flex flex-col items-center justify-center p-6 border-4 border-white/20">
+                <div className="w-44 h-64 md:w-52 md:h-80 lg:w-64 lg:h-96 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-xl shadow-2xl flex flex-col items-center justify-center p-4 md:p-6 border-4 border-white/20">
                   <p className="text-white text-2xl font-bold mb-4">{playerCard.name}</p>
                   <div className="flex gap-4 text-white">
                     <div className="flex items-center gap-2">
@@ -162,8 +162,8 @@ export function BattleSequence({
                 transition={{ duration: 0.8, type: 'spring' }}
                 className="relative"
               >
-                <div className="w-64 h-96 bg-gradient-to-br from-red-600 to-orange-600 rounded-xl shadow-2xl flex flex-col items-center justify-center p-6 border-4 border-white/20">
-                  <p className="text-white text-2xl font-bold mb-4">{opponentCard.name}</p>
+                <div className="w-44 h-64 md:w-52 md:h-80 lg:w-64 lg:h-96 bg-gradient-to-br from-red-600 to-orange-600 rounded-xl shadow-2xl flex flex-col items-center justify-center p-4 md:p-6 border-4 border-white/20">
+                  <p className="text-white text-lg md:text-xl lg:text-2xl font-bold mb-2 md:mb-4">{opponentCard.name}</p>
                   <div className="flex gap-4 text-white">
                     <div className="flex items-center gap-2">
                       <Zap className="h-6 w-6" />

@@ -66,17 +66,37 @@ export async function startDeckGeneration(themeId: string) {
     });
   }
 
-  // NOTE: hasCompletedOnboarding flag will be set in process-deck-queue
-  // when all cards are successfully generated (moved from here to avoid premature flag)
+  // NOTE: hasCompletedOnboarding flag will be set by the orchestrator
+  // when all cards are successfully generated
 
-  // Trigger background processing
-  try {
+  // Trigger deck orchestrator worker (Cloudflare Worker)
+  const orchestratorUrl = process.env.DECK_ORCHESTRATOR_URL;
+  const orchestratorSecret = process.env.DECK_ORCHESTRATOR_SECRET;
+
+  if (orchestratorUrl) {
+    // Use new Cloudflare Worker orchestrator (preferred - no timeouts)
+    console.log('🚀 Triggering deck orchestrator worker...');
+    fetch(orchestratorUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(orchestratorSecret && { 'Authorization': `Bearer ${orchestratorSecret}` })
+      },
+      body: JSON.stringify({
+        userId: user.id,
+        theme: themeId,
+        deckId: newDeck.id
+      })
+    }).catch(err => {
+      console.error('Failed to trigger deck orchestrator:', err);
+    });
+  } else {
+    // Fallback to old cron-based processing (has timeout issues)
+    console.log('⚠️ DECK_ORCHESTRATOR_URL not set, using fallback cron processing...');
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     fetch(`${appUrl}/api/cron/process-deck-queue`, { method: 'POST' }).catch(err => {
       console.error('Failed to trigger background processing:', err);
     });
-  } catch (error) {
-    console.error('Failed to trigger background processing:', error);
   }
 
   revalidatePath('/onboarding');

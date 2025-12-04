@@ -131,10 +131,14 @@ export function DualProblemView({
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="w-full max-w-7xl mx-4 h-[90vh] flex gap-4"
+            className="w-full max-w-7xl mx-2 md:mx-4 h-[95vh] md:h-[90vh] flex flex-col md:flex-row gap-2 md:gap-4 overflow-y-auto md:overflow-visible"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dual-problem-title"
           >
+            <h2 id="dual-problem-title" className="sr-only">Resolver problemas de batalla</h2>
             {/* Player Problem (Large) */}
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col min-h-[55vh] md:min-h-0">
               <Card className="flex-1 overflow-hidden border-2 border-blue-500/50 bg-gradient-to-br from-gray-900 to-gray-800 shadow-2xl">
                 {/* Header */}
                 <div
@@ -154,15 +158,32 @@ export function DualProblemView({
                     </div>
 
                     {/* Timer */}
-                    <div className="flex items-center gap-2 bg-black/30 rounded-full px-4 py-2">
-                      <Clock className="h-5 w-5" />
+                    <div
+                      className="flex items-center gap-2 bg-black/30 rounded-full px-3 md:px-4 py-1.5 md:py-2"
+                      role="timer"
+                      aria-label={`${timeLeft} segundos restantes`}
+                    >
+                      <Clock className="h-4 w-4 md:h-5 md:w-5" aria-hidden="true" />
                       <span
-                        className={`text-xl font-mono font-bold ${
+                        aria-live="polite"
+                        aria-atomic="true"
+                        className={`text-lg md:text-xl font-mono font-bold ${
                           timeLeft <= 10 ? 'text-red-400 animate-pulse' : ''
                         }`}
                       >
                         {timeLeft}s
                       </span>
+                      {/* Screen reader announcements for critical time */}
+                      {timeLeft === 10 && (
+                        <span className="sr-only" role="alert">
+                          Quedan 10 segundos
+                        </span>
+                      )}
+                      {timeLeft === 5 && (
+                        <span className="sr-only" role="alert">
+                          Quedan 5 segundos
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -282,7 +303,7 @@ export function DualProblemView({
             </div>
 
             {/* Opponent Problem (Small Preview) */}
-            <div className="w-96 flex flex-col">
+            <div className="w-full md:w-72 lg:w-96 flex flex-col min-h-[35vh] md:min-h-0">
               <Card className="flex-1 overflow-hidden border-2 border-red-500/50 bg-gradient-to-br from-gray-900 to-gray-800 shadow-2xl opacity-80">
                 {/* Header */}
                 <div className="bg-gradient-to-r from-red-600 to-orange-600 p-4 text-white">

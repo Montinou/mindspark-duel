@@ -9,10 +9,17 @@
 
 import { db } from '../src/db';
 import { users, decks, cards, deckCards, userCards } from '../src/db/schema';
-import { eq } from 'drizzle-orm';
 
-const ORCHESTRATOR_URL = process.env.DECK_ORCHESTRATOR_URL || 'https://mindspark-deck-orchestrator.agusmontoya.workers.dev';
-const ORCHESTRATOR_SECRET = process.env.DECK_ORCHESTRATOR_SECRET || 'c34c120963c4d65e1032a61f2c05cfacb91fad67fe00bfc7e6f922133b7a449e';
+function getEnvVar(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing ${name} environment variable`);
+  }
+  return value;
+}
+
+const ORCHESTRATOR_URL = getEnvVar('DECK_ORCHESTRATOR_URL');
+const ORCHESTRATOR_SECRET = getEnvVar('DECK_ORCHESTRATOR_SECRET');
 
 const THEME = 'technomancer';
 const ELEMENTS: ('Fire' | 'Water' | 'Earth' | 'Air')[] = ['Fire', 'Water', 'Earth', 'Air'];

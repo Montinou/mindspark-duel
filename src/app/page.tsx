@@ -7,7 +7,7 @@ import { HowItWorks } from "@/components/landing/HowItWorks";
 import { Roadmap } from "@/components/landing/Roadmap";
 import { CTA } from "@/components/landing/CTA";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { users, decks } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getUserCards } from "@/app/actions/library";
@@ -65,7 +65,19 @@ export default async function Home() {
 
   // Redirect to onboarding if not completed
   if (dbUser && !dbUser.hasCompletedOnboarding) {
-    redirect('/onboarding');
+    // Check if user has a completed deck (fallback for sync issues)
+    const userDecks = await db.select().from(decks).where(eq(decks.userId, user.id));
+    const currentDeck = userDecks[0];
+
+    if (currentDeck && (currentDeck.status === 'completed' || currentDeck.status === 'completed_with_errors')) {
+      // Deck is complete but flag wasn't updated - fix it now
+      await db.update(users)
+        .set({ hasCompletedOnboarding: true })
+        .where(eq(users.id, user.id));
+      // Don't redirect, continue to show game
+    } else {
+      redirect('/onboarding');
+    }
   }
 
   // Get user's cards for the game

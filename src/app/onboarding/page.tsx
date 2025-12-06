@@ -1,6 +1,6 @@
 import { stackServerApp } from "@/lib/stack";
 import { db } from "@/db";
-import { decks } from "@/db/schema";
+import { decks, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { ThemeSelectorWrapper } from "@/components/onboarding/ThemeSelectorWrapper";
@@ -15,8 +15,14 @@ export default async function OnboardingPage() {
   const currentDeck = userDecks[0];
 
   if (currentDeck) {
-    if (currentDeck.status === 'completed') {
-      redirect('/'); // Or dashboard
+    // If deck is completed (or completed with errors), mark onboarding as done and redirect
+    if (currentDeck.status === 'completed' || currentDeck.status === 'completed_with_errors') {
+      // Update hasCompletedOnboarding flag to prevent redirect loop
+      await db.update(users)
+        .set({ hasCompletedOnboarding: true })
+        .where(eq(users.id, user.id));
+
+      redirect('/dashboard');
     }
     
     return (

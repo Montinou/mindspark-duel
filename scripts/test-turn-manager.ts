@@ -151,8 +151,10 @@ async function testTurnProgression(): Promise<void> {
       throw new Error(`Expected turn 1, got ${state.turnNumber}`);
     }
 
-    if (state.currentPhase !== 'main') {
-      throw new Error(`Expected main phase, got ${state.currentPhase}`);
+    // En el sistema MTG de 12 fases, startTurn() deja el juego en 'pre_combat_main'
+    // (las fases automáticas untap, upkeep, draw se procesan internamente)
+    if (state.currentPhase !== 'pre_combat_main') {
+      throw new Error(`Expected pre_combat_main phase, got ${state.currentPhase}`);
     }
 
     if (state.activePlayer !== 'player') {
@@ -262,7 +264,8 @@ async function testPhaseRestrictions(): Promise<void> {
       throw new Error('Attack in Main Phase should have failed');
     }
 
-    if (!result.error?.includes('not allowed in main phase')) {
+    // El mensaje ahora dice "not allowed in pre_combat_main phase" (sistema MTG 12 fases)
+    if (!result.error?.includes('not allowed in pre_combat_main phase')) {
       throw new Error(
         `Expected phase restriction error, got: ${result.error}`
       );
@@ -272,8 +275,10 @@ async function testPhaseRestrictions(): Promise<void> {
     await turnManager.advancePhase();
     const state2 = turnManager.getState();
 
-    if (state2.currentPhase !== 'combat') {
-      throw new Error(`Expected combat phase, got ${state2.currentPhase}`);
+    // En el sistema MTG de 12 fases, después de pre_combat_main viene begin_combat
+    // (la primera sub-fase del bloque de combate)
+    if (state2.currentPhase !== 'begin_combat') {
+      throw new Error(`Expected begin_combat phase, got ${state2.currentPhase}`);
     }
 
     // Try to play card in Combat Phase (should fail)
@@ -288,7 +293,8 @@ async function testPhaseRestrictions(): Promise<void> {
       throw new Error('Play card in Combat Phase should have failed');
     }
 
-    if (!result2.error?.includes('not allowed in combat phase')) {
+    // El mensaje ahora dice "not allowed in begin_combat phase" (sistema MTG 12 fases)
+    if (!result2.error?.includes('not allowed in begin_combat phase')) {
       throw new Error(
         `Expected phase restriction error, got: ${result2.error}`
       );

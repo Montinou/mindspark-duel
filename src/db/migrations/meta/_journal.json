@@ -57,6 +57,13 @@
       "when": 1764708390626,
       "tag": "0007_foamy_ultragirl",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1764991444930,
+      "tag": "0008_pink_tempest",
+      "breakpoints": true
     }
   ]
 }

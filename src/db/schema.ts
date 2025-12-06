@@ -189,6 +189,181 @@ export const userMissions = pgTable("user_missions", {
 export const achievementCategoryEnum = pgEnum('achievement_category', ['Combat', 'Collection', 'Mastery', 'Social', 'Special']);
 export const achievementTierEnum = pgEnum('achievement_tier', ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond']);
 
+// ============================================================================
+// USER STATS TABLE - Sistema de Estadísticas y Dificultad Adaptativa
+// ============================================================================
+// PROPÓSITO: Almacenar el rendimiento educativo del usuario para:
+// 1. Calcular dificultad adaptativa por categoría (Math/Logic/Science)
+// 2. Trackear SkillScore tipo Elo para matchmaking futuro
+// 3. Mantener estadísticas de precisión y velocidad de respuesta
+// 4. Sistema de streak (racha) para gamificación
+// ============================================================================
+export const userStats = pgTable('user_stats', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  // Relación con usuario (1:1)
+  userId: text('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull()
+    .unique(), // Un registro por usuario
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SKILL SCORES (0-100) - Sistema tipo Elo simplificado
+  // ─────────────────────────────────────────────────────────────────────────
+  // Estos valores representan la "habilidad" del usuario en cada categoría
+  // Se actualizan usando fórmula Elo: change = K * (resultado - expected) + bonus
+  // Valor inicial: 50 (punto medio)
+  mathSkillScore: integer('math_skill_score').default(50).notNull(),
+  logicSkillScore: integer('logic_skill_score').default(50).notNull(),
+  scienceSkillScore: integer('science_skill_score').default(50).notNull(),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // CONTADORES DE PROBLEMAS - Para calcular precisión
+  // ─────────────────────────────────────────────────────────────────────────
+  // Total global
+  totalProblemsAttempted: integer('total_problems_attempted').default(0).notNull(),
+  totalProblemsCorrect: integer('total_problems_correct').default(0).notNull(),
+
+  // Por categoría - permite calcular % acierto por área
+  mathProblemsAttempted: integer('math_problems_attempted').default(0).notNull(),
+  mathProblemsCorrect: integer('math_problems_correct').default(0).notNull(),
+  logicProblemsAttempted: integer('logic_problems_attempted').default(0).notNull(),
+  logicProblemsCorrect: integer('logic_problems_correct').default(0).notNull(),
+  scienceProblemsAttempted: integer('science_problems_attempted').default(0).notNull(),
+  scienceProblemsCorrect: integer('science_problems_correct').default(0).notNull(),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // TIEMPOS DE RESPUESTA (promedio en milisegundos)
+  // ─────────────────────────────────────────────────────────────────────────
+  // Permite identificar áreas donde el usuario es más lento/rápido
+  // Se actualiza con media móvil: newAvg = (oldAvg * 0.9) + (newTime * 0.1)
+  avgResponseTimeMs: integer('avg_response_time_ms').default(15000), // 15 segundos default
+  mathAvgResponseTimeMs: integer('math_avg_response_time_ms').default(15000),
+  logicAvgResponseTimeMs: integer('logic_avg_response_time_ms').default(15000),
+  scienceAvgResponseTimeMs: integer('science_avg_response_time_ms').default(15000),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SISTEMA DE STREAK (Racha)
+  // ─────────────────────────────────────────────────────────────────────────
+  // currentStreak: Cantidad de respuestas correctas consecutivas actuales
+  // longestStreak: Récord personal del usuario
+  // lastStreakDate: Para resetear streak si pasa mucho tiempo
+  currentStreak: integer('current_streak').default(0).notNull(),
+  longestStreak: integer('longest_streak').default(0).notNull(),
+  lastStreakDate: timestamp('last_streak_date'),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // DIFICULTAD ADAPTATIVA (1-10) - Calculada dinámicamente
+  // ─────────────────────────────────────────────────────────────────────────
+  // Estos valores se recalculan después de cada problema:
+  // - Si últimos 20 problemas >80% aciertos → subir +0.5
+  // - Si últimos 20 problemas <50% aciertos → bajar -0.5
+  // Objetivo: Mantener al usuario en "zona de flujo" (50-80% aciertos)
+  mathAdaptiveDifficulty: integer('math_adaptive_difficulty').default(5).notNull(),
+  logicAdaptiveDifficulty: integer('logic_adaptive_difficulty').default(5).notNull(),
+  scienceAdaptiveDifficulty: integer('science_adaptive_difficulty').default(5).notNull(),
+
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  // Índice para búsquedas rápidas por usuario
+  userIdIdx: index('user_stats_user_id_idx').on(table.userId),
+}));
+
+// ============================================================================
+// PROBLEM HISTORY TABLE - Historial Detallado de Problemas Generados
+// ============================================================================
+// PROPÓSITO: Guardar cada problema generado con contexto completo para:
+// 1. Tracking de rendimiento histórico del usuario
+// 2. Análisis de qué cartas generan problemas difíciles/fáciles
+// 3. Identificar problemas problemáticos (muy fáciles/difíciles)
+// 4. Datos para entrenar/mejorar el generador de problemas IA
+// 5. Debugging y auditoría del sistema de generación
+// ============================================================================
+
+// Enum para la fase del juego donde se generó el problema
+export const problemPhaseEnum = pgEnum('problem_phase', [
+  'play_card',    // Al jugar una carta desde la mano
+  'attack',       // Al declarar un ataque
+  'defend',       // Al declarar defensa (futuro PvP)
+  'ability',      // Al usar una habilidad de carta
+]);
+
+// Enum para el generador que creó el problema
+export const problemGeneratorEnum = pgEnum('problem_generator', [
+  'ai_worker',     // Generado por Cloudflare Worker con LLM
+  'fallback_bank', // Problema del banco de respaldo
+]);
+
+// Enum para tipo de oponente
+export const opponentTypeEnum = pgEnum('opponent_type', ['ai', 'human']);
+
+export const problemHistory = pgTable('problem_history', {
+  id: uuid('id').primaryKey().defaultRandom(),
+
+  // Relación con usuario
+  userId: text('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PROBLEMA GENERADO - Datos del problema en sí
+  // ─────────────────────────────────────────────────────────────────────────
+  category: problemCategoryEnum('category').notNull(), // Math, Logic, Science
+  difficulty: integer('difficulty').notNull(),         // 1-10
+  question: text('question').notNull(),                // Texto completo de la pregunta
+  options: json('options').$type<string[]>(),          // Opciones de respuesta (si aplica)
+  correctAnswer: text('correct_answer').notNull(),     // Respuesta correcta
+  hints: json('hints').$type<string[]>(),              // Pistas generadas (si las hubo)
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RESPUESTA DEL USUARIO - Qué respondió y cómo le fue
+  // ─────────────────────────────────────────────────────────────────────────
+  userAnswer: text('user_answer'),                     // Lo que respondió el usuario
+  isCorrect: boolean('is_correct').notNull(),          // ¿Acertó?
+  responseTimeMs: integer('response_time_ms').notNull(), // Tiempo que tardó en ms
+  timedOut: boolean('timed_out').default(false).notNull(), // ¿Se agotó el tiempo?
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // CONTEXTO DE LA CARTA - Qué carta generó este problema
+  // ─────────────────────────────────────────────────────────────────────────
+  // Guardamos datos desnormalizados para queries rápidos sin JOINs
+  cardId: uuid('card_id').references(() => cards.id, { onDelete: 'set null' }),
+  cardName: text('card_name'),                         // Nombre de la carta
+  cardElement: elementEnum('card_element'),            // Fire, Water, Earth, Air
+  cardCost: integer('card_cost'),                      // Costo de maná
+  cardPower: integer('card_power'),                    // Poder de ataque
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // CONTEXTO DEL JUEGO - En qué momento del juego ocurrió
+  // ─────────────────────────────────────────────────────────────────────────
+  gameSessionId: uuid('game_session_id')
+    .references(() => gameSessions.id, { onDelete: 'set null' }),
+  phase: problemPhaseEnum('phase'),                    // play_card, attack, defend, ability
+  turnNumber: integer('turn_number'),                  // Número de turno
+  opponentType: opponentTypeEnum('opponent_type'),     // ai o human
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // METADATA DE GENERACIÓN - Cómo se creó el problema
+  // ─────────────────────────────────────────────────────────────────────────
+  // Útil para debugging y mejora del sistema de IA
+  generatedBy: problemGeneratorEnum('generated_by'),   // ai_worker o fallback_bank
+  aiModel: text('ai_model'),                           // Modelo usado (ej: "llama-3.1-8b")
+  problemHintsUsed: json('problem_hints_used').$type<ProblemHintsDB>(), // Hints de carta usados
+  generationTimeMs: integer('generation_time_ms'),     // Tiempo que tardó en generarse
+
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  // Índices para queries frecuentes
+  userIdIdx: index('problem_history_user_id_idx').on(table.userId),
+  categoryIdx: index('problem_history_category_idx').on(table.category),
+  createdAtIdx: index('problem_history_created_at_idx').on(table.createdAt),
+  gameSessionIdx: index('problem_history_game_session_idx').on(table.gameSessionId),
+  cardIdIdx: index('problem_history_card_id_idx').on(table.cardId),
+}));
+
 export const achievements = pgTable("achievements", {
   id: uuid("id").defaultRandom().primaryKey(),
   title: text("title").notNull(),
@@ -310,6 +485,36 @@ export const masteryRelations = relations(mastery, ({ one }) => ({
   }),
 }));
 
+// ============================================================================
+// RELACIONES PARA TABLAS DE ESTADÍSTICAS
+// ============================================================================
+
+export const userStatsRelations = relations(userStats, ({ one }) => ({
+  // Relación 1:1 con usuario
+  user: one(users, {
+    fields: [userStats.userId],
+    references: [users.id],
+  }),
+}));
+
+export const problemHistoryRelations = relations(problemHistory, ({ one }) => ({
+  // Usuario que resolvió el problema
+  user: one(users, {
+    fields: [problemHistory.userId],
+    references: [users.id],
+  }),
+  // Carta que generó el problema (puede ser null si se eliminó)
+  card: one(cards, {
+    fields: [problemHistory.cardId],
+    references: [cards.id],
+  }),
+  // Sesión de juego donde ocurrió (puede ser null)
+  gameSession: one(gameSessions, {
+    fields: [problemHistory.gameSessionId],
+    references: [gameSessions.id],
+  }),
+}));
+
 export const userMissionsRelations = relations(userMissions, ({ one }) => ({
   user: one(users, {
     fields: [userMissions.userId],
@@ -363,3 +568,17 @@ export type UserMission = typeof userMissions.$inferSelect;
 
 export type Achievement = typeof achievements.$inferSelect;
 export type UserAchievement = typeof userAchievements.$inferSelect;
+
+// ============================================================================
+// TIPOS PARA TABLAS DE ESTADÍSTICAS
+// ============================================================================
+export type UserStats = typeof userStats.$inferSelect;
+export type NewUserStats = typeof userStats.$inferInsert;
+
+export type ProblemHistory = typeof problemHistory.$inferSelect;
+export type NewProblemHistory = typeof problemHistory.$inferInsert;
+
+// Tipos para enums de problem_history
+export type ProblemPhase = 'play_card' | 'attack' | 'defend' | 'ability';
+export type ProblemGenerator = 'ai_worker' | 'fallback_bank';
+export type OpponentType = 'ai' | 'human';

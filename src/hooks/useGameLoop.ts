@@ -148,12 +148,40 @@ export const useGameLoop = (userDeck: Card[] = []) => {
   );
 
   const resolveProblem = useCallback(
-    (answer: string, timeTakenMs: number) => {
+    async (answer: string, timeTakenMs: number) => {
       if (!gameState.activeProblem || !gameState.pendingCard) return;
 
       // Normalize answers for comparison (case-insensitive, trim whitespace)
       const normalizeAnswer = (a: string) => a.trim().toLowerCase();
       const isCorrect = normalizeAnswer(answer) === normalizeAnswer(gameState.activeProblem.correctAnswer);
+
+      // Record problem result to user stats (async, non-blocking)
+      try {
+        fetch('/api/user/stats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            category: 'Math', // Default category since Problem type doesn't include it
+            difficulty: gameState.activeProblem.difficulty || 5,
+            question: gameState.activeProblem.question,
+            correctAnswer: gameState.activeProblem.correctAnswer,
+            userAnswer: answer,
+            isCorrect,
+            responseTimeMs: timeTakenMs,
+            timedOut: timeTakenMs >= 15000,
+            cardId: gameState.pendingCard.id,
+            cardName: gameState.pendingCard.name,
+            cardElement: gameState.pendingCard.element,
+            cardCost: gameState.pendingCard.cost,
+            cardPower: gameState.pendingCard.power,
+            phase: 'play_card',
+            turnNumber: gameState.turn,
+            opponentType: 'ai',
+          }),
+        }).catch((err) => console.error('Failed to record problem result:', err));
+      } catch (err) {
+        console.error('Error recording problem result:', err);
+      }
 
       setGameState((prev) => {
         if (!prev.pendingCard) return prev;

@@ -7,20 +7,39 @@
 
 import { Card } from '@/types/game';
 import { BattleProblem, DamageCalculation, ProblemSubmissionResult } from '@/types/battle';
+import { getRecommendedDifficulty } from '@/lib/gamification/adaptive-difficulty';
 
 const WORKERS_PROBLEM_URL = process.env.WORKERS_AI_PROBLEM_URL || 'https://mindspark-ai-problem-generator.agusmontoya.workers.dev';
 
 /**
  * Generate a battle problem for a specific card with user personalization
- * EDU-05: Difficulty ahora usa problemHints de la carta o el costo como fallback
+ * EDU-05: Difficulty now uses adaptive difficulty system based on user performance
  */
 export async function generateBattleProblem(
   card: Card,
   userId: string,
   difficulty?: number
 ): Promise<BattleProblem> {
-  // EDU-05: Priority: param > problemHints.difficulty > card.cost > 5
-  const effectiveDifficulty = difficulty ?? card.problemHints?.difficulty ?? card.cost ?? 5;
+  // Use adaptive difficulty if no explicit difficulty provided
+  // Priority: param > adaptive (blends user stats + card difficulty) > fallback 5
+  let effectiveDifficulty: number;
+
+  if (difficulty !== undefined) {
+    effectiveDifficulty = difficulty;
+  } else {
+    try {
+      // Get recommended difficulty based on user's performance and card characteristics
+      effectiveDifficulty = await getRecommendedDifficulty(
+        userId,
+        card.problemCategory as 'Math' | 'Logic' | 'Science',
+        card.cost
+      );
+      console.log(`📊 Adaptive difficulty for ${card.name}: ${effectiveDifficulty}`);
+    } catch (error) {
+      console.warn('Could not get adaptive difficulty, using card-based fallback:', error);
+      effectiveDifficulty = card.problemHints?.difficulty ?? card.cost ?? 5;
+    }
+  }
   // Fetch user profile for personalization (optional - cached from API)
   let userProfile = null;
   try {

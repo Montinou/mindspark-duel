@@ -363,6 +363,196 @@ const BOOSTER_THEMES = [
 const ALL_THEMES = Object.keys(THEME_CONFIG);
 
 // ============================================
+// Dynamic Theme Generation
+// ============================================
+
+interface DynamicThemeConfig {
+  id: string;
+  displayName: string;
+  keywords: string[];
+  contextType: 'fantasy' | 'real_world' | 'abstract';
+  subCategories: string[];
+  defaultElement: 'Fire' | 'Water' | 'Earth' | 'Air';
+  nameExamples: string[];
+}
+
+function validateDynamicTheme(parsed: unknown): DynamicThemeConfig | null {
+  if (!parsed || typeof parsed !== 'object') {
+    console.log('🎨 Validation failed: not an object');
+    return null;
+  }
+
+  const theme = parsed as Record<string, unknown>;
+  console.log('🎨 Validating theme:', JSON.stringify(theme).slice(0, 500));
+
+  // Try to get id from various possible field names
+  let id = theme.id || theme.theme_id || theme.themeId || theme.name;
+  if (typeof id !== 'string' || id.length < 2) {
+    console.log('🎨 Validation failed: invalid id');
+    return null;
+  }
+
+  // Try to get displayName from various fields
+  let displayName = theme.displayName || theme.display_name || theme.nombre || theme.name || theme.title || id;
+  if (typeof displayName !== 'string') displayName = String(id);
+
+  // Get keywords - more permissive
+  const rawKeywords = theme.keywords || theme.palabras || theme.palabras_clave;
+  const keywords: string[] = Array.isArray(rawKeywords) ? rawKeywords : [];
+  if (keywords.length < 2) {
+    console.log('🎨 Validation failed: not enough keywords');
+    return null;
+  }
+
+  // Get subCategories - more permissive
+  const rawSubCats = theme.subCategories || theme.sub_categories || theme.subcategorias || theme.categories;
+  const subCategories: string[] = Array.isArray(rawSubCats) ? rawSubCats : ['patterns', 'geometry'];
+
+  // Get nameExamples - more permissive
+  const rawNameExamples = theme.nameExamples || theme.name_examples || theme.ejemplos || theme.nombres;
+  let nameExamples: string[] = Array.isArray(rawNameExamples) ? rawNameExamples : [];
+  if (nameExamples.length < 1) {
+    nameExamples = [`Guardian de ${displayName}`];
+  }
+
+  // Validate contextType (map Spanish values)
+  let contextType = theme.contextType || theme.context_type || theme.contexto || 'fantasy';
+  const contextMap: Record<string, string> = {
+    'fantasy': 'fantasy', 'fantasía': 'fantasy', 'fantasia': 'fantasy',
+    'real_world': 'real_world', 'mundo_real': 'real_world', 'ciencia': 'real_world', 'science': 'real_world',
+    'abstract': 'abstract', 'abstracto': 'abstract'
+  };
+  contextType = contextMap[String(contextType).toLowerCase()] || 'fantasy';
+
+  // Validate element (map Spanish values)
+  let defaultElement = theme.defaultElement || theme.default_element || theme.elemento || theme.element;
+  const elementMap: Record<string, string> = {
+    'fire': 'Fire', 'fuego': 'Fire',
+    'water': 'Water', 'agua': 'Water',
+    'earth': 'Earth', 'tierra': 'Earth',
+    'air': 'Air', 'aire': 'Air', 'viento': 'Air'
+  };
+  defaultElement = elementMap[String(defaultElement).toLowerCase()] || ['Fire', 'Water', 'Earth', 'Air'][Math.floor(Math.random() * 4)];
+
+  const result = {
+    id: String(id).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').slice(0, 30),
+    displayName: String(displayName).slice(0, 50),
+    keywords: (keywords as string[]).slice(0, 7).map(k => String(k).slice(0, 30)),
+    contextType: contextType as DynamicThemeConfig['contextType'],
+    subCategories: (subCategories as string[]).slice(0, 4).map(s => String(s).slice(0, 30)),
+    defaultElement: defaultElement as DynamicThemeConfig['defaultElement'],
+    nameExamples: (nameExamples as string[]).slice(0, 3).map(n => String(n).slice(0, 60)),
+  };
+
+  console.log('🎨 Validation passed:', result.displayName);
+  return result;
+}
+
+async function generateDynamicTheme(
+  ai: Ai,
+  excludeThemes: string[] = []
+): Promise<DynamicThemeConfig> {
+  const systemPrompt = `Genera un tema ÚNICO para un TCG educativo. Responde SOLO con JSON válido.
+
+{
+  "id": "kebab-case-id",
+  "displayName": "Nombre del Tema",
+  "keywords": ["palabra1", "palabra2", "palabra3", "palabra4", "palabra5"],
+  "contextType": "fantasy",
+  "subCategories": ["geometry", "patterns", "ratios"],
+  "defaultElement": "Fire",
+  "nameExamples": ["Nombre Épico 1", "Nombre Épico 2"]
+}
+
+Sé creativo. Evita clichés. Usa español.`;
+
+  const userPrompt = `Genera un tema único y creativo.${excludeThemes.length > 0 ? ` Evita: ${excludeThemes.join(', ')}.` : ''} Solo JSON:`;
+
+  const attempts = [
+    { temperature: 0.95, top_p: 0.95 },  // Máxima creatividad
+    { temperature: 0.85, top_p: 0.9 },   // Moderada
+    { temperature: 0.7, top_p: 0.85 },   // Conservadora
+  ];
+
+  for (const config of attempts) {
+    try {
+      console.log(`🎨 Generating dynamic theme (temp=${config.temperature})...`);
+
+      const response = await ai.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        max_tokens: 600,
+        temperature: config.temperature,
+        top_p: config.top_p,
+      });
+
+      // Handle different response formats from Workers AI
+      if (!response) {
+        console.warn('🎨 Empty response from AI');
+        continue;
+      }
+
+      let parsed: unknown = null;
+      const resp = response as Record<string, unknown>;
+
+      // Case 1: response.response is already an object (parsed JSON)
+      if (resp.response && typeof resp.response === 'object') {
+        console.log('🎨 Response is already parsed object');
+        parsed = resp.response;
+      }
+      // Case 2: response.response is a string (needs parsing)
+      else if (typeof resp.response === 'string') {
+        console.log('🎨 Response is string, parsing...');
+        const jsonMatch = resp.response.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0]);
+        }
+      }
+      // Case 3: response itself might be the theme object
+      else if (resp.id && resp.keywords) {
+        console.log('🎨 Response is the theme object directly');
+        parsed = resp;
+      }
+
+      if (!parsed) {
+        console.warn('🎨 Could not extract theme from response:', JSON.stringify(resp).slice(0, 200));
+        continue;
+      }
+
+      console.log('🎨 Parsed theme:', JSON.stringify(parsed).slice(0, 300));
+
+      const validated = validateDynamicTheme(parsed);
+
+      if (validated) {
+        console.log(`🎨 ✅ Dynamic theme generated: ${validated.displayName} (${validated.id})`);
+        return validated;
+      } else {
+        console.warn('🎨 Theme validation failed, parsed:', JSON.stringify(parsed).slice(0, 200));
+      }
+    } catch (error) {
+      console.warn(`🎨 Attempt with temp=${config.temperature} failed:`, error);
+    }
+  }
+
+  // Fallback: pick random from BOOSTER_THEMES
+  console.log(`🎨 ⚠️ Falling back to predefined theme`);
+  const fallbackTheme = BOOSTER_THEMES[Math.floor(Math.random() * BOOSTER_THEMES.length)];
+  const fallbackConfig = THEME_CONFIG[fallbackTheme];
+
+  return {
+    id: fallbackTheme,
+    displayName: fallbackTheme.charAt(0).toUpperCase() + fallbackTheme.slice(1),
+    keywords: fallbackConfig.keywords,
+    contextType: fallbackConfig.contextType,
+    subCategories: fallbackConfig.subCategories,
+    defaultElement: fallbackConfig.defaultElement as DynamicThemeConfig['defaultElement'],
+    nameExamples: fallbackConfig.nameExamples,
+  };
+}
+
+// ============================================
 // Utility Functions
 // ============================================
 
@@ -431,7 +621,8 @@ async function generateCardWithAI(
   category: string,
   cardIndex: number,
   totalCards: number,
-  rarity: Rarity = 'common'
+  rarity: Rarity = 'common',
+  existingNames: string[] = []  // Nombres a evitar
 ): Promise<CardData> {
   const stats = generateCardStats(cost, rarity);
   const elementConfig = ELEMENT_CONFIG[element] || ELEMENT_CONFIG.Fire;
@@ -458,18 +649,23 @@ async function generateCardWithAI(
   // Use theme-specific name examples
   const nameExamples = themeConfig.nameExamples.join('", "');
 
+  // Build avoid names instruction if there are existing names
+  const avoidNamesInstruction = existingNames.length > 0
+    ? `\n\n⚠️ NOMBRES PROHIBIDOS (ya existen, NO los uses): ${existingNames.slice(0, 20).join(', ')}`
+    : '';
+
   const userPrompt = `Crea una carta ${rarityHint} para tema "${theme}", elemento ${element}, costo ${cost}.
 
 Ejemplos de buenos nombres para ${theme}: "${nameExamples}"
 
 Inspírate en estos estilos pero crea nombres ÚNICOS y ORIGINALES. NO copies los ejemplos.
-${rarity === 'mythic' || rarity === 'rare' ? 'Esta es una carta ' + rarity.toUpperCase() + ', el nombre debe ser ÉPICO y memorable.' : ''}
+${rarity === 'mythic' || rarity === 'rare' ? 'Esta es una carta ' + rarity.toUpperCase() + ', el nombre debe ser ÉPICO y memorable.' : ''}${avoidNamesInstruction}
 
 Devuelve SOLO este JSON:
 {
   "name": "nombre creativo en español (NO uses formato Adjetivo+Sustantivo)",
-  "description": "1-2 oraciones poéticas en español",
-  "flavorText": "frase corta memorable",
+  "description": "1-2 oraciones poéticas en español describiendo la criatura",
+  "flavorText": "cita en itálica estilo TCG: puede ser una frase enigmática, cita de un personaje del lore (con —Nombre), profecía, o fragmento poético. Ejemplos: 'Las cenizas de los caídos son suelo fértil para héroes.' / 'No temo a la muerte. Temo no haber vivido. —Koth' / 'El silencio antes de la tormenta es mentira.'",
   "cost": ${cost},
   "power": ${stats.power},
   "defense": ${stats.defense},
@@ -1003,13 +1199,34 @@ async function generateBooster(
   env: Env,
   userId: string,
   requestedThemes?: string[]
-): Promise<{ cards: CardData[]; themes: string[] }> {
+): Promise<{ cards: CardData[]; themes: string[]; dynamicTheme?: DynamicThemeConfig }> {
   const sql = neon(env.DATABASE_URL);
 
   console.log(`🎁 Generating booster pack for user ${userId}`);
 
+  let dynamicTheme: DynamicThemeConfig | undefined;
+  let themesToUse: string[] | undefined = requestedThemes;
+
+  // If no specific themes requested, generate a dynamic theme with AI
+  if (!requestedThemes || requestedThemes.length === 0) {
+    console.log(`🎨 No themes specified, generating dynamic theme with AI...`);
+    dynamicTheme = await generateDynamicTheme(env.AI);
+
+    // Add dynamic theme to THEME_CONFIG temporarily
+    THEME_CONFIG[dynamicTheme.id] = {
+      keywords: dynamicTheme.keywords,
+      contextType: dynamicTheme.contextType,
+      subCategories: dynamicTheme.subCategories,
+      defaultElement: dynamicTheme.defaultElement,
+      nameExamples: dynamicTheme.nameExamples,
+    };
+
+    themesToUse = [dynamicTheme.id];
+    console.log(`🎨 Using dynamic theme: "${dynamicTheme.displayName}" (${dynamicTheme.id})`);
+  }
+
   // Generate booster card specifications
-  const boosterSpecs = generateBoosterCards(requestedThemes);
+  const boosterSpecs = generateBoosterCards(themesToUse);
   const themesUsed = [...new Set(boosterSpecs.map(c => c.theme))];
 
   console.log(`📦 Booster themes: ${themesUsed.join(', ')}`);
@@ -1038,7 +1255,8 @@ async function generateBooster(
         env.AI,
         env.CARD_IMAGES,
         env.R2_PUBLIC_URL,
-        cardData.imagePrompt
+        cardData.imagePrompt,
+        cardData.element
       );
 
       // Create card in database
@@ -1094,7 +1312,8 @@ async function generateBooster(
 
   return {
     cards: generatedCards,
-    themes: themesUsed
+    themes: themesUsed,
+    dynamicTheme
   };
 }
 
@@ -1117,6 +1336,7 @@ export default {
     // Handle GET requests for listing themes
     if (request.method === 'GET') {
       const url = new URL(request.url);
+
       if (url.pathname === '/themes') {
         return new Response(
           JSON.stringify({
@@ -1161,7 +1381,7 @@ export default {
           );
         }
 
-        console.log(`🎁 Booster request for user ${userId}, themes: ${themes?.join(', ') || 'random'}`);
+        console.log(`🎁 Booster request for user ${userId}, themes: ${themes?.join(', ') || 'AI-generated'}`);
 
         // Generate booster synchronously (5 cards is fast enough)
         const result = await generateBooster(env, userId, themes);
@@ -1172,6 +1392,13 @@ export default {
             message: 'Booster pack generated',
             cardsGenerated: result.cards.length,
             themes: result.themes,
+            // Include dynamic theme info if AI-generated
+            dynamicTheme: result.dynamicTheme ? {
+              id: result.dynamicTheme.id,
+              displayName: result.dynamicTheme.displayName,
+              keywords: result.dynamicTheme.keywords,
+              element: result.dynamicTheme.defaultElement
+            } : undefined,
             cards: result.cards.map(c => ({
               name: c.name,
               element: c.element,

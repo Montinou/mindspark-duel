@@ -11,6 +11,7 @@ import { simulateAIAnswer } from './problem-solver';
 import { AIDifficulty, AIState } from '@/types/ai';
 import { generateBattleProblem, calculateDamage } from '@/lib/battle-service';
 import { Card } from '@/types/game';
+import { recordProblemResult } from '@/lib/gamification/adaptive-difficulty';
 
 /**
  * Thinking delay simulation - makes AI feel human-like
@@ -89,32 +90,45 @@ export class AIOpponent {
 
       console.log(`📍 Turn ${gameState.turnNumber}, Phase: ${gameState.currentPhase}`);
 
-      // Main Phase: Play cards
-      if (gameState.currentPhase === 'main') {
+      // ─────────────────────────────────────────────────────────────────────────
+      // MAIN PHASE: Jugar cartas (pre_combat_main o post_combat_main)
+      // En el sistema MTG de 12 fases, la IA juega en las fases principales
+      // ─────────────────────────────────────────────────────────────────────────
+      if (gameState.currentPhase === 'pre_combat_main' || gameState.currentPhase === 'post_combat_main') {
         await this.playCards(turnManager);
         await saveTurnManagerToDB(turnManager);
 
-        // Advance to combat phase
+        // Avanzar a la siguiente fase (begin_combat o end_step)
         await turnManager.advancePhase();
         await saveTurnManagerToDB(turnManager);
         gameState = turnManager.getState();
         console.log(`📍 Advanced to ${gameState.currentPhase} phase`);
       }
 
-      // Combat Phase: Attack
-      if (gameState.currentPhase === 'combat') {
+      // ─────────────────────────────────────────────────────────────────────────
+      // COMBAT PHASE: Fase de combate (cualquier sub-fase de combate)
+      // En MTG: begin_combat → declare_attackers → declare_blockers → combat_damage → end_combat
+      // Por ahora simplificamos: si estamos en cualquier fase de combate, ejecutamos
+      // ─────────────────────────────────────────────────────────────────────────
+      const combatPhases = ['begin_combat', 'declare_attackers', 'declare_blockers', 'combat_damage', 'end_combat'];
+      if (combatPhases.includes(gameState.currentPhase)) {
         await this.executeCombat(turnManager);
         await saveTurnManagerToDB(turnManager);
 
-        // Advance to end phase
-        await turnManager.advancePhase();
+        // Avanzar hasta salir de combate (a post_combat_main)
+        while (combatPhases.includes(turnManager.getState().currentPhase)) {
+          await turnManager.advancePhase();
+        }
         await saveTurnManagerToDB(turnManager);
         gameState = turnManager.getState();
         console.log(`📍 Advanced to ${gameState.currentPhase} phase`);
       }
 
-      // End Phase: End turn
-      if (gameState.currentPhase === 'end') {
+      // ─────────────────────────────────────────────────────────────────────────
+      // END PHASE: Finalizar turno (end_step o cleanup)
+      // En MTG: end_step → cleanup (automático, pasa turno al oponente)
+      // ─────────────────────────────────────────────────────────────────────────
+      if (gameState.currentPhase === 'end_step' || gameState.currentPhase === 'cleanup') {
         await thinkingDelay('end_turn', this.thinkingDelayEnabled);
         await turnManager.advancePhase(); // This will pass turn to player
         await saveTurnManagerToDB(turnManager);
@@ -232,10 +246,36 @@ export class AIOpponent {
         console.log(`🧠 Problem: "${problem.question}"`);
 
         // AI answers the problem
+        const startTime = Date.now();
         const aiAnswer = simulateAIAnswer(problem, this.difficulty);
+        const responseTimeMs = Date.now() - startTime + 2000; // Add simulated thinking time
         const isCorrect = aiAnswer.trim().toLowerCase() === problem.answer.trim().toLowerCase();
 
         console.log(`🧠 AI answer: "${aiAnswer}" (Correct: ${problem.answer}) - ${isCorrect ? '✅' : '❌'}`);
+
+        // Record problem result for tracking (non-blocking)
+        // This tracks AI performance for difficulty calibration
+        recordProblemResult({
+          userId: 'ai-opponent', // Special user ID for AI
+          category: problem.category as 'Math' | 'Logic' | 'Science',
+          difficulty: problem.difficulty,
+          question: problem.question,
+          correctAnswer: problem.answer,
+          userAnswer: aiAnswer,
+          isCorrect,
+          responseTimeMs,
+          timedOut: false,
+          cardId: attacker.id,
+          cardName: attacker.name,
+          cardElement: attacker.element,
+          cardCost: attacker.cost,
+          cardPower: attacker.power,
+          gameSessionId: this.gameId,
+          phase: 'attack',
+          turnNumber: gameState.turnNumber,
+          opponentType: 'ai',
+          generatedBy: 'ai_worker',
+        }).catch((err) => console.warn('Failed to record AI problem result:', err));
 
         // Calculate damage based on attack type
         if (target.targetId === 'face') {

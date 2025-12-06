@@ -27,7 +27,19 @@ import { trackEvent } from '@/lib/gamification/tracker';
 const actionSchema = z.object({
   gameId: z.string().uuid(),
   action: z.object({
-    type: z.enum(['play_card', 'attack', 'end_phase', 'pass_turn']),
+    type: z.enum([
+      'play_card',
+      'attack',
+      'end_phase',
+      'pass_turn',
+      // Nuevas acciones del sistema MTG de combate
+      'declare_attacker',
+      'declare_blocker',
+      'confirm_attackers',
+      'skip_blockers',
+      'submit_combat_answer',
+      'use_ability',
+    ]),
     data: z.record(z.string(), z.any()).optional().default({}),
   }),
 });

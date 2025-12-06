@@ -75,6 +75,13 @@ export async function loadTurnManagerFromDB(gameId: string): Promise<TurnManager
 /**
  * Serialize ExtendedGameState to JSON-safe format
  * Handles Date objects and ensures all data is serializable
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * ACTUALIZADO para sistema MTG de 12 fases:
+ * - combatState: Estado del combate actual (atacantes, bloqueadores)
+ * - playerStreakCount: Racha de respuestas correctas del jugador
+ * - opponentStreakCount: Racha de respuestas correctas del oponente
+ * ─────────────────────────────────────────────────────────────────────────
  */
 function serializeGameState(state: ExtendedGameState): any {
   return {
@@ -87,6 +94,13 @@ function serializeGameState(state: ExtendedGameState): any {
     opponentMaxMana: state.opponentMaxMana,
     playerFatigueCounter: state.playerFatigueCounter,
     opponentFatigueCounter: state.opponentFatigueCounter,
+    // ─────────────────────────────────────────────────────────────────────────
+    // NUEVOS CAMPOS - Sistema MTG de 12 fases
+    // ─────────────────────────────────────────────────────────────────────────
+    combatState: state.combatState, // null cuando no estamos en combate
+    playerStreakCount: state.playerStreakCount ?? 0,
+    opponentStreakCount: state.opponentStreakCount ?? 0,
+    // ─────────────────────────────────────────────────────────────────────────
     actions: state.actions.map((action) => ({
       ...action,
       timestamp: action.timestamp.toISOString(),
@@ -114,6 +128,12 @@ function serializeGameState(state: ExtendedGameState): any {
 /**
  * Deserialize JSON data back to ExtendedGameState
  * Reconstructs Date objects and validates data integrity
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * ACTUALIZADO para sistema MTG de 12 fases:
+ * - combatState: Restaura el estado del combate (null si no había combate)
+ * - playerStreakCount / opponentStreakCount: Restaura rachas (default 0)
+ * ─────────────────────────────────────────────────────────────────────────
  */
 function deserializeGameState(data: any, gameId: string): ExtendedGameState {
   return {
@@ -127,6 +147,14 @@ function deserializeGameState(data: any, gameId: string): ExtendedGameState {
     opponentMaxMana: data.opponentMaxMana,
     playerFatigueCounter: data.playerFatigueCounter,
     opponentFatigueCounter: data.opponentFatigueCounter,
+    // ─────────────────────────────────────────────────────────────────────────
+    // NUEVOS CAMPOS - Sistema MTG de 12 fases
+    // Usamos ?? para proveer defaults si los datos vienen de un estado antiguo
+    // ─────────────────────────────────────────────────────────────────────────
+    combatState: data.combatState ?? null,
+    playerStreakCount: data.playerStreakCount ?? 0,
+    opponentStreakCount: data.opponentStreakCount ?? 0,
+    // ─────────────────────────────────────────────────────────────────────────
     actions: data.actions.map((action: any) => ({
       ...action,
       timestamp: new Date(action.timestamp),

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { GameState, Card, Problem, Phase, Player } from '../types/game';
 import {
   assignAbilityToCard,
@@ -37,25 +37,39 @@ const initialState: GameState = {
 
 export const useGameLoop = (userDeck: Card[] = []) => {
   const [gameState, setGameState] = useState<GameState>(initialState);
-  const [deckCards] = useState<Card[]>(userDeck.length > 0 ? userDeck : []);
+  const [deckCards, setDeckCards] = useState<Card[]>([]);
   const [abilityMessage, setAbilityMessage] = useState<string | null>(null);
+
+  // Ref for stable access in callbacks (avoids stale closure issues)
+  const deckCardsRef = useRef<Card[]>([]);
+
+  // Sync userDeck prop to local state
+  useEffect(() => {
+    if (userDeck.length > 0) {
+      setDeckCards(userDeck);
+      deckCardsRef.current = userDeck;
+    }
+  }, [userDeck]);
 
   // --- Helper Functions ---
 
   const drawCard = (playerId: string, count: number = 1) => {
     setGameState((prev) => {
       const player = prev[playerId as 'player' | 'enemy'];
-      if (player.deck <= 0 || deckCards.length === 0) {
+      const currentDeck = deckCardsRef.current;
+
+      if (player.deck <= 0 || currentDeck.length === 0) {
+        console.warn(`drawCard failed: deck=${player.deck}, deckCards=${currentDeck.length}`);
         return prev;
       }
 
       const newCards = [];
       for (let i = 0; i < count; i++) {
-        const randomIndex = Math.floor(Math.random() * deckCards.length);
+        const randomIndex = Math.floor(Math.random() * currentDeck.length);
         // Assign ability to each new card
         const cardWithAbility = assignAbilityToCard({
-          ...deckCards[randomIndex],
-          id: `${deckCards[randomIndex].id}-${Date.now()}-${i}`,
+          ...currentDeck[randomIndex],
+          id: `${currentDeck[randomIndex].id}-${Date.now()}-${i}`,
         });
         newCards.push(cardWithAbility);
       }
@@ -106,6 +120,12 @@ export const useGameLoop = (userDeck: Card[] = []) => {
   // --- Actions ---
 
   const initializeGame = useCallback(() => {
+    // Guard: Don't initialize if deck is not loaded yet
+    if (deckCardsRef.current.length === 0) {
+      console.warn('initializeGame: waiting for deck to load...');
+      return;
+    }
+    console.log(`initializeGame: starting with ${deckCardsRef.current.length} cards`);
     setGameState(initialState);
     drawCard('player', STARTING_HAND_SIZE);
     drawCard('enemy', STARTING_HAND_SIZE);
@@ -355,10 +375,11 @@ export const useGameLoop = (userDeck: Card[] = []) => {
       const newMaxMana = Math.min(MAX_MANA, enemy.maxMana + 1);
 
       let newHand = [...enemy.hand];
-      if (enemy.deck > 0 && deckCards.length > 0) {
-        const randomIndex = Math.floor(Math.random() * deckCards.length);
+      const currentDeck = deckCardsRef.current;
+      if (enemy.deck > 0 && currentDeck.length > 0) {
+        const randomIndex = Math.floor(Math.random() * currentDeck.length);
         const cardWithAbility = assignAbilityToCard({
-          ...deckCards[randomIndex],
+          ...currentDeck[randomIndex],
           id: `enemy-${Date.now()}`,
         });
         newHand.push(cardWithAbility);
@@ -504,11 +525,14 @@ export const useGameLoop = (userDeck: Card[] = []) => {
 
     setGameState((prev) => ({ ...prev, turn: prev.turn + 1 }));
     startTurn('player');
-  }, [deckCards]);
+  }, []); // No dependencies needed - uses deckCardsRef for stable access
 
+  // Initialize game when deck is loaded
   useEffect(() => {
-    initializeGame();
-  }, [initializeGame]);
+    if (deckCards.length > 0) {
+      initializeGame();
+    }
+  }, [deckCards.length, initializeGame]);
 
   return {
     gameState,

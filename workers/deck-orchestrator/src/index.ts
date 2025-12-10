@@ -31,7 +31,8 @@ interface BoosterRequest {
 }
 
 // Rarity tiers - defined first so it can be used in interfaces
-type Rarity = 'common' | 'uncommon' | 'rare' | 'mythic';
+// Must match database enum: 'common', 'uncommon', 'rare', 'epic', 'legendary'
+type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
 interface BoosterCard {
   theme: string;
@@ -67,7 +68,13 @@ const RARITY_CONFIG: Record<Rarity, {
     imageQuality: 'masterwork illustration, museum quality, intricate details, perfect lighting',
     dropWeight: 15
   },
-  mythic: {
+  epic: {
+    statMultiplier: 1.4,
+    costBonus: 2,
+    imageQuality: 'epic masterpiece, dramatic lighting, ultra detailed, stunning composition',
+    dropWeight: 8
+  },
+  legendary: {
     statMultiplier: 1.5,
     costBonus: 3,
     imageQuality: 'legendary masterpiece, divine lighting, ultra detailed, breathtaking composition, award winning art',
@@ -75,27 +82,27 @@ const RARITY_CONFIG: Record<Rarity, {
   }
 };
 
-// Booster pack configuration: 5 cards (2 common, 2 uncommon, 1 rare/mythic)
+// Booster pack configuration: 5 cards (2 common, 2 uncommon, 1 rare/epic/legendary)
 const BOOSTER_CONFIG = {
   cards: 5,
   rarityDistribution: [
     { rarity: 'common' as Rarity, count: 2, costRange: [1, 3] },
     { rarity: 'uncommon' as Rarity, count: 2, costRange: [2, 4] },
-    // Last slot: 85% rare, 15% mythic
-    { rarity: 'rare_or_mythic' as const, count: 1, costRange: [4, 7], rareChance: 0.85 }
+    // Last slot: 70% rare, 20% epic, 10% legendary
+    { rarity: 'rare_or_higher' as const, count: 1, costRange: [4, 7], rareChance: 0.70, epicChance: 0.20 }
   ]
 };
 
-// Starter deck configuration: 20 cards with 1 guaranteed mythic
+// Starter deck configuration: 20 cards with 1 guaranteed legendary
 const STARTER_DECK_RARITY_PATTERN = [
   // First 5: 2 common, 2 uncommon, 1 rare
   'common', 'common', 'uncommon', 'uncommon', 'rare',
   // Second 5: 2 common, 2 uncommon, 1 rare
   'common', 'common', 'uncommon', 'uncommon', 'rare',
-  // Third 5: 2 common, 2 uncommon, 1 rare
-  'common', 'common', 'uncommon', 'uncommon', 'rare',
-  // Fourth 5: 1 common, 2 uncommon, 1 rare, 1 MYTHIC (guaranteed)
-  'common', 'uncommon', 'uncommon', 'rare', 'mythic'
+  // Third 5: 2 common, 2 uncommon, 1 epic
+  'common', 'common', 'uncommon', 'uncommon', 'epic',
+  // Fourth 5: 1 common, 2 uncommon, 1 rare, 1 LEGENDARY (guaranteed)
+  'common', 'uncommon', 'uncommon', 'rare', 'legendary'
 ] as Rarity[];
 
 interface ProblemHints {
@@ -605,7 +612,7 @@ function generateCardStats(cost: number, rarity: Rarity = 'common'): { power: nu
   defense = Math.round(defense * rarityConfig.statMultiplier);
 
   // Max cap is higher for rarer cards
-  const maxStat = rarity === 'mythic' ? 15 : rarity === 'rare' ? 13 : rarity === 'uncommon' ? 11 : 10;
+  const maxStat = rarity === 'legendary' ? 15 : rarity === 'epic' ? 14 : rarity === 'rare' ? 13 : rarity === 'uncommon' ? 11 : 10;
 
   return {
     power: clamp(power, 1, maxStat),
@@ -640,8 +647,9 @@ async function generateCardWithAI(
   const keywords = shuffleArray([...elementConfig.keywords, ...themeConfig.keywords]).slice(0, 5);
 
   // Rarity indicator for name generation
-  const rarityHint = rarity === 'mythic' ? 'LEGENDARIA y ÉPICA' :
-                     rarity === 'rare' ? 'PODEROSA y MEMORABLE' :
+  const rarityHint = rarity === 'legendary' ? 'LEGENDARIA y ÉPICA' :
+                     rarity === 'epic' ? 'ÉPICA y PODEROSA' :
+                     rarity === 'rare' ? 'RARA y MEMORABLE' :
                      rarity === 'uncommon' ? 'NOTABLE' : 'COMÚN';
 
   const systemPrompt = `Genera JSON para una carta de juego TCG. Solo devuelve JSON válido, sin explicaciones.`;
@@ -659,7 +667,7 @@ async function generateCardWithAI(
 Ejemplos de buenos nombres para ${theme}: "${nameExamples}"
 
 Inspírate en estos estilos pero crea nombres ÚNICOS y ORIGINALES. NO copies los ejemplos.
-${rarity === 'mythic' || rarity === 'rare' ? 'Esta es una carta ' + rarity.toUpperCase() + ', el nombre debe ser ÉPICO y memorable.' : ''}${avoidNamesInstruction}
+${rarity === 'legendary' || rarity === 'epic' || rarity === 'rare' ? 'Esta es una carta ' + rarity.toUpperCase() + ', el nombre debe ser ÉPICO y memorable.' : ''}${avoidNamesInstruction}
 
 Devuelve SOLO este JSON:
 {
@@ -1172,12 +1180,20 @@ function generateBoosterCards(themes?: string[]): BoosterCard[] {
       const element = pickRandom(elements);
       const category = pickRandom(categories);
 
-      // Determine rarity (handle rare_or_mythic slot)
+      // Determine rarity (handle rare_or_higher slot)
       let rarity: Rarity;
-      if (slot.rarity === 'rare_or_mythic') {
-        // 85% rare, 15% mythic
-        const rareChance = (slot as { rareChance?: number }).rareChance ?? 0.85;
-        rarity = Math.random() < rareChance ? 'rare' : 'mythic';
+      if (slot.rarity === 'rare_or_higher') {
+        // 70% rare, 20% epic, 10% legendary
+        const roll = Math.random();
+        const rareChance = (slot as { rareChance?: number }).rareChance ?? 0.70;
+        const epicChance = (slot as { epicChance?: number }).epicChance ?? 0.20;
+        if (roll < rareChance) {
+          rarity = 'rare';
+        } else if (roll < rareChance + epicChance) {
+          rarity = 'epic';
+        } else {
+          rarity = 'legendary';
+        }
       } else {
         rarity = slot.rarity as Rarity;
       }

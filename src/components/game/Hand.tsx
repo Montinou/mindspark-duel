@@ -16,8 +16,8 @@ export function Hand({ cards, onPlayCard, currentMana, isMyTurn }: HandProps) {
   const totalCards = cards.length;
   const prefersReducedMotion = useReducedMotion();
 
-  // Card dimensions - responsive based on viewport (MTG style cards are larger)
-  const cardWidth = 192; // w-48 = 192px
+  // Card dimensions - responsive based on viewport (MTG full-art style)
+  const cardWidth = 208; // w-52 = 208px
 
   // Calculate spacing between cards based on count
   // More cards = less spacing to fit them all
@@ -27,7 +27,7 @@ export function Hand({ cards, onPlayCard, currentMana, isMyTurn }: HandProps) {
 
   return (
     <div
-      className="relative h-52 md:h-64 lg:h-80 w-full max-w-6xl mx-auto"
+      className="relative h-56 md:h-68 lg:h-80 w-full max-w-6xl mx-auto"
       role="region"
       aria-label={`Tu mano: ${cards.length} cartas`}
     >

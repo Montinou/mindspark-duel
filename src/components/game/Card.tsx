@@ -19,70 +19,58 @@ interface CardProps {
   className?: string;
 }
 
-// Element color mapping using CSS variables for centralized theming
+// Element color mapping for theming
 const ELEMENT_STYLES = {
   Fire: {
-    frame: 'from-red-700 via-red-600 to-red-800',
-    border: 'border-red-500/60',
-    glow: 'shadow-[0_0_30px_var(--element-fire-glow)]',
-    textBox: 'bg-gradient-to-b from-red-950/95 to-red-900/90',
-    accent: 'text-red-300',
+    frame: 'from-red-600 via-red-500 to-red-700',
+    border: 'border-red-400',
+    glow: 'shadow-[0_0_25px_rgba(239,68,68,0.5)]',
+    textBoxBg: 'from-red-950/85 via-red-900/80 to-red-950/85',
+    accent: 'text-red-200',
     badge: 'bg-red-600',
+    statsBg: 'bg-red-800/90',
   },
   Water: {
-    frame: 'from-blue-700 via-blue-600 to-blue-800',
-    border: 'border-blue-500/60',
-    glow: 'shadow-[0_0_30px_var(--element-water-glow)]',
-    textBox: 'bg-gradient-to-b from-blue-950/95 to-blue-900/90',
-    accent: 'text-blue-300',
+    frame: 'from-blue-600 via-blue-500 to-blue-700',
+    border: 'border-blue-400',
+    glow: 'shadow-[0_0_25px_rgba(59,130,246,0.5)]',
+    textBoxBg: 'from-blue-950/85 via-blue-900/80 to-blue-950/85',
+    accent: 'text-blue-200',
     badge: 'bg-blue-600',
+    statsBg: 'bg-blue-800/90',
   },
   Earth: {
-    frame: 'from-green-700 via-green-600 to-green-800',
-    border: 'border-green-500/60',
-    glow: 'shadow-[0_0_30px_var(--element-earth-glow)]',
-    textBox: 'bg-gradient-to-b from-green-950/95 to-green-900/90',
-    accent: 'text-green-300',
+    frame: 'from-green-600 via-green-500 to-green-700',
+    border: 'border-green-400',
+    glow: 'shadow-[0_0_25px_rgba(34,197,94,0.5)]',
+    textBoxBg: 'from-green-950/85 via-green-900/80 to-green-950/85',
+    accent: 'text-green-200',
     badge: 'bg-green-600',
+    statsBg: 'bg-green-800/90',
   },
   Air: {
-    frame: 'from-purple-700 via-purple-600 to-purple-800',
-    border: 'border-purple-500/60',
-    glow: 'shadow-[0_0_30px_var(--element-air-glow)]',
-    textBox: 'bg-gradient-to-b from-purple-950/95 to-purple-900/90',
-    accent: 'text-purple-300',
+    frame: 'from-purple-600 via-purple-500 to-purple-700',
+    border: 'border-purple-400',
+    glow: 'shadow-[0_0_25px_rgba(168,85,247,0.5)]',
+    textBoxBg: 'from-purple-950/85 via-purple-900/80 to-purple-950/85',
+    accent: 'text-purple-200',
     badge: 'bg-purple-600',
+    statsBg: 'bg-purple-800/90',
   },
 } as const;
 
 const DEFAULT_ELEMENT_STYLE = {
-  frame: 'from-zinc-700 via-zinc-600 to-zinc-800',
-  border: 'border-zinc-500/60',
-  glow: 'shadow-[0_0_30px_var(--element-neutral-glow)]',
-  textBox: 'bg-gradient-to-b from-zinc-950/95 to-zinc-900/90',
-  accent: 'text-zinc-300',
+  frame: 'from-zinc-600 via-zinc-500 to-zinc-700',
+  border: 'border-zinc-400',
+  glow: 'shadow-[0_0_25px_rgba(161,161,170,0.5)]',
+  textBoxBg: 'from-zinc-950/85 via-zinc-900/80 to-zinc-950/85',
+  accent: 'text-zinc-200',
   badge: 'bg-zinc-600',
+  statsBg: 'bg-zinc-800/90',
 };
 
-// Helper function to get element-based colors
 const getElementColors = (element: string) => {
   return ELEMENT_STYLES[element as keyof typeof ELEMENT_STYLES] || DEFAULT_ELEMENT_STYLE;
-};
-
-// Mana gem component for cost display (MTG style)
-const ManaGem = ({ cost, element }: { cost: number; element: string }) => {
-  const colors = getElementColors(element);
-  return (
-    <div className={`
-      w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center
-      ${colors.badge} border-2 border-black/50
-      shadow-[inset_0_2px_4px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.3)]
-    `}>
-      <span className="text-white font-bold text-sm md:text-base drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
-        {cost}
-      </span>
-    </div>
-  );
 };
 
 function CardComponent({
@@ -99,13 +87,11 @@ function CardComponent({
   const [imgError, setImgError] = useState(false);
   const prefersReducedMotion = useReducedMotion();
 
-  // Check if ability can be used (only on board, has ability, has mana, not used this turn)
   const abilityAvailable = isOnBoard && card.ability && canUseAbility(card, currentMana);
 
-  // Reduced motion safe animation props
   const hoverAnimation = prefersReducedMotion ? undefined : {
     scale: 1.05,
-    y: -10,
+    y: -8,
     zIndex: 100,
     transition: { type: "spring" as const, stiffness: 400, damping: 25 }
   };
@@ -121,7 +107,7 @@ function CardComponent({
       whileHover={!disabled ? hoverAnimation : undefined}
       whileTap={!disabled ? tapAnimation : undefined}
       className={`
-        relative w-48 h-[272px] md:w-56 md:h-[320px] lg:w-64 lg:h-[368px] cursor-pointer transition-all duration-200
+        relative w-52 h-72 md:w-60 md:h-[336px] lg:w-64 lg:h-[360px] cursor-pointer transition-all duration-200 rounded-xl overflow-hidden
         ${disabled ? 'grayscale brightness-75 cursor-not-allowed' : elementColors.glow}
         ${isPlayable ? 'ring-2 ring-yellow-400 ring-offset-2 ring-offset-black' : ''}
         ${card.canAttack ? 'ring-2 ring-red-500 ring-offset-2 ring-offset-black animate-pulse' : ''}
@@ -136,211 +122,207 @@ function CardComponent({
           onClick?.(card);
         }
       }}
-      style={{
-        transformOrigin: 'center bottom'
-      }}
+      style={{ transformOrigin: 'center bottom' }}
     >
       {/* ═══════════════════════════════════════════════════════════════════════════
-          OUTER FRAME - Marco exterior con gradiente del elemento
+          CARD FRAME - Borde exterior con gradiente del elemento
           ═══════════════════════════════════════════════════════════════════════════ */}
       <div className={`
-        absolute inset-0 rounded-xl overflow-hidden
+        absolute inset-0 rounded-xl
         bg-gradient-to-b ${elementColors.frame}
-        border-2 ${elementColors.border}
+        p-[3px]
       `}>
-        {/* Inner black border */}
-        <div className="absolute inset-[3px] rounded-lg bg-black/90 overflow-hidden">
+        <div className="relative w-full h-full rounded-lg overflow-hidden bg-black">
 
           {/* ═══════════════════════════════════════════════════════════════════════════
-              HEADER BAR - Nombre + Costo de maná (estilo MTG)
+              FULL-ART BACKGROUND IMAGE - Imagen como fondo completo
               ═══════════════════════════════════════════════════════════════════════════ */}
-          <div className={`
-            relative h-8 md:h-9 lg:h-10 mx-1.5 mt-1.5 rounded-t-md overflow-hidden
-            bg-gradient-to-r ${elementColors.frame}
-            border border-black/40
-            flex items-center justify-between px-2
-          `}>
-            {/* Card Name */}
-            <h3 className="text-white font-bold text-xs md:text-sm lg:text-base truncate flex-1 pr-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-              {card.name}
-            </h3>
-
-            {/* Mana Cost */}
-            <ManaGem cost={card.cost} element={card.element} />
-          </div>
-
-          {/* ═══════════════════════════════════════════════════════════════════════════
-              ART BOX - Imagen de la carta (área principal)
-              ═══════════════════════════════════════════════════════════════════════════ */}
-          <div className="relative mx-1.5 mt-0.5 h-[100px] md:h-[130px] lg:h-[160px] overflow-hidden border border-black/60">
+          <div className="absolute inset-0">
             {card.imageUrl && !imgError ? (
               <Image
                 src={card.imageUrl}
                 alt={card.name}
                 fill
                 className="object-cover"
-                sizes="(max-width: 768px) 192px, (max-width: 1024px) 224px, 256px"
+                sizes="(max-width: 768px) 208px, (max-width: 1024px) 240px, 256px"
                 onError={() => setImgError(true)}
                 priority={false}
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-zinc-600">
-                <Zap className="w-10 h-10 md:w-12 md:h-12 lg:w-14 lg:h-14" />
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-900 to-zinc-950 text-zinc-700">
+                <Zap className="w-16 h-16 md:w-20 md:h-20" />
               </div>
-            )}
-
-            {/* Shimmer overlay on hover */}
-            {!prefersReducedMotion && (
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent pointer-events-none"
-                initial={{ opacity: 0, x: '-100%' }}
-                whileHover={{
-                  opacity: 1,
-                  x: '100%',
-                  transition: { duration: 0.6, ease: "easeInOut" }
-                }}
-              />
             )}
           </div>
 
+          {/* Gradient overlay for text readability */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60 pointer-events-none" />
+
           {/* ═══════════════════════════════════════════════════════════════════════════
-              TYPE BAR - Tipo de carta + Categoría de problema
+              HEADER - Nombre + Costo de maná (sobre la imagen)
               ═══════════════════════════════════════════════════════════════════════════ */}
           <div className={`
-            relative h-6 md:h-7 mx-1.5 mt-0.5 rounded-sm overflow-hidden
+            absolute top-0 left-0 right-0 z-10
             bg-gradient-to-r ${elementColors.frame}
-            border border-black/40
-            flex items-center justify-between px-2
+            border-b-2 border-black/50
+            px-2 py-1.5 md:py-2
+            flex items-center justify-between
           `}>
-            {/* Element Type */}
-            <span className="text-white text-[10px] md:text-xs font-semibold uppercase tracking-wide drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
+            <h3 className="text-white font-bold text-sm md:text-base truncate flex-1 pr-2 drop-shadow-[0_2px_2px_rgba(0,0,0,0.9)]">
+              {card.name}
+            </h3>
+
+            {/* Mana Cost Gem */}
+            <div className={`
+              w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center
+              ${elementColors.badge} border-2 border-black/60
+              shadow-[inset_0_2px_4px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.4),0_2px_4px_rgba(0,0,0,0.5)]
+            `}>
+              <span className="text-white font-bold text-base md:text-lg drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+                {card.cost}
+              </span>
+            </div>
+          </div>
+
+          {/* ═══════════════════════════════════════════════════════════════════════════
+              TYPE BAR - Tipo de criatura + Categoría (barra intermedia)
+              ═══════════════════════════════════════════════════════════════════════════ */}
+          <div className={`
+            absolute left-0 right-0 z-10
+            bottom-[120px] md:bottom-[140px] lg:bottom-[150px]
+            bg-gradient-to-r ${elementColors.frame}
+            border-y-2 border-black/50
+            px-2 py-1
+            flex items-center justify-between
+          `}>
+            <span className="text-white text-[10px] md:text-xs font-semibold uppercase tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
               {card.element} Creature
             </span>
 
-            {/* Problem Category Badge */}
-            <div className="flex items-center gap-1 bg-black/30 px-1.5 py-0.5 rounded">
-              <Brain size={10} className="text-purple-300" />
-              <span className="text-purple-200 text-[8px] md:text-[10px] uppercase font-bold">
+            <div className="flex items-center gap-1 bg-black/40 px-1.5 py-0.5 rounded border border-white/20">
+              <Brain size={12} className="text-purple-300" />
+              <span className="text-purple-200 text-[9px] md:text-[10px] uppercase font-bold">
                 {card.problemCategory}
               </span>
             </div>
           </div>
 
           {/* ═══════════════════════════════════════════════════════════════════════════
-              TEXT BOX - Descripción + Habilidades + Flavor Text
+              TEXT BOX - Caja de texto transparente en la parte inferior
               ═══════════════════════════════════════════════════════════════════════════ */}
           <div className={`
-            relative mx-1.5 mt-0.5 rounded-b-sm overflow-hidden
-            ${elementColors.textBox}
-            border border-black/40
-            p-2 flex flex-col
-            h-[72px] md:h-[88px] lg:h-[104px]
+            absolute bottom-0 left-0 right-0 z-10
+            bg-gradient-to-b ${elementColors.textBoxBg}
+            backdrop-blur-sm
+            border-t-2 border-black/50
+            px-2.5 pt-2 pb-1.5
+            h-[100px] md:h-[115px] lg:h-[125px]
+            flex flex-col
           `}>
-            {/* Ability (if exists) */}
+            {/* Ability Button (if exists) */}
             {card.ability && (
-              <div className="mb-1">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (abilityAvailable && onUseAbility) {
-                      onUseAbility(card);
-                    }
-                  }}
-                  disabled={!abilityAvailable}
-                  aria-label={`Use ability ${card.ability.name}, costs ${card.ability.manaCost} mana`}
-                  className={`
-                    w-full text-left px-1.5 py-0.5 rounded text-[9px] md:text-[10px]
-                    transition-all duration-200
-                    ${abilityAvailable
-                      ? 'bg-purple-600/60 hover:bg-purple-500/70 text-white cursor-pointer border border-purple-400/40'
-                      : 'bg-black/30 text-zinc-500 border border-zinc-700/30'
-                    }
-                  `}
-                  title={card.ability.description}
-                >
-                  <span className="flex items-center gap-1">
-                    <Sparkles size={10} className="flex-shrink-0" />
-                    <span className="font-bold">{card.ability.name}</span>
-                    <span className="text-purple-300 ml-auto">({card.ability.manaCost})</span>
-                  </span>
-                </button>
-              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (abilityAvailable && onUseAbility) {
+                    onUseAbility(card);
+                  }
+                }}
+                disabled={!abilityAvailable}
+                aria-label={`Use ability ${card.ability.name}, costs ${card.ability.manaCost} mana`}
+                className={`
+                  w-full text-left px-2 py-1 rounded text-[10px] md:text-[11px] mb-1.5
+                  transition-all duration-200
+                  ${abilityAvailable
+                    ? 'bg-purple-600/70 hover:bg-purple-500/80 text-white cursor-pointer border border-purple-400/50 shadow-lg'
+                    : 'bg-black/40 text-zinc-400 border border-zinc-600/40'
+                  }
+                `}
+                title={card.ability.description}
+              >
+                <span className="flex items-center gap-1.5">
+                  <Sparkles size={12} className="flex-shrink-0" />
+                  <span className="font-bold truncate">{card.ability.name}</span>
+                  <span className="text-purple-200 ml-auto font-mono">({card.ability.manaCost})</span>
+                </span>
+              </button>
             )}
 
-            {/* Effect Description */}
-            {card.effectDescription && (
-              <p className="text-white text-[9px] md:text-[10px] leading-tight mb-1">
-                {card.effectDescription}
-              </p>
-            )}
-
-            {/* Flavor Text - Italic narrative */}
+            {/* Flavor Text */}
             <p className={`
-              ${elementColors.accent} text-[8px] md:text-[9px] leading-tight italic
-              line-clamp-2 md:line-clamp-3
-              ${card.ability || card.effectDescription ? 'mt-auto' : ''}
+              ${elementColors.accent} text-[9px] md:text-[10px] lg:text-[11px] leading-snug italic
+              ${card.ability ? 'line-clamp-2' : 'line-clamp-3 md:line-clamp-4'}
+              flex-1
             `}>
               &ldquo;{card.description}&rdquo;
             </p>
-          </div>
 
-          {/* ═══════════════════════════════════════════════════════════════════════════
-              FOOTER BAR - Stats Power/Defense (estilo MTG)
-              ═══════════════════════════════════════════════════════════════════════════ */}
-          <div className="relative mx-1.5 mt-0.5 mb-1.5 flex items-center justify-between">
-            {/* Theme/Collection indicator */}
-            {card.theme && (
-              <span className="text-zinc-500 text-[7px] md:text-[8px] italic truncate max-w-[60%]">
-                {card.theme}
-              </span>
-            )}
-
-            {/* Spacer if no theme */}
-            {!card.theme && <div />}
-
-            {/* Power/Toughness Box - MTG style corner stats */}
-            <div className={`
-              flex items-center gap-0 rounded overflow-hidden
-              bg-gradient-to-r ${elementColors.frame}
-              border border-black/60
-              shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)]
-            `}>
-              {/* Power */}
-              <div className="flex items-center gap-0.5 px-1.5 py-0.5 border-r border-black/40">
-                <Sword size={10} className="text-white/80" />
-                <span className="text-white font-bold text-xs md:text-sm drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
-                  {card.power}
+            {/* ═══════════════════════════════════════════════════════════════════════════
+                STATS BAR - Power/Defense en la parte inferior de la caja de texto
+                ═══════════════════════════════════════════════════════════════════════════ */}
+            <div className="flex items-center justify-between mt-auto pt-1.5 border-t border-white/10">
+              {/* Theme indicator */}
+              {card.theme && (
+                <span className="text-white/50 text-[8px] md:text-[9px] italic truncate max-w-[50%]">
+                  {card.theme}
                 </span>
-              </div>
+              )}
+              {!card.theme && <div />}
 
-              {/* Defense */}
-              <div className="flex items-center gap-0.5 px-1.5 py-0.5">
-                <Shield size={10} className="text-white/80" />
-                <span className="text-white font-bold text-xs md:text-sm drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
-                  {card.defense}
-                </span>
+              {/* Power / Defense Box */}
+              <div className={`
+                flex items-center rounded overflow-hidden
+                ${elementColors.statsBg}
+                border border-black/60
+                shadow-[inset_0_1px_2px_rgba(255,255,255,0.15)]
+              `}>
+                <div className="flex items-center gap-1 px-2 py-0.5 border-r border-black/40">
+                  <Sword size={12} className="text-red-300" />
+                  <span className="text-white font-bold text-sm md:text-base drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
+                    {card.power}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 px-2 py-0.5">
+                  <Shield size={12} className="text-green-300" />
+                  <span className="text-white font-bold text-sm md:text-base drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
+                    {card.defense}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Shimmer effect on hover */}
+          {!prefersReducedMotion && (
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none z-20"
+              initial={{ opacity: 0, x: '-100%' }}
+              whileHover={{
+                opacity: 1,
+                x: '100%',
+                transition: { duration: 0.5, ease: "easeInOut" }
+              }}
+            />
+          )}
         </div>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════════════
-          STATUS BADGES - Indicadores de estado del juego
+          STATUS BADGES - Indicadores de estado flotantes
           ═══════════════════════════════════════════════════════════════════════════ */}
-      <div className="absolute top-3 right-3 flex flex-col gap-0.5 z-20">
+      <div className="absolute top-12 right-2 flex flex-col gap-1 z-30">
         {isPlayable && (
-          <span className="bg-yellow-500 text-black text-[7px] md:text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider shadow-lg">
+          <span className="bg-yellow-500 text-black text-[8px] md:text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider shadow-lg">
             Playable
           </span>
         )}
         {card.canAttack && (
-          <span className="bg-red-600 text-white text-[7px] md:text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider shadow-lg animate-pulse">
+          <span className="bg-red-600 text-white text-[8px] md:text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider shadow-lg animate-pulse">
             Attack!
           </span>
         )}
         {card.isTapped && (
-          <span className="bg-zinc-700 text-zinc-300 text-[7px] md:text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+          <span className="bg-zinc-700 text-zinc-300 text-[8px] md:text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
             Tapped
           </span>
         )}

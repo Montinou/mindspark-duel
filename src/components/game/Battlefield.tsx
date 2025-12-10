@@ -357,9 +357,9 @@ export function Battlefield({ userDeck, useNewPhaseSystem = false, gameId }: Bat
         {/* Divider / Combat Zone */}
         <div className="w-full h-px bg-gradient-to-r from-transparent via-zinc-700 to-transparent my-4 opacity-50" />
 
-        {/* Player Board */}
+        {/* Player Board - adjusted for larger MTG-style cards */}
         <div
-          className="flex justify-center gap-2 md:gap-4 lg:gap-6 min-h-[160px] md:min-h-[220px] lg:min-h-[280px] w-full px-2 md:px-6 lg:px-12 items-center overflow-x-auto md:overflow-visible"
+          className="flex justify-center gap-1 md:gap-2 lg:gap-4 min-h-[180px] md:min-h-[240px] lg:min-h-[300px] w-full px-2 md:px-4 lg:px-8 items-center overflow-x-auto md:overflow-visible"
           role="region"
           aria-label="Tu campo de batalla"
         >
@@ -373,15 +373,16 @@ export function Battlefield({ userDeck, useNewPhaseSystem = false, gameId }: Bat
                 <motion.div
                   key={card.id}
                   ref={(el) => updateCardPosition(card.id, el)}
-                  initial={{ scale: 0.8, opacity: 0, y: 50 }}
+                  initial={{ scale: 0.5, opacity: 0, y: 50 }}
                   animate={{
-                    scale: 1,
+                    scale: 0.65,
                     opacity: 1,
                     y: 0,
                     // Attacker glow animation
                     ...(isSelectedAttacker && inDeclareAttackersPhase ? attackerGlow.animate : {}),
                   }}
-                  exit={{ scale: 0.8, opacity: 0 }}
+                  whileHover={{ scale: 0.75 }}
+                  exit={{ scale: 0.5, opacity: 0 }}
                   className={`relative ${isSelectedAttacker ? 'ring-4 ring-red-500 shadow-lg shadow-red-500/50 rounded-xl' : ''}`}
                 >
                   <Card

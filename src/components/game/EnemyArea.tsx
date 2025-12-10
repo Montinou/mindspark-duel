@@ -33,9 +33,9 @@ export function EnemyArea({ enemy }: EnemyAreaProps) {
       </div>
 
       {/* Enemy Board */}
-      <div className="flex justify-center gap-4 min-h-[200px] w-full px-12">
+      <div className="flex justify-center gap-3 min-h-[200px] w-full px-8">
         {enemy.board.map((card) => (
-          <div key={card.id} className="transform rotate-180 scale-90 hover:scale-100 transition-transform">
+          <div key={card.id} className="transform rotate-180 scale-[0.65] hover:scale-[0.75] transition-transform">
              <Card card={card} disabled />
           </div>
         ))}

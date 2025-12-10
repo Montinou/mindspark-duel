@@ -16,18 +16,18 @@ export function Hand({ cards, onPlayCard, currentMana, isMyTurn }: HandProps) {
   const totalCards = cards.length;
   const prefersReducedMotion = useReducedMotion();
 
-  // Card dimensions - responsive based on viewport
-  const cardWidth = 140;
+  // Card dimensions - responsive based on viewport (MTG style cards are larger)
+  const cardWidth = 192; // w-48 = 192px
 
   // Calculate spacing between cards based on count
   // More cards = less spacing to fit them all
-  // Reduced spacing on mobile for better fit
-  const baseSpacing = Math.max(40, 100 - (totalCards * 8));
+  // Adjusted spacing for larger MTG-style cards
+  const baseSpacing = Math.max(50, 120 - (totalCards * 10));
   const spacing = totalCards > 1 ? baseSpacing : 0;
 
   return (
     <div
-      className="relative h-48 md:h-60 lg:h-72 w-full max-w-5xl mx-auto"
+      className="relative h-52 md:h-64 lg:h-80 w-full max-w-6xl mx-auto"
       role="region"
       aria-label={`Tu mano: ${cards.length} cartas`}
     >
@@ -44,34 +44,35 @@ export function Hand({ cards, onPlayCard, currentMana, isMyTurn }: HandProps) {
           const isPlayable = isMyTurn && currentMana >= card.cost;
 
           // Animation props based on reduced motion preference
+          // Adjusted scales for larger MTG-style cards
           const animateProps = prefersReducedMotion ? {
             y: translateY,
             x: translateX,
             rotate: 0,
             opacity: 1,
-            scale: 0.55,
+            scale: 0.5,
             zIndex: index
           } : {
             y: translateY,
             x: translateX,
             rotate: rotate,
             opacity: 1,
-            scale: 0.55, // Smaller scale for better mobile fit
+            scale: 0.5, // Smaller scale for larger cards
             zIndex: index
           };
 
           const hoverProps = prefersReducedMotion ? undefined : {
-            y: -60,
+            y: -70,
             zIndex: 100,
-            scale: 0.75,
+            scale: 0.7,
             rotate: 0,
             transition: { type: "spring" as const, stiffness: 400, damping: 25 }
           };
 
           const tapProps = prefersReducedMotion ? undefined : {
-            y: -80,
+            y: -90,
             zIndex: 100,
-            scale: 0.85,
+            scale: 0.8,
             rotate: 0,
           };
 

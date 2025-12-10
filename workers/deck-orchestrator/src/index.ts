@@ -999,9 +999,9 @@ async function finalizeDeck(
 // Main Orchestration Logic
 // ============================================
 
-// Max cards to process per invocation to stay within CPU limits
-// Reduced to 1 for more reliable self-chaining on free tier
-const CARDS_PER_BATCH = 1;
+// Max cards to process per invocation
+// Set to 20 to process all cards in one call (self-chaining doesn't work due to CF Workers limitation)
+const CARDS_PER_BATCH = 20;
 
 async function generateDeck(
   env: Env,
@@ -1425,8 +1425,8 @@ export default {
         );
       }
 
-      // Get the worker URL from the request
-      const workerUrl = url.origin;
+      // Use hardcoded worker URL for self-chaining (url.origin can fail in CF Workers)
+      const workerUrl = 'https://mindspark-deck-orchestrator.agusmontoya.workers.dev';
 
       // Use waitUntil to process in background
       ctx.waitUntil(

@@ -30,7 +30,7 @@ export async function startDeckGeneration(themeId: string) {
   // Generate placeholder cards
   const { MANA_CURVE, getProblemTypeForTheme } = await import("@/lib/game/deck-templates");
   const { generateCardStats } = await import("@/lib/game/balance");
-  const { cards, userCards } = await import("@/db/schema");
+  const { cards, userCards, deckCards } = await import("@/db/schema");
 
   const cardsToCreate: any[] = [];
 
@@ -52,17 +52,25 @@ export async function startDeckGeneration(themeId: string) {
         createdById: user.id,
         imagePrompt: `A fantasy card art for a ${themeId} creature with ${stats.power} power and ${stats.defense} defense.`,
         description: "A placeholder card.",
+        generationStatus: "pending", // Ensure status is set for worker to find
       });
     }
   }
 
-  // Insert cards and link to user
+  // Insert cards and link to user AND deck
   // Note: In a real app, we might want to batch this better or use a transaction
   for (const cardData of cardsToCreate) {
     const [card] = await db.insert(cards).values(cardData).returning();
+    // Link card to user's collection
     await db.insert(userCards).values({
       userId: user.id,
       cardId: card.id,
+    });
+    // Link card to deck (required for worker to find pending cards)
+    await db.insert(deckCards).values({
+      deckId: newDeck.id,
+      cardId: card.id,
+      quantity: 1,
     });
   }
 

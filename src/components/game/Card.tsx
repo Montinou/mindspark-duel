@@ -208,85 +208,84 @@ function CardComponent({
           </div>
 
           {/* ═══════════════════════════════════════════════════════════════════════════
-              TEXT BOX - Caja de texto transparente en la parte inferior
+              TEXT BOX - Fondo semi-transparente, texto opaco
               ═══════════════════════════════════════════════════════════════════════════ */}
-          <div className={`
-            absolute bottom-0 left-0 right-0 z-10
-            bg-gradient-to-b ${elementColors.textBoxBg}
-            backdrop-blur-sm
-            border-t-2 border-black/50
-            px-2.5 pt-2 pb-1.5
-            h-[100px] md:h-[115px] lg:h-[125px]
-            flex flex-col
-          `}>
-            {/* Ability Button (if exists) */}
-            {card.ability && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (abilityAvailable && onUseAbility) {
-                    onUseAbility(card);
-                  }
-                }}
-                disabled={!abilityAvailable}
-                aria-label={`Use ability ${card.ability.name}, costs ${card.ability.manaCost} mana`}
-                className={`
-                  w-full text-left px-2 py-1 rounded text-[10px] md:text-[11px] mb-1.5
-                  transition-all duration-200
-                  ${abilityAvailable
-                    ? 'bg-purple-600/70 hover:bg-purple-500/80 text-white cursor-pointer border border-purple-400/50 shadow-lg'
-                    : 'bg-black/40 text-zinc-400 border border-zinc-600/40'
-                  }
-                `}
-                title={card.ability.description}
-              >
-                <span className="flex items-center gap-1.5">
-                  <Sparkles size={12} className="flex-shrink-0" />
-                  <span className="font-bold truncate">{card.ability.name}</span>
-                  <span className="text-purple-200 ml-auto font-mono">({card.ability.manaCost})</span>
-                </span>
-              </button>
-            )}
+          <div className="absolute bottom-0 left-0 right-0 z-10 h-[100px] md:h-[115px] lg:h-[125px]">
+            {/* Semi-transparent background */}
+            <div className={`absolute inset-0 bg-gradient-to-b ${elementColors.textBoxBg} backdrop-blur-sm border-t-2 border-black/50`} />
 
-            {/* Flavor Text */}
-            <p className={`
-              ${elementColors.accent} text-[9px] md:text-[10px] lg:text-[11px] leading-snug italic
-              ${card.ability ? 'line-clamp-2' : 'line-clamp-3 md:line-clamp-4'}
-              flex-1
-            `}>
-              &ldquo;{card.description}&rdquo;
-            </p>
-
-            {/* ═══════════════════════════════════════════════════════════════════════════
-                STATS BAR - Power/Defense en la parte inferior de la caja de texto
-                ═══════════════════════════════════════════════════════════════════════════ */}
-            <div className="flex items-center justify-between mt-auto pt-1.5 border-t border-white/10">
-              {/* Theme indicator */}
-              {card.theme && (
-                <span className="text-white/50 text-[8px] md:text-[9px] italic truncate max-w-[50%]">
-                  {card.theme}
-                </span>
+            {/* Content with full opacity */}
+            <div className="relative z-10 h-full px-2.5 pt-2 pb-1.5 flex flex-col">
+              {/* Ability Button (if exists) */}
+              {card.ability && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (abilityAvailable && onUseAbility) {
+                      onUseAbility(card);
+                    }
+                  }}
+                  disabled={!abilityAvailable}
+                  aria-label={`Use ability ${card.ability.name}, costs ${card.ability.manaCost} mana`}
+                  className={`
+                    w-full text-left px-2 py-1 rounded text-[10px] md:text-[11px] mb-1.5
+                    transition-all duration-200
+                    ${abilityAvailable
+                      ? 'bg-purple-600/70 hover:bg-purple-500/80 text-white cursor-pointer border border-purple-400/50 shadow-lg'
+                      : 'bg-black/40 text-zinc-400 border border-zinc-600/40'
+                    }
+                  `}
+                  title={card.ability.description}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Sparkles size={12} className="flex-shrink-0" />
+                    <span className="font-bold truncate">{card.ability.name}</span>
+                    <span className="text-purple-200 ml-auto font-mono">({card.ability.manaCost})</span>
+                  </span>
+                </button>
               )}
-              {!card.theme && <div />}
 
-              {/* Power / Defense Box */}
-              <div className={`
-                flex items-center rounded overflow-hidden
-                ${elementColors.statsBg}
-                border border-black/60
-                shadow-[inset_0_1px_2px_rgba(255,255,255,0.15)]
+              {/* Flavor Text - fully opaque */}
+              <p className={`
+                text-white text-[9px] md:text-[10px] lg:text-[11px] leading-snug italic
+                drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]
+                ${card.ability ? 'line-clamp-2' : 'line-clamp-3 md:line-clamp-4'}
+                flex-1
               `}>
-                <div className="flex items-center gap-1 px-2 py-0.5 border-r border-black/40">
-                  <Sword size={12} className="text-red-300" />
-                  <span className="text-white font-bold text-sm md:text-base drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
-                    {card.power}
+                &ldquo;{card.description}&rdquo;
+              </p>
+
+              {/* ═══════════════════════════════════════════════════════════════════════════
+                  STATS BAR - Power/Defense en la parte inferior de la caja de texto
+                  ═══════════════════════════════════════════════════════════════════════════ */}
+              <div className="flex items-center justify-between mt-auto pt-1.5 border-t border-white/20">
+                {/* Theme indicator */}
+                {card.theme && (
+                  <span className="text-white/70 text-[8px] md:text-[9px] italic truncate max-w-[50%] drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
+                    {card.theme}
                   </span>
-                </div>
-                <div className="flex items-center gap-1 px-2 py-0.5">
-                  <Shield size={12} className="text-green-300" />
-                  <span className="text-white font-bold text-sm md:text-base drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
-                    {card.defense}
-                  </span>
+                )}
+                {!card.theme && <div />}
+
+                {/* Power / Defense Box */}
+                <div className={`
+                  flex items-center rounded overflow-hidden
+                  ${elementColors.statsBg}
+                  border border-black/60
+                  shadow-[inset_0_1px_2px_rgba(255,255,255,0.15)]
+                `}>
+                  <div className="flex items-center gap-1 px-2 py-0.5 border-r border-black/40">
+                    <Sword size={12} className="text-red-300" />
+                    <span className="text-white font-bold text-sm md:text-base drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
+                      {card.power}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 px-2 py-0.5">
+                    <Shield size={12} className="text-green-300" />
+                    <span className="text-white font-bold text-sm md:text-base drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
+                      {card.defense}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

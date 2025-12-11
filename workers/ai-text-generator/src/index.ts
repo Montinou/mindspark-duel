@@ -195,56 +195,11 @@ export interface CardDataResponse {
 }
 
 // ============================================
-// CREATIVE CONTENT FOR EPIC CARDS
+// CREATIVE CONTENT FOR EPIC CARDS (Dynamic - No Static Dictionaries)
 // ============================================
 
-// Name prefixes by theme
-const NAME_PREFIXES: Record<string, string[]> = {
-  technomancer: [
-    'Cyber-', 'Meca-', 'Tecno-', 'Nano-', 'Circuito ', 'Voltio ', 'Quantum ',
-    'Proto-', 'Synth-', 'Chrome ', 'Byte ', 'Nexus ', 'Vector ', 'Flux ', 'Core '
-  ],
-  nature: [
-    'Silvestre ', 'Primordial ', 'Verde ', 'Salvaje ', 'Ancestral ', 'Bosque ',
-    'Raíz ', 'Flora ', 'Fauna ', 'Espina ', 'Selva ', 'Brote ', 'Semilla ', 'Musgo '
-  ],
-  arcane: [
-    'Arcano ', 'Místico ', 'Oculto ', 'Etéreo ', 'Rúnico ', 'Sombra ',
-    'Astral ', 'Vacío ', 'Nébula ', 'Cristal ', 'Espectro ', 'Enigma ', 'Éter '
-  ],
-  fantasy: [
-    'Noble ', 'Antiguo ', 'Sagrado ', 'Profano ', 'Celeste ', 'Infernal ',
-    'Primigenio ', 'Eterno ', 'Mítico ', 'Legendario '
-  ]
-};
-
-// Name suffixes by theme
-const NAME_SUFFIXES: Record<string, string[]> = {
-  technomancer: [
-    'Golem', 'Autómata', 'Centinela', 'Constructor', 'Ensamblador', 'Dron',
-    'Androide', 'Forjador', 'Ingeniero', 'Mecanismo', 'Interfaz', 'Código', 'Matriz'
-  ],
-  nature: [
-    'Guardián', 'Espíritu', 'Druida', 'Elemental', 'Bestia', 'Chamán',
-    'Protector', 'Titán', 'Coloso', 'Avatar', 'Enviado', 'Emisario', 'Custodio'
-  ],
-  arcane: [
-    'Mago', 'Hechicero', 'Conjurador', 'Invocador', 'Vidente', 'Oráculo',
-    'Tejedor', 'Ilusionista', 'Alquimista', 'Sabio', 'Ermitaño', 'Maestro', 'Arúspice'
-  ],
-  fantasy: [
-    'Campeón', 'Señor', 'Heraldo', 'Vengador', 'Guardián', 'Conquistador',
-    'Profeta', 'Destructor', 'Portador', 'Soberano', 'Cazador', 'Guerrero'
-  ]
-};
-
-// Descriptors for variety
-const DESCRIPTORS = [
-  'Antiguo', 'Eterno', 'Primigenio', 'Renacido', 'Corrupto', 'Purificado',
-  'Ascendido', 'Fragmentado', 'Fusionado', 'Evolucionado', 'Transcendido',
-  'Imparable', 'Indomable', 'Legendario', 'Mítico', 'Olvidado', 'Prohibido',
-  'Supremo', 'Infernal', 'Celestial', 'Abismal', 'Radiante', 'Sombrío'
-];
+// NOTE: Name generation is now 100% AI-driven with MTG-style prompts
+// No static prefixes/suffixes - the LLM creates original names based on theme
 
 // Art styles for variety - ENHANCED
 const ART_STYLES = [
@@ -357,48 +312,70 @@ export default {
       const elementTopics = ELEMENT_TOPICS[finalElement];
       const shuffledTopics = [...elementTopics].sort(() => Math.random() - 0.5).slice(0, 2);
 
-      // Generate unique seed for name variety
+      // Generate unique seed for variety
       const nameSeed = Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
 
-      // Get theme-specific name parts
-      const themeKey = themeText.toLowerCase().includes('techno') ? 'technomancer' :
-                       themeText.toLowerCase().includes('natur') ? 'nature' :
-                       themeText.toLowerCase().includes('arcan') ? 'arcane' : 'fantasy';
-      const prefixes = NAME_PREFIXES[themeKey] || NAME_PREFIXES.fantasy;
-      const suffixes = NAME_SUFFIXES[themeKey] || NAME_SUFFIXES.fantasy;
-      const randomPrefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-      const randomSuffix = suffixes[Math.floor(Math.random() * suffixes.length)];
-      const randomDescriptor = DESCRIPTORS[Math.floor(Math.random() * DESCRIPTORS.length)];
+      // Get random visual elements for image generation
       const randomMood = MOODS[Math.floor(Math.random() * MOODS.length)];
-
-      // Get element visuals
       const elementVisuals = ELEMENT_VISUALS[finalElement] || ELEMENT_VISUALS.Fire;
 
-      // Determine context type based on theme
-      const contextType = themeKey === 'technomancer' ? 'abstract' :
-                          themeKey === 'nature' ? 'real_world' : 'fantasy';
+      // Determine context type based on theme keywords
+      const contextType = themeText.toLowerCase().includes('techno') || themeText.toLowerCase().includes('cyber') ? 'abstract' :
+                          themeText.toLowerCase().includes('natur') || themeText.toLowerCase().includes('forest') ? 'real_world' : 'fantasy';
 
-      // Enhanced prompt for EPIC cards
-      const prompt = `Generate an EPIC fantasy TCG card. Output ONLY raw JSON, no markdown.
+      // Random flavor text style for variety
+      const flavorStyles = ['QUOTE', 'LORE', 'PROPHECY', 'DESCRIPTION', 'DIALOGUE'];
+      const randomFlavorStyle = flavorStyles[Math.floor(Math.random() * flavorStyles.length)];
 
-Theme: ${themeText} | Element: ${finalElement} | Seed: ${nameSeed}
+      // Random starting letter to force phonetic diversity
+      const starterLetters = ['A', 'B', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'L', 'M', 'N', 'O', 'R', 'S', 'T', 'V', 'X', 'Y', 'Z'];
+      const forcedLetter = starterLetters[Math.floor(Math.random() * starterLetters.length)];
 
-NAME IDEAS (combine creatively):
-- Prefixes: ${randomPrefix}, ${prefixes[Math.floor(Math.random() * prefixes.length)]}
-- Suffixes: ${randomSuffix}, ${suffixes[Math.floor(Math.random() * suffixes.length)]}
-- Descriptors: ${randomDescriptor}, ${DESCRIPTORS[Math.floor(Math.random() * DESCRIPTORS.length)]}
-- Examples: "${randomPrefix}${randomSuffix}", "${randomDescriptor} ${randomSuffix}", "${randomPrefix}${randomDescriptor}"
+      // Random name structure for variety
+      const nameStructures = [
+        'SINGLE_WORD',      // "Abyssara", "Velkoreth"
+        'NAME_EPITHET',     // "Azura, la Cantora del Vacío"
+        'THE_TITLE',        // "El Devorador de Mareas"
+        'ADJECTIVE_NOUN',   // "Marea Ancestral", "Sombra Eterna"
+        'COMPOUND'          // "Aguaoscura", "Tormentanegra"
+      ];
+      const forcedStructure = nameStructures[Math.floor(Math.random() * nameStructures.length)];
+
+      // MTG-style prompt for maximum creativity
+      const prompt = `Create an EPIC TCG card. Output ONLY raw JSON, no markdown.
+
+THEME: "${themeText}" | ELEMENT: ${finalElement} | SEED: ${nameSeed}
+
+MANDATORY NAME REQUIREMENTS:
+1. Name MUST start with letter: "${forcedLetter}" (THIS IS REQUIRED)
+2. Use structure: ${forcedStructure}
+   - SINGLE_WORD: Invented word like "Abyssara", "Velkoreth", "Nihara"
+   - NAME_EPITHET: "Name, the/la/el Title" like "Azura, la Cantora del Vacío"
+   - THE_TITLE: Descriptive like "El Devorador de Mareas", "La Que Susurra"
+   - ADJECTIVE_NOUN: "Marea Ancestral", "Sombra Eterna", "Tormenta Olvidada"
+   - COMPOUND: Merged words like "Aguaoscura", "Marenebla"
+
+3. FORBIDDEN: Names starting with K, C, or Q (overused patterns)
+4. Mix cultural inspirations: Norse, Japanese, Arabic, Slavic, African, Celtic, Latin
+
+FLAVOR TEXT STYLE: ${randomFlavorStyle}
+Examples (VARY your style, don't copy):
+- QUOTE: "Donde termina la luz, comienza mi reino." —Nihara, Señora de las Profundidades
+- LORE: Los pescadores de Vel'mar nunca miran al horizonte cuando cae el sol.
+- PROPHECY: Cuando las tres lunas se alineen, el Abismo despertará.
+- DESCRIPTION: No caza. Espera. Y el océano es paciente.
+- DIALOGUE: "¿Ves esas sombras bajo el agua? No son sombras."
 
 REQUIRED JSON:
 {
-  "name": "<UNIQUE 2-4 word Spanish name, EPIC and MEMORABLE>",
-  "description": "<1-2 POETIC evocative sentences in Spanish, transmit POWER/MYSTERY/MAJESTY, NO stats>",
+  "name": "<UNIQUE 1-4 word name, EPIC and MEMORABLE, Spanish or invented>",
+  "description": "<Flavor text in Spanish, ${randomFlavorStyle} style, 1-2 sentences MAX, MUST NARRATE something>",
   "cost": ${randomCost},
   "power": ${randomPower},
   "defense": ${randomDefense},
   "element": "${finalElement}",
   "problemCategory": "${randomCategory}",
-  "imagePrompt": "<CINEMATIC English description: ${randomArtStyle}, ${randomPerspective}, ${randomMood}, ${elementVisuals.effects}, ${elementVisuals.palette}, full art trading card, no text, no borders>",
+  "imagePrompt": "<CINEMATIC English: ${randomArtStyle}, ${randomPerspective}, ${randomMood}, ${elementVisuals.effects}, ${elementVisuals.palette}, trading card art, no text, no borders>",
   "tags": ["${themeText.toLowerCase()}", "${finalElement.toLowerCase()}", "<thematic_tag_1>", "<thematic_tag_2>"],
   "problemHints": {
     "keywords": ["<spanish_word_1>", "<spanish_word_2>", "<spanish_word_3>", "<spanish_word_4>", "<spanish_word_5>"],
@@ -409,35 +386,43 @@ REQUIRED JSON:
   }
 }`;
 
-      const systemPrompt = `Eres un generador de cartas TCG ÉPICAS y LEGENDARIAS. Cada carta debe sentirse ÚNICA y PODEROSA.
+      const systemPrompt = `Eres un escritor legendario de cartas TCG. Tu trabajo es crear cartas con la calidad narrativa de Magic: The Gathering.
 
 REGLAS JSON CRÍTICAS:
 1. Solo JSON válido - sin \`\`\`, sin markdown, sin explicaciones
 2. Empieza con { y termina con }
-3. Comillas dobles para strings
-4. Sin comas finales
-5. Escapa caracteres especiales
+3. Comillas dobles para strings, sin comas finales
 
-CREATIVIDAD PARA NOMBRES:
-- Combina prefijos + descriptores + sufijos de manera creativa
-- Ejemplos épicos: "Volcán Primigenio", "Oráculo del Vacío Eterno", "Cyber-Centinela Renacido"
-- NUNCA uses nombres genéricos como "Guardian" solo - siempre agrega modificadores épicos
+NOMBRES - EJEMPLOS DE EXCELENCIA (inspírate pero NO copies):
+- "Ythara, Voz de las Profundidades" (nombre + epíteto)
+- "Maremoto Ancestral" (concepto poderoso)
+- "Xanthrid" (nombre inventado único)
+- "La Que Duerme Bajo las Olas" (título descriptivo)
+- "Nereida del Último Suspiro" (criatura + concepto oscuro)
+- "Velkoreth, el Hambriento" (nombre inventado + título)
+- "Susurro de la Tormenta Eterna" (concepto atmosférico)
 
-DESCRIPCIÓN (description):
-- Texto POÉTICO y EVOCADOR en español
-- 1-2 oraciones que transmitan PODER, MISTERIO o MAJESTUOSIDAD
-- Sin mencionar stats ni mecánicas
-- Ejemplo: "De las cenizas del mundo antiguo resurge, portando el fuego de eras olvidadas."
+FLAVOR TEXT - EJEMPLOS MTG (calidad narrativa):
+- "Las estrellas nunca mienten. Por desgracia, tampoco consuelan." —Kala, vidente ciega
+- Dicen que el mar devuelve todo lo que se le entrega. Excepto a los que ama.
+- "¿Ves esas burbujas? Es lo último que verás."
+- En las profundidades donde la luz es un recuerdo, ella construye catedrales de coral y hueso.
+- No es un monstruo. Es una fuerza de la naturaleza con hambre.
+- "Nadie ha vuelto de más allá del Velo. Pero algo sí lo ha hecho."
+
+REGLAS ABSOLUTAS:
+1. NUNCA uses nombres genéricos solos (Guardian, Warrior, Spirit, Elemental)
+2. NUNCA repitas estructuras - cada nombre debe sentirse de un universo diferente
+3. El flavor text DEBE narrar algo: historia, cita, profecía, atmósfera o diálogo
+4. Sorpréndeme con creatividad - sé impredecible
+5. Mezcla inspiraciones culturales: nórdico, japonés, árabe, africano, celta, eslavo
 
 KEYWORDS para problemHints:
 - 5 palabras en ESPAÑOL relacionadas con la carta
 - Útiles para contextualizar problemas matemáticos/científicos
-- Ejemplo para Fire: "volcán", "temperatura", "erupción", "magma", "combustión"
+- Ejemplo para Water: "océano", "profundidad", "marea", "presión", "corriente"
 
-IMAGE PROMPT:
-- Descripción CINEMATOGRÁFICA en inglés
-- Incluir estilo artístico, perspectiva, mood, efectos elementales, paleta de colores
-- Siempre terminar con: full art trading card, no text, no borders`;
+IMAGE PROMPT: Descripción cinematográfica en inglés con estilo, mood y efectos elementales.`;
 
       console.log('🤖 Generating card data with Llama 3.3 70B...');
       console.log('📝 Theme:', themeText, '| Element:', finalElement, '| Category:', randomCategory);
@@ -453,10 +438,10 @@ IMAGE PROMPT:
         return typeof response === 'string' ? response : '';
       };
 
-      // Retry configuration: first try with moderate temp, retry with lower temp
+      // Retry configuration: high temp for max creativity, moderate retry
       const attempts = [
-        { temperature: 0.7, top_p: 0.9 },   // First attempt: balanced
-        { temperature: 0.3, top_p: 0.8 },   // Retry: more deterministic
+        { temperature: 0.95, top_p: 0.95 },  // First attempt: maximum creativity
+        { temperature: 0.85, top_p: 0.9 },   // Retry: still creative but more focused
       ];
 
       let parsed: any = null;
